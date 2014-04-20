@@ -4,3 +4,15 @@ build
 *.sdf
 *.suo
 ipch
+base/config.spec
+base/*.pk4
+base/DoomConfig.cfg
+base/*.dll
+base/*.log
+d3xp/config.spec
+d3xp/*.pk4
+d3xp/description.txt
+d3xp/D3ROE.ico
+d3xp/*.dll
+d3xp/*.log
+

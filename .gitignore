@@ -16,3 +16,5 @@ d3xp/D3ROE.ico
 d3xp/*.dll
 d3xp/*.log
 
+base/renderprogs/glsl
+base/renderprogs/hlsl

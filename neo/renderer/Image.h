@@ -148,7 +148,9 @@ public:
 
 	bool		IsCompressed() const { return ( opts.format == FMT_DXT1 || opts.format == FMT_DXT5 ); }
 
+#ifdef RENDER_OPENGL
 	void		SetTexParameters();	// update aniso and trilinear
+#endif
 
 	bool		IsLoaded() const { return texnum != TEXTURE_NOT_LOADED; }
 
@@ -181,13 +183,22 @@ private:
 
 	static const GLuint TEXTURE_NOT_LOADED = 0xFFFFFFFF;
 
+#ifdef RENDER_OPENGL
 	GLuint				texnum;				// gl texture binding
 
 	// we could derive these in subImageUpload each time if necessary
 	GLuint				internalFormat;
 	GLuint				dataFormat;
 	GLuint				dataType;
+#endif
 
+#ifdef RENDER_D3D11
+    ID3D11Texture2D*    pTexture;
+    ID3D11ShaderResourceView* pSRV;
+    ID3D11SamplerState* pSampler;
+    DXGI_FORMAT         internalFormat;
+    bool                dynamic;
+#endif
 
 };
 

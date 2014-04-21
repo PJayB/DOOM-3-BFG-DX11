@@ -1169,6 +1169,9 @@
     <ClCompile Include="sys\win32\win_d3d.cpp">
       <Filter>Sys\Win32</Filter>
     </ClCompile>
+    <ClCompile Include="renderer\D3D11\d3d_image.cpp">
+      <Filter>Renderer\D3D11</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="sys\win32\rc\res\doom.ico">

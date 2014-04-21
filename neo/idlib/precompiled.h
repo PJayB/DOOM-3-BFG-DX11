@@ -31,6 +31,11 @@ If you have questions concerning this license or the applicable additional terms
 
 #define RENDER_D3D11
 
+// @pjb: todo
+// #ifndef RENDER_D3D11
+#   define RENDER_OPENGL
+// #endif
+
 #include "sys/sys_defines.h"
 #include "sys/sys_builddefines.h"
 #include "sys/sys_includes.h"
@@ -86,10 +91,9 @@ const int MAX_EXPRESSION_REGISTERS = 4096;
 #ifdef RENDER_D3D11
 #   include "../renderer/D3D11/d3d_backend.h"
 #endif
-// @pjb: todo
-// #else
+#ifdef RENDER_OPENGL
 #   include "../renderer/OpenGL/qgl.h"
-// #endif
+#endif
 #include "../renderer/Cinematic.h"
 #include "../renderer/Material.h"
 #include "../renderer/BufferObject.h"

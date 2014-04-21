@@ -28,6 +28,8 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 #include "../../idlib/precompiled.h"
 
+#ifdef RENDER_OPENGL
+
 /*
 ================================================================================================
 Contains the Image implementation for OpenGL.
@@ -480,3 +482,5 @@ void idImage::Resize( int width, int height ) {
 	opts.height = height;
 	AllocImage();
 }
+
+#endif

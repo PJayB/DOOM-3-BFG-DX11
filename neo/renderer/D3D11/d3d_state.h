@@ -121,54 +121,12 @@ struct d3dSkyBoxRenderData_t
     ID3D11Buffer* psConstantBuffer;
 };
 
-// @pjb: for the generic stage rendering
-struct d3dGenericStageRenderData_t 
-{
-    // Single-texture
-    ID3D11VertexShader* vertexShaderST;
-    ID3D11PixelShader* pixelShaderST;
-    ID3D11InputLayout* inputLayoutST;
-
-    // Multi-texture
-    ID3D11VertexShader* vertexShaderMT;
-    ID3D11PixelShader* pixelShaderMT;
-    ID3D11InputLayout* inputLayoutMT;
-};
-
 struct d3dCircularBuffer_t
 {
     ID3D11Buffer* buffer;
     unsigned currentOffset;
     unsigned nextOffset;
     unsigned size;
-};
-
-// @pjb: represents the GPU caches for stageVars_t
-struct d3dTessStageBuffers_t {
-    d3dCircularBuffer_t texCoords[NUM_TEXTURE_BUNDLES];
-    d3dCircularBuffer_t colors;
-};
-
-// @pjb: represents the GPU caches for stageVars_t
-struct d3dTessFogBuffers_t {
-    d3dCircularBuffer_t texCoords;
-    d3dCircularBuffer_t colors;
-};
-
-// @pjb: represents the dynamic light rendering information
-struct d3dTessLightProjBuffers_t {
-    d3dCircularBuffer_t indexes;
-    d3dCircularBuffer_t texCoords;
-    d3dCircularBuffer_t colors;
-};
-
-// @pjb: represents the GPU caches for shaderCommands_t
-struct d3dTessBuffers_t {
-    d3dCircularBuffer_t indexes;
-    d3dCircularBuffer_t xyz;
-    d3dTessStageBuffers_t stages[MAX_SHADER_STAGES];
-    d3dTessLightProjBuffers_t dlights[MAX_DLIGHTS];
-    d3dTessFogBuffers_t fog;
 };
 
 // @pjb: stores the D3D state and only changes every WndInit
@@ -206,9 +164,6 @@ struct d3dDrawState_t
     d3dSkyBoxRenderData_t skyBoxRenderData;
     d3dViewRenderData_t viewRenderData;
     
-    d3dTessBuffers_t tessBufs;
-    d3dGenericStageRenderData_t genericStage;
-
     d3dRasterStates_t rasterStates;
     d3dDepthStates_t depthStates;
     d3dBlendStates_t blendStates;

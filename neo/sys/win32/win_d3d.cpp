@@ -9,6 +9,8 @@
 
 #define	WINDOW_CLASS_NAME	"Doom 3: BFG Edition (Direct3D)"
 
+bool GLW_GetWindowDimensions( const glimpParms_t parms, int &x, int &y, int &w, int &h );
+
 //----------------------------------------------------------------------------
 // WndProc: Intercepts window events before passing them on to the game.
 //----------------------------------------------------------------------------
@@ -66,12 +68,17 @@ static BOOL RegisterWindowClass()
 //----------------------------------------------------------------------------
 // Creates a window to render our game in.
 //----------------------------------------------------------------------------
-static HWND CreateGameWindow( int x, int y, int width, int height, bool fullscreen )
+static HWND CreateGameWindow( const glimpParms_t* parms )
 {
+	int				x, y, w, h;
+	if ( !GLW_GetWindowDimensions( *parms, x, y, w, h ) ) {
+		return false;
+	}
+
     UINT exStyle;
     UINT style;
 
-	if ( fullscreen )
+	if ( parms->fullScreen )
 	{ 
 		exStyle = WS_EX_TOPMOST;
 		style = WS_POPUP|WS_VISIBLE|WS_SYSMENU;
@@ -81,37 +88,48 @@ static HWND CreateGameWindow( int x, int y, int width, int height, bool fullscre
 		exStyle = 0;
 		style = WS_OVERLAPPED|WS_BORDER|WS_CAPTION|WS_VISIBLE|WS_SYSMENU;
 	}
-  
-    RECT rect = { x, y, x + width, y + height };
-    AdjustWindowRectEx(&rect, style, FALSE, exStyle);
-
-    // Make sure it's on-screen 
-    if ( rect.top < 0 ) 
-    {
-        rect.bottom -= rect.top;
-        rect.top = 0;
-    }
-    if ( rect.left < 0 ) 
-    {
-        rect.right -= rect.left;
-        rect.left = 0;
-    }
-
-    // @pjb: todo: right and bottom edges of the monitor
 
     return CreateWindowEx(
         exStyle, 
         WINDOW_CLASS_NAME,
         "Doom 3: BFG Edition",
         style, 
-        rect.left, 
-        rect.top, 
-        rect.right - rect.left, 
-        rect.bottom - rect.top, 
+        x, 
+        y, 
+        w, 
+        h, 
         NULL, 
         NULL, 
         win32.hInstance, 
         NULL );
+}
+
+static IDXGISwapChain1* CreateSwapChain( QD3D11Device* device, const glimpParms_t* parms )
+{
+    DXGI_SWAP_CHAIN_DESC1 scDesc;
+	ZeroMemory( &scDesc, sizeof(scDesc) );
+    scDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+    scDesc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    scDesc.Width = parms->width;
+    scDesc.Height = parms->height;
+    
+    GetSwapChainDescFromConfig( &scDesc );
+    
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsd;
+    ZeroMemory( &fsd, sizeof(fsd) );
+    fsd.Windowed = !parms->fullScreen;
+    fsd.Scaling = DXGI_MODE_SCALING_STRETCHED;
+
+    IDXGISwapChain1* swapChain = nullptr;
+    HRESULT hr = QD3D::CreateSwapChain(device, win32.hWnd, &scDesc, &fsd, &swapChain);
+    if (FAILED(hr))
+    {
+        return nullptr;
+    }
+
+    InitSwapChain( swapChain );
+
+    return swapChain;
 }
 
 //----------------------------------------------------------------------------
@@ -127,42 +145,32 @@ bool D3DWnd_Init( glimpParms_t parms )
         //return;
     }
 
-    win32.hWnd = CreateGameWindow( 
-        parms.x,
-        parms.y,
-        parms.width, 
-        parms.height,
-        parms.fullScreen != 0);
+    win32.hWnd = CreateGameWindow(&parms);
     if ( !win32.hWnd )
     {
+		common->Printf( "^3D3DWnd_CreateWindow() - Couldn't create window\n" );
         return false;
     }
 
 	QD3D11Device* device = InitDevice();
-
-    DXGI_SWAP_CHAIN_DESC1 scDesc;
-	ZeroMemory( &scDesc, sizeof(scDesc) );
-    scDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-    scDesc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-    
-    GetSwapChainDescFromConfig( &scDesc );
-    
-    DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsd;
-    ZeroMemory( &fsd, sizeof(fsd) );
-    fsd.Windowed = !parms.fullScreen;
-    fsd.Scaling = DXGI_MODE_SCALING_STRETCHED;
-
-    IDXGISwapChain1* swapChain = nullptr;
-    HRESULT hr = QD3D::CreateSwapChain(device, win32.hWnd, &scDesc, &fsd, &swapChain);
-    if (FAILED(hr))
+    IDXGISwapChain1* swapChain = CreateSwapChain( device, &parms );
+    if ( !swapChain )
     {
+        SAFE_RELEASE( device );
         return false;
     }
 
-    InitSwapChain( swapChain );
-
     SAFE_RELEASE( swapChain );
     SAFE_RELEASE( device );
+
+    SetupVideoConfig();
+
+	glConfig.isFullscreen = parms.fullScreen;
+	glConfig.pixelAspect = 1.0f;	// FIXME: some monitor modes may be distorted
+
+	glConfig.isFullscreen = parms.fullScreen;
+	glConfig.nativeScreenWidth = parms.width;
+	glConfig.nativeScreenHeight = parms.height;
 
     D3DDrv_DriverInit();
 
@@ -172,6 +180,53 @@ bool D3DWnd_Init( glimpParms_t parms )
 	::SetFocus( win32.hWnd );
 
     return true;
+}
+
+bool D3DWnd_SetScreenParms( glimpParms_t parms ) 
+{
+    DestroyBuffers();
+    DestroySwapChain();
+
+	int x, y, w, h;
+	if ( !GLW_GetWindowDimensions( parms, x, y, w, h ) ) {
+		return false;
+	}
+
+    int exstyle;
+	int stylebits;
+
+	if ( parms.fullScreen ) {
+		exstyle = WS_EX_TOPMOST;
+		stylebits = WS_POPUP|WS_VISIBLE|WS_SYSMENU;
+	} else {
+		exstyle = 0;
+		stylebits = WINDOW_STYLE|WS_SYSMENU;
+	}
+
+	SetWindowLong( win32.hWnd, GWL_STYLE, stylebits );
+	SetWindowLong( win32.hWnd, GWL_EXSTYLE, exstyle );
+
+	SetWindowPos( win32.hWnd, 
+        parms.fullScreen ? HWND_TOPMOST : HWND_NOTOPMOST, 
+        x, y, w, h, 
+        SWP_SHOWWINDOW );
+
+    IDXGISwapChain1* swapChain = CreateSwapChain( GetDevice(), &parms );
+    if ( !swapChain )
+    {
+        return false;
+    }
+
+    SetupVideoConfig();
+
+	glConfig.isFullscreen = parms.fullScreen;
+	glConfig.pixelAspect = 1.0f;	// FIXME: some monitor modes may be distorted
+
+	glConfig.isFullscreen = parms.fullScreen;
+	glConfig.nativeScreenWidth = parms.width;
+	glConfig.nativeScreenHeight = parms.height;
+
+	return true;
 }
 
 //----------------------------------------------------------------------------

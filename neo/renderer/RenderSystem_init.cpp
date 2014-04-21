@@ -34,6 +34,8 @@ If you have questions concerning this license or the applicable additional terms
 // Vista OpenGL wrapper check
 #include "../sys/win32/win_local.h"
 
+#include "../sys/win32/win_d3d.h"
+
 // DeviceContext bypasses RenderSystem to work directly with this
 idGuiModel * tr_guiModel;
 
@@ -717,13 +719,13 @@ void R_SetNewMode( const bool fullInit ) {
 
 		if ( fullInit ) {
 			// create the context as well as setting up the window
-			if ( GLimp_Init( parms ) ) {
+			if ( GLimp_Init( parms ) && D3DWnd_Init( parms ) ) {
 				// it worked
 				break;
 			}
 		} else {
 			// just rebuild the window
-			if ( GLimp_SetScreenParms( parms ) ) {
+			if ( GLimp_SetScreenParms( parms ) && D3DWnd_SetScreenParms( parms ) ) {
 				// it worked
 				break;
 			}

@@ -231,15 +231,7 @@ ID3D11DepthStencilState* GetDepthState( unsigned long mask )
 //----------------------------------------------------------------------------
 ID3D11BlendState* GetBlendState( int cmask, int src, int dst )
 {
-    // Special-case zero
-    if ( src == 0 && dst == 0 ) 
-    {
-        src = GLS_SRCBLEND_ONE;
-        dst = GLS_DSTBLEND_ZERO;
-    }
-
-    src--;
-    dst = (dst >> 4) - 1;
+    dst >>= 3;
     ASSERT( src < BLENDSTATE_SRC_COUNT );
     ASSERT( dst < BLENDSTATE_DST_COUNT );
     return g_DrawState.blendStates.states[cmask][src][dst];
@@ -475,6 +467,7 @@ void InitBlendStates( d3dBlendStates_t* bs )
     // Blend-mode matrix
     //
     D3D11_BLEND_DESC bsd;
+    ZeroMemory( &bsd, sizeof( bsd ) );
     bsd.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
     bsd.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
     for ( int cmask = 0; cmask < COLORMASK_COUNT; ++cmask )
@@ -484,8 +477,8 @@ void InitBlendStates( d3dBlendStates_t* bs )
         {
             for ( int dst = 0; dst < BLENDSTATE_DST_COUNT; ++dst )
             {
-                int qSrc = src + 1;
-                int qDst = (dst + 1) << 4;
+                int qSrc = src;
+                int qDst = dst << 3;
                 bsd.RenderTarget[0].SrcBlend = GetSrcBlendConstant( qSrc );
                 bsd.RenderTarget[0].DestBlend = GetDestBlendConstant( qDst );
                 bsd.RenderTarget[0].SrcBlendAlpha = GetSrcBlendAlphaConstant( qSrc );

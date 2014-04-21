@@ -4,16 +4,9 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void D3DWnd_Init( void );
+bool D3DWnd_Init( glimpParms_t parms );
+bool D3DWnd_SetScreenParms( glimpParms_t parms );
 void D3DWnd_Shutdown( void );
 HWND D3DWnd_GetWindowHandle( void );
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
 
 #endif

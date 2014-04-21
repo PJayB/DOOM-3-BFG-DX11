@@ -29,6 +29,8 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __PRECOMPILED_H__
 #define __PRECOMPILED_H__
 
+#define RENDER_D3D11
+
 #include "sys/sys_defines.h"
 #include "sys/sys_builddefines.h"
 #include "sys/sys_includes.h"
@@ -81,8 +83,13 @@ const int MAX_EXPRESSION_OPS = 4096;
 const int MAX_EXPRESSION_REGISTERS = 4096;
 
 // renderer
-#include "../renderer/D3D11/d3d_backend.h"
-#include "../renderer/OpenGL/qgl.h"
+#ifdef RENDER_D3D11
+#   include "../renderer/D3D11/d3d_backend.h"
+#endif
+// @pjb: todo
+// #else
+#   include "../renderer/OpenGL/qgl.h"
+// #endif
 #include "../renderer/Cinematic.h"
 #include "../renderer/Material.h"
 #include "../renderer/BufferObject.h"

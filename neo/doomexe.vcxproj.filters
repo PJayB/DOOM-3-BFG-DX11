@@ -1097,9 +1097,6 @@
     <ClCompile Include="renderer\tr_backend_draw.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\tr_backend_rendertools.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
     <ClCompile Include="renderer\tr_frontend_addlights.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>

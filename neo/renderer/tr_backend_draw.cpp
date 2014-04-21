@@ -2630,7 +2630,7 @@ void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye ) {
 	//-------------------------------------------------
 	// render debug tools
 	//-------------------------------------------------
-	RB_RenderDebugTools( drawSurfs, numDrawSurfs );
+	// @pjb: todo: RB_RenderDebugTools( drawSurfs, numDrawSurfs );
 
 	renderLog.CloseBlock();
 }
@@ -2774,7 +2774,7 @@ void RB_DrawView( const void *data, const int stereoEye ) {
 
 	backEnd.pc.c_surfaces += backEnd.viewDef->numDrawSurfs;
 
-	RB_ShowOverdraw();
+	// @pjb: todo: RB_ShowOverdraw();
 
 	// render the scene
 	RB_DrawViewInternal( cmd->viewDef, stereoEye );

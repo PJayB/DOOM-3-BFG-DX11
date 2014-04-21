@@ -2234,7 +2234,7 @@ void idRenderSystemLocal::Shutdown() {
 	// free the vertex cache, which should have nothing allocated now
 	vertexCache.Shutdown();
 
-	RB_ShutdownDebugTools();
+	// @pjb: todo: RB_ShutdownDebugTools();
 
 	delete guiModel;
 

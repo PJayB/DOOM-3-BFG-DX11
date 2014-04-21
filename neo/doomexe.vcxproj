@@ -448,7 +448,6 @@
     <ClCompile Include="renderer\RenderWorld_portals.cpp" />
     <ClCompile Include="renderer\ScreenRect.cpp" />
     <ClCompile Include="renderer\tr_backend_draw.cpp" />
-    <ClCompile Include="renderer\tr_backend_rendertools.cpp" />
     <ClCompile Include="renderer\tr_frontend_addlights.cpp" />
     <ClCompile Include="renderer\tr_frontend_addmodels.cpp" />
     <ClCompile Include="renderer\tr_frontend_deform.cpp" />

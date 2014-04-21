@@ -1,3 +1,8 @@
+#pragma hdrstop
+#include "../../idlib/precompiled.h"
+#include "../tr_local.h"
+#include "../../framework/Common_local.h"
+
 #include "d3d_common.h"
 #include "d3d_device.h"
 #include "d3d_state.h"

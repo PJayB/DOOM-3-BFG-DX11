@@ -719,21 +719,27 @@ void R_SetNewMode( const bool fullInit ) {
 
 		if ( fullInit ) {
 			// create the context as well as setting up the window
+            bool success = false;
 #ifdef RENDER_D3D11
-			if ( D3DWnd_Init( parms ) ) {
-#else
-			if ( GLimp_Init( parms ) ) {
+			success = D3DWnd_Init( parms );
 #endif
+#ifdef RENDER_OPENGL
+			success = GLimp_Init( parms );
+#endif
+            if (success) {
 				// it worked
 				break;
 			}
 		} else {
 			// just rebuild the window
+            bool success = false;
 #ifdef RENDER_D3D11
-			if ( D3DWnd_SetScreenParms( parms ) ) {
-#else
-            if ( GLimp_SetScreenParms( parms ) ) {
+			success = D3DWnd_SetScreenParms( parms );
 #endif
+#ifdef RENDER_OPENGL
+			success = GLimp_SetScreenParms( parms );
+#endif
+            if (success) {
 				// it worked
 				break;
 			}
@@ -1718,81 +1724,6 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 
 	// set the mode without re-initializing the context
 	R_SetNewMode( false );
-
-#if 0
-	bool full = true;
-	bool forceWindow = false;
-	for ( int i = 1 ; i < args.Argc() ; i++ ) {
-		if ( idStr::Icmp( args.Argv( i ), "partial" ) == 0 ) {
-			full = false;
-			continue;
-		}
-		if ( idStr::Icmp( args.Argv( i ), "windowed" ) == 0 ) {
-			forceWindow = true;
-			continue;
-		}
-	}
-
-	// this could take a while, so give them the cursor back ASAP
-	Sys_GrabMouseCursor( false );
-
-	// dump ambient caches
-	renderModelManager->FreeModelVertexCaches();
-
-	// free any current world interaction surfaces and vertex caches
-	R_FreeDerivedData();
-
-	// make sure the defered frees are actually freed
-	R_ToggleSmpFrame();
-	R_ToggleSmpFrame();
-
-	// free the vertex caches so they will be regenerated again
-	vertexCache.PurgeAll();
-
-	// sound and input are tied to the window we are about to destroy
-
-	if ( full ) {
-		// free all of our texture numbers
-		Sys_ShutdownInput();
-		globalImages->PurgeAllImages();
-		// free the context and close the window
-		GLimp_Shutdown();
-		r_initialized = false;
-
-		// create the new context and vertex cache
-		bool latch = cvarSystem->GetCVarBool( "r_fullscreen" );
-		if ( forceWindow ) {
-			cvarSystem->SetCVarBool( "r_fullscreen", false );
-		}
-		R_InitOpenGL();
-		cvarSystem->SetCVarBool( "r_fullscreen", latch );
-
-		// regenerate all images
-		globalImages->ReloadImages( true );
-	} else {
-		glimpParms_t parms;
-		parms.width = glConfig.nativeScreenWidth;
-		parms.height = glConfig.nativeScreenHeight;
-		parms.fullScreen = ( forceWindow ) ? false : r_fullscreen.GetInteger();
-		parms.displayHz = r_displayRefresh.GetInteger();
-		parms.multiSamples = r_multiSamples.GetInteger();
-		parms.stereo = false;
-		GLimp_SetScreenParms( parms );
-	}
-
-
-
-	// make sure the regeneration doesn't use anything no longer valid
-	tr.viewCount++;
-	tr.viewDef = NULL;
-
-	// check for problems
-	int err = dummy_qglGetError();
-	if ( err != GL_NO_ERROR ) {
-		common->Printf( "glGetError() = 0x%x\n", err );
-	}
-#endif
-
 }
 
 /*
@@ -2382,7 +2313,12 @@ idRenderSystemLocal::ShutdownOpenGL
 void idRenderSystemLocal::ShutdownOpenGL() {
 	// free the context and close the window
 	R_ShutdownFrameData();
+#ifdef RENDER_D3D11
+    D3DWnd_Shutdown();
+#endif
+#ifdef RENDER_OPENGL
 	GLimp_Shutdown();
+#endif
 	r_initialized = false;
 }
 

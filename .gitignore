@@ -18,3 +18,10 @@ d3xp/*.log
 
 base/renderprogs/glsl
 base/renderprogs/hlsl
+*.crc
+*.cfg
+*.resources
+*.bik
+*.WAD
+*.lang
+*.PAT

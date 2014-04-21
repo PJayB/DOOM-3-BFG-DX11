@@ -42,7 +42,6 @@ ID3D11DeviceContext1* D3DDrv_GetImmediateContext()
 //----------------------------------------------------------------------------
 // Clear the back buffers
 //----------------------------------------------------------------------------
-#if 0 
 void D3DDrv_Clear( unsigned long bits, const float* clearCol, unsigned long stencil, float depth )
 {
     if ( bits & CLEAR_COLOR )
@@ -61,12 +60,11 @@ void D3DDrv_Clear( unsigned long bits, const float* clearCol, unsigned long sten
         g_pImmediateContext->ClearDepthStencilView( g_BufferState.depthBufferView, clearBits, depth, (UINT8) stencil );
     }
 }
-#endif
 
 //----------------------------------------------------------------------------
 // Flush the command buffer
 //----------------------------------------------------------------------------
-void D3DDrv_Flush( void )
+void D3DDrv_Flush()
 {
     g_pImmediateContext->End( g_DrawState.frameQuery );
 

@@ -102,10 +102,10 @@ struct d3dDrawState_t
 // @pjb: stores the run-time game state. The game is set up like a state machine so we'll be doing the same.
 struct d3dRunState_t {
     float polyOffset[2];
-    unsigned long stateMask; // combination of GLS_* flags
+    uint64 stateMask; // combination of GLS_* flags
     int cullMode; // CT_ flag
-    unsigned long depthStateMask;
-    unsigned long colorMask;
+    uint64 depthStateMask;
+    uint64 colorMask;
     int srcFactor;
     int dstFactor;
     bool lineMode;

@@ -125,9 +125,18 @@ void D3DDrv_SetViewport( int left, int top, int width, int height )
 }
 
 //----------------------------------------------------------------------------
-// Set the culling mode depending on whether it's a mirror or not
+// Set the default state
 //----------------------------------------------------------------------------
-void D3DDrv_SetState( unsigned long stateBits )
+void D3DDrv_SetDefaultState()
+{
+    memset( &g_RunState, 0, sizeof( g_RunState ) );
+    D3DDrv_SetState( 0 );
+}
+
+//----------------------------------------------------------------------------
+// Set the state based on the mask
+//----------------------------------------------------------------------------
+void D3DDrv_SetState( uint64 stateBits )
 {
 	unsigned long diff = stateBits ^ g_RunState.stateMask;
 
@@ -215,6 +224,14 @@ void D3DDrv_SetState( unsigned long stateBits )
     // TODO: stencil
 
     g_RunState.stateMask = stateBits;
+}
+
+//----------------------------------------------------------------------------
+// Get the current state
+//----------------------------------------------------------------------------
+uint64 D3DDrv_GetCurrentState() 
+{
+    return g_RunState.stateMask;
 }
 
 //----------------------------------------------------------------------------

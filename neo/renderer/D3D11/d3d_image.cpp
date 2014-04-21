@@ -11,7 +11,7 @@ void CreateImageCustom(
     const int height, 
     const int mipLevels,
     const byte *pic, 
-    qboolean isLightmap )
+    bool isLightmap )
 {
     d3dImage_t* d3dImage = &s_d3dImages[image->index];
 
@@ -23,14 +23,14 @@ void CreateImageCustom(
 
     // If it's a scratch image, make it dynamic
     if ( Q_strncmp( image->imgName, "*scratch", sizeof(image->imgName) ) == 0 )
-        d3dImage->dynamic = qtrue;
+        d3dImage->dynamic = true;
 
     // Re-allocate space for the image and light scale it
     // @pjb: I wish I didn't have to do this, but there we are.
     size_t imageSizeBytes = width * height * sizeof( UINT );
     void* lightscaledCopy = ri.Hunk_AllocateTempMemory( (int) imageSizeBytes );
     memcpy( lightscaledCopy, pic, imageSizeBytes );
-    R_LightScaleTexture( (unsigned int*) lightscaledCopy, width, height, (qboolean)(mipLevels == 1) );
+    R_LightScaleTexture( (unsigned int*) lightscaledCopy, width, height, (bool)(mipLevels == 1) );
 
     // Now generate the mip levels
     int mipWidth = width;
@@ -129,7 +129,7 @@ void CreateImageCustom(
     d3dImage->height = height;
 }
 
-D3D_PUBLIC void D3DDrv_CreateImage( const image_t* image, const byte *pic, qboolean isLightmap )
+D3D_PUBLIC void D3DDrv_CreateImage( const image_t* image, const byte *pic, bool isLightmap )
 {
     // Count the number of miplevels for this image
     int mipLevels = 1;
@@ -169,7 +169,7 @@ D3D_PUBLIC void D3DDrv_DeleteImage( const image_t* image )
     Com_Memset( d3dImage, 0, sizeof( d3dImage_t ) );
 }
 
-D3D_PUBLIC void D3DDrv_UpdateCinematic( const image_t* image, const byte* pic, int cols, int rows, qboolean dirty )
+D3D_PUBLIC void D3DDrv_UpdateCinematic( const image_t* image, const byte* pic, int cols, int rows, bool dirty )
 {
     if ( cols != image->width || rows != image->height ) {
         D3DDrv_DeleteImage( image );
@@ -181,7 +181,7 @@ D3D_PUBLIC void D3DDrv_UpdateCinematic( const image_t* image, const byte* pic, i
             rows,
             1,
             pic, 
-            qfalse );
+            false );
     } else {
         if (dirty) {
 

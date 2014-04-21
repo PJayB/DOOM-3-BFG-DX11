@@ -11,7 +11,7 @@ void UpdateDirtyViewVS()
     d3dViewVSConstantBuffer_t* cb = QD3D::MapDynamicBuffer<d3dViewVSConstantBuffer_t>( g_pImmediateContext, g_DrawState.viewRenderData.vsConstantBuffer );
     memcpy( cb, &g_RunState.vsConstants, sizeof(d3dViewVSConstantBuffer_t) );
     g_pImmediateContext->Unmap( g_DrawState.viewRenderData.vsConstantBuffer, 0 );
-    g_RunState.vsDirtyConstants = qfalse;
+    g_RunState.vsDirtyConstants = false;
 }
 
 void UpdateDirtyViewPS()
@@ -20,7 +20,7 @@ void UpdateDirtyViewPS()
     d3dViewPSConstantBuffer_t* cb = QD3D::MapDynamicBuffer<d3dViewPSConstantBuffer_t>( g_pImmediateContext, g_DrawState.viewRenderData.psConstantBuffer );
     memcpy( cb, &g_RunState.psConstants, sizeof(d3dViewPSConstantBuffer_t) );
     g_pImmediateContext->Unmap( g_DrawState.viewRenderData.psConstantBuffer, 0 );
-    g_RunState.psDirtyConstants = qfalse;
+    g_RunState.psDirtyConstants = false;
 }
 
 // @pjb: forceinline because I don't want to put the 'if' inside UpdateDirtyTransform
@@ -273,7 +273,7 @@ static void DrawSkyBox(
 {
     D3DDrv_SetState(0);
 
-    CommitRasterizerState( CT_TWO_SIDED, qfalse, qfalse );
+    CommitRasterizerState( CT_TWO_SIDED, false, false );
     
     UpdateViewState();
     UpdateMaterialState();
@@ -565,7 +565,7 @@ void D3DDrv_DrawStageGeneric( const shaderCommands_t *input )
     UpdateTessBuffers( input, needDLights, needFog );
 
     // todo: wireframe mode?
-    CommitRasterizerState( input->shader->cullType, input->shader->polygonOffset, qfalse );
+    CommitRasterizerState( input->shader->cullType, input->shader->polygonOffset, false );
 
     const d3dCircularBuffer_t* indexes = &g_DrawState.tessBufs.indexes;
     

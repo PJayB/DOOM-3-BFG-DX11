@@ -82,7 +82,7 @@ struct d3dImage_t
     int width;
     int height;
     int frameUsed;
-    qboolean dynamic;
+    bool dynamic;
 };
 
 struct d3dViewRenderData_t
@@ -223,8 +223,8 @@ struct d3dRunState_t {
     unsigned long stateMask; // combination of GLS_* flags
     int cullMode; // CT_ flag
     unsigned long depthStateMask;
-    qboolean vsDirtyConstants;
-    qboolean psDirtyConstants;
+    bool vsDirtyConstants;
+    bool psDirtyConstants;
 };
 
 //----------------------------------------------------------------------------
@@ -257,7 +257,7 @@ void DrawQuad(
     const float* color );
 
 // cullmode = CT_ flags
-void CommitRasterizerState( int cullMode, qboolean polyOffset, qboolean outline );
+void CommitRasterizerState( int cullMode, bool polyOffset, bool outline );
 
 ID3D11RasterizerState* GetRasterizerState( D3D11_CULL_MODE cullmode, unsigned long mask );
 ID3D11DepthStencilState* GetDepthState( unsigned long mask ); // DEPTHSTATE_FLAG_ enum

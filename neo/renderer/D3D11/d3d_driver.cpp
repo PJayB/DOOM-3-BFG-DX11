@@ -104,7 +104,7 @@ void D3DDrv_Clear( unsigned long bits, const float* clearCol, unsigned long sten
 void D3DDrv_SetProjection( const float* projMatrix )
 {
     memcpy( g_RunState.vsConstants.projectionMatrix, projMatrix, sizeof(float) * 16 );
-    g_RunState.vsDirtyConstants = qtrue;
+    g_RunState.vsDirtyConstants = true;
 }
 
 void D3DDrv_GetProjection( float* projMatrix )
@@ -115,7 +115,7 @@ void D3DDrv_GetProjection( float* projMatrix )
 void D3DDrv_SetModelView( const float* modelViewMatrix )
 {
     memcpy( g_RunState.vsConstants.modelViewMatrix, modelViewMatrix, sizeof(float) * 16 );
-    g_RunState.vsDirtyConstants = qtrue;
+    g_RunState.vsDirtyConstants = true;
 }
 
 void D3DDrv_GetModelView( float* modelViewMatrix )
@@ -159,9 +159,9 @@ void D3DDrv_ResetState2D( void )
 			  GLS_SRCBLEND_SRC_ALPHA |
 			  GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 
-    CommitRasterizerState( CT_TWO_SIDED, qfalse, qfalse );
+    CommitRasterizerState( CT_TWO_SIDED, false, false );
 
-    D3DDrv_SetPortalRendering( qfalse, NULL, NULL );
+    D3DDrv_SetPortalRendering( false, NULL, NULL );
     D3DDrv_SetDepthRange( 0, 0 );
 }
 
@@ -172,7 +172,7 @@ void D3DDrv_ResetState3D( void )
     D3DDrv_SetDepthRange( 0, 1 );
 }
 
-void D3DDrv_SetPortalRendering( qboolean enabled, const float* flipMatrix, const float* plane )
+void D3DDrv_SetPortalRendering( bool enabled, const float* flipMatrix, const float* plane )
 {
     if ( enabled ) 
     {
@@ -193,14 +193,14 @@ void D3DDrv_SetPortalRendering( qboolean enabled, const float* flipMatrix, const
         g_RunState.psConstants.clipPlane[3] = 0;
     }
 
-    g_RunState.psDirtyConstants = qtrue;
+    g_RunState.psDirtyConstants = true;
 }
 
 void D3DDrv_SetDepthRange( float minRange, float maxRange )
 {
     g_RunState.vsConstants.depthRange[0] = minRange;
     g_RunState.vsConstants.depthRange[1] = maxRange - minRange;
-    g_RunState.vsDirtyConstants = qtrue;
+    g_RunState.vsDirtyConstants = true;
 }
 
 void D3DDrv_SetDrawBuffer( int buffer )
@@ -250,12 +250,12 @@ void D3DDrv_EndFrame( void )
 	}
 }
 
-void D3DDrv_MakeCurrent( qboolean current )
+void D3DDrv_MakeCurrent( bool current )
 {
     
 }
 
-void D3DDrv_DebugSetOverdrawMeasureEnabled( qboolean enabled )
+void D3DDrv_DebugSetOverdrawMeasureEnabled( bool enabled )
 {
 
 }
@@ -301,10 +301,10 @@ void SetupVideoConfig()
 
     vdConfig.driverType = GLDRV_ICD;
     vdConfig.hardwareType = GLHW_GENERIC;
-    vdConfig.deviceSupportsGamma = qfalse; // @pjb: todo?
+    vdConfig.deviceSupportsGamma = false; // @pjb: todo?
     vdConfig.textureCompression = TC_NONE; // @pjb: todo: d3d texture compression
-    vdConfig.textureEnvAddAvailable = qtrue;
-    vdConfig.stereoEnabled = qfalse; // @pjb: todo: d3d stereo support
+    vdConfig.textureEnvAddAvailable = true;
+    vdConfig.stereoEnabled = false; // @pjb: todo: d3d stereo support
 
 #if !defined(_ARM_) && !defined(D3D_NO_ENUM_DISPLAY)
 	DEVMODE dm;

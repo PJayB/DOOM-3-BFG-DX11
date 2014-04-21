@@ -64,7 +64,7 @@ void DestroyBuffers()
 //----------------------------------------------------------------------------
 // Set the culling mode depending on whether it's a mirror or not
 //----------------------------------------------------------------------------
-void CommitRasterizerState( int cullType, qboolean polyOffset, qboolean outline )
+void CommitRasterizerState( int cullType, bool polyOffset, bool outline )
 {
     int maskBits = 
         ( ( outline & 1 ) << 5 ) |
@@ -200,7 +200,7 @@ void D3DDrv_SetState( unsigned long stateBits )
             break;
         }
 
-        g_RunState.psDirtyConstants = qtrue;
+        g_RunState.psDirtyConstants = true;
     }
 
     g_RunState.stateMask = stateBits;
@@ -372,8 +372,8 @@ void InitDrawState()
     g_RunState.vsConstants.depthRange[0] = 0;
     g_RunState.vsConstants.depthRange[1] = 1;
     g_RunState.stateMask = 0;
-    g_RunState.vsDirtyConstants = qtrue;
-    g_RunState.psDirtyConstants = qtrue;
+    g_RunState.vsDirtyConstants = true;
+    g_RunState.psDirtyConstants = true;
     g_RunState.cullMode = -1;
     
     // Create D3D objects

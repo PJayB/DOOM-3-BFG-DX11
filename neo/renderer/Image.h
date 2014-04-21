@@ -196,7 +196,7 @@ private:
     ID3D11Texture2D*    pTexture;
     ID3D11ShaderResourceView* pSRV;
     ID3D11SamplerState* pSampler;
-    DXGI_FORMAT         internalFormat;
+    DXGI_FORMAT         dxgiFormat;
     bool                dynamic;
 #endif
 

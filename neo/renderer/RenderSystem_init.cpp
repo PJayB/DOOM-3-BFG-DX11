@@ -719,13 +719,21 @@ void R_SetNewMode( const bool fullInit ) {
 
 		if ( fullInit ) {
 			// create the context as well as setting up the window
-			if ( GLimp_Init( parms ) && D3DWnd_Init( parms ) ) {
+#ifdef RENDER_D3D11
+			if ( D3DWnd_Init( parms ) ) {
+#else
+			if ( GLimp_Init( parms ) ) {
+#endif
 				// it worked
 				break;
 			}
 		} else {
 			// just rebuild the window
-			if ( GLimp_SetScreenParms( parms ) && D3DWnd_SetScreenParms( parms ) ) {
+#ifdef RENDER_D3D11
+			if ( D3DWnd_SetScreenParms( parms ) ) {
+#else
+            if ( GLimp_SetScreenParms( parms ) ) {
+#endif
 				// it worked
 				break;
 			}

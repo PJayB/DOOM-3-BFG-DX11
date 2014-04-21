@@ -29,7 +29,7 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __PRECOMPILED_H__
 #define __PRECOMPILED_H__
 
-#define RENDER_D3D11
+//#define RENDER_D3D11
 
 // @pjb: todo
 // #ifndef RENDER_D3D11

@@ -64,6 +64,9 @@
     <Filter Include="Renderer\D3D11">
       <UniqueIdentifier>{12fd9f5e-2924-4c0f-ae4f-446fba05bbf1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Renderer\GAL">
+      <UniqueIdentifier>{adb1692b-d9ac-45d6-a024-8fb2925d9dde}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -554,6 +557,9 @@
     </ClInclude>
     <ClInclude Include="sys\win32\win_d3d.h">
       <Filter>Sys\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\GAL\gal.h">
+      <Filter>Renderer\GAL</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

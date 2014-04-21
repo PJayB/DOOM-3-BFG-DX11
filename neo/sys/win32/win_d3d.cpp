@@ -172,7 +172,7 @@ bool D3DWnd_Init( glimpParms_t parms )
 	glConfig.nativeScreenWidth = parms.width;
 	glConfig.nativeScreenHeight = parms.height;
 
-    D3DDrv_DriverInit();
+    D3DDrv_Init();
 
     ::ShowWindow( win32.hWnd, SW_SHOW );
     ::UpdateWindow( win32.hWnd );

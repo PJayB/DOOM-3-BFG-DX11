@@ -18,7 +18,7 @@ void D3DDrv_Shutdown( void )
     DestroyDrawState();
 }
 
-void D3DDrv_DriverInit( void )
+void D3DDrv_Init( void )
 {
     InitDrawState();
 }

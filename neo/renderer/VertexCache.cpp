@@ -326,8 +326,8 @@ void idVertexCache::BeginBackEnd() {
 
 #if 0
 	const int startBind = Sys_Milliseconds();
-	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)frameData[drawListNum].vertexBuffer.GetAPIObject() );
-	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, (GLuint)frameData[drawListNum].indexBuffer.GetAPIObject() );
+	dummy_qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)frameData[drawListNum].vertexBuffer.GetAPIObject() );
+	dummy_qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, (GLuint)frameData[drawListNum].indexBuffer.GetAPIObject() );
 	const int endBind = Sys_Milliseconds();
 	if ( endBind - startBind > 1 ) {
 		idLib::Printf( "idVertexCache::bind took %i msec\n", endBind - startBind );

@@ -1266,7 +1266,7 @@ static void RB_AltShowNormals( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 		const srfTriangles_t * tri = drawSurf->geo;
 
-		qglBegin( GL_LINES );
+		dummy_qglBegin( GL_LINES );
 		for ( int j = 0; j < tri->numIndexes; j += 3 ) {
 			const idDrawVert *v[3] = {
 				&tri->verts[tri->indexes[j+0]],
@@ -1284,26 +1284,26 @@ static void RB_AltShowNormals( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 				idVec3 end;
 
 				GL_Color( 0, 0, 1 );
-				qglVertex3fv( pos.ToFloatPtr() );
+				dummy_qglVertex3fv( pos.ToFloatPtr() );
 				VectorMA( pos, r_showNormals.GetFloat(), v[k]->normal, end );
-				qglVertex3fv( end.ToFloatPtr() );
+				dummy_qglVertex3fv( end.ToFloatPtr() );
 
 				GL_Color( 1, 0, 0 );
-				qglVertex3fv( pos.ToFloatPtr() );
+				dummy_qglVertex3fv( pos.ToFloatPtr() );
 				VectorMA( pos, r_showNormals.GetFloat(), v[k]->tangents[0], end );
-				qglVertex3fv( end.ToFloatPtr() );
+				dummy_qglVertex3fv( end.ToFloatPtr() );
 
 				GL_Color( 0, 1, 0 );
-				qglVertex3fv( pos.ToFloatPtr() );
+				dummy_qglVertex3fv( pos.ToFloatPtr() );
 				VectorMA( pos, r_showNormals.GetFloat(), v[k]->tangents[1], end );
-				qglVertex3fv( end.ToFloatPtr() );
+				dummy_qglVertex3fv( end.ToFloatPtr() );
 
 				GL_Color( 1, 1, 1 );
-				qglVertex3fv( pos.ToFloatPtr() );
-				qglVertex3fv( v[k]->xyz.ToFloatPtr() );
+				dummy_qglVertex3fv( pos.ToFloatPtr() );
+				dummy_qglVertex3fv( v[k]->xyz.ToFloatPtr() );
 			}
 		}
-		qglEnd();
+		dummy_qglEnd();
 	}
 }
 

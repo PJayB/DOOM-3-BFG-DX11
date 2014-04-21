@@ -1777,7 +1777,7 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 	tr.viewDef = NULL;
 
 	// check for problems
-	int err = qglGetError();
+	int err = dummy_qglGetError();
 	if ( err != GL_NO_ERROR ) {
 		common->Printf( "glGetError() = 0x%x\n", err );
 	}

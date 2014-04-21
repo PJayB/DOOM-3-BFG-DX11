@@ -7,6 +7,10 @@
 #   error This must only be inluded from C++ source files.
 #endif
 
+#include "../../idlib/precompiled.h"
+#include "../tr_local.h"
+#include "../../framework/Common_local.h"
+
 #include <assert.h>
 #include <malloc.h>
 

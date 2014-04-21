@@ -13,7 +13,7 @@ bool DeviceStarted()
 
 QD3D11Device* InitDevice()
 {
-    Com_Memset( &g_BufferState, 0, sizeof( g_BufferState ) );
+    memset( &g_BufferState, 0, sizeof( g_BufferState ) );
 
 #ifdef WIN8
     g_BufferState.featureLevel = D3D_FEATURE_LEVEL_9_1;
@@ -27,11 +27,11 @@ QD3D11Device* InitDevice()
 		&g_BufferState.featureLevel);
     if (FAILED(hr) || !g_pDevice || !g_pImmediateContext)
 	{
-        ri.Error( ERR_FATAL, "Failed to create Direct3D 11 device: 0x%08x.\n", hr );
+        common->FatalError( "Failed to create Direct3D 11 device: 0x%08x.\n", hr );
         return nullptr;
 	}
 
-    ri.Printf( PRINT_ALL, "... feature level %d\n", g_BufferState.featureLevel );
+    common->Printf( "... feature level %d\n", g_BufferState.featureLevel );
 
     g_pDevice->AddRef();
     return g_pDevice;
@@ -65,8 +65,10 @@ void DestroyDevice()
 void DestroySwapChain()
 {
     SAFE_RELEASE(g_pSwapChain);
-    Com_Memset( &g_BufferState, 0, sizeof( g_BufferState ) );
+    memset( &g_BufferState, 0, sizeof( g_BufferState ) );
 }
+
+static idCVar d3d_multisamples( "d3d_multisamples", "32", CVAR_ARCHIVE | CVAR_INTEGER | CVAR_RENDERER, "the number of multisamples to use");
 
 void GetSwapChainDescFromConfig( DXGI_SWAP_CHAIN_DESC1* scDesc )
 {
@@ -75,9 +77,8 @@ void GetSwapChainDescFromConfig( DXGI_SWAP_CHAIN_DESC1* scDesc )
 
 #ifndef _ARM_
     // Clamp the max MSAA to user settings
-    cvar_t* d3d_multisamples = Cvar_Get( "d3d_multisamples", "32", CVAR_ARCHIVE | CVAR_LATCH );
-    if ( d3d_multisamples->integer > 0 && scDesc->SampleDesc.Count > d3d_multisamples->integer )
-        scDesc->SampleDesc.Count = d3d_multisamples->integer;
+    if ( d3d_multisamples.GetInteger() > 0 && scDesc->SampleDesc.Count > (UINT) d3d_multisamples.GetInteger() )
+        scDesc->SampleDesc.Count = d3d_multisamples.GetInteger();
 #endif
 }
 

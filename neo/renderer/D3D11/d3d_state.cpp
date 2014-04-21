@@ -65,6 +65,9 @@ void DestroyBuffers()
 //----------------------------------------------------------------------------
 void CommitRasterizerState( int cullType, bool polyOffset, bool outline )
 {
+    polyOffset |= g_RunState.polyOffsetEnabled;
+    outline |= g_RunState.lineMode;
+
     int maskBits = 
         ( ( outline & 1 ) << 5 ) |
         ( ( polyOffset & 1 ) << 4 ) |
@@ -132,14 +135,7 @@ void D3DDrv_SetState( unsigned long stateBits )
 	{
 		return;
 	}
-
-    // TODO: polymode: line
     
-    //float blendFactor[4] = {0, 0, 0, 0};
-    //g_pImmediateContext->OMSetDepthStencilState( g_DrawState.depthStates.none, 0 );
-    //g_pImmediateContext->RSSetState( g_DrawState.rasterStates.cullNone );
-    //g_pImmediateContext->OMSetBlendState( g_DrawState.blendStates.opaque, blendFactor, ~0U );
-
     unsigned long newDepthStateMask = 0;
 	if ( stateBits & GLS_DEPTHFUNC_BITS )
 	{
@@ -161,58 +157,62 @@ void D3DDrv_SetState( unsigned long stateBits )
         g_RunState.depthStateMask = newDepthStateMask;
     }
 
+    bool requiresBlendStateRefresh = true;
+    unsigned long colorMask = g_RunState.colorMask;
+    int srcFactor = g_RunState.srcFactor;
+    int dstFactor = g_RunState.dstFactor;
+
+    if ( diff & (GLS_REDMASK|GLS_GREENMASK|GLS_BLUEMASK|GLS_ALPHAMASK) ) 
+    {
+        colorMask = COLORMASK_ALL;
+        if ( stateBits & GLS_REDMASK ) colorMask &= ~COLORMASK_RED;
+        if ( stateBits & GLS_GREENMASK ) colorMask &= ~COLORMASK_GREEN;
+        if ( stateBits & GLS_BLUEMASK ) colorMask &= ~COLORMASK_BLUE;
+        if ( stateBits & GLS_ALPHAMASK ) colorMask &= ~COLORMASK_ALPHA;
+        requiresBlendStateRefresh = true;
+    }
+
 	if ( diff & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) )
 	{
-		int srcFactor = stateBits & GLS_SRCBLEND_BITS;
-        int dstFactor = stateBits & GLS_DSTBLEND_BITS; 
+		srcFactor = stateBits & GLS_SRCBLEND_BITS;
+        dstFactor = stateBits & GLS_DSTBLEND_BITS; 
+        requiresBlendStateRefresh = true;
+    }
 
+    if ( requiresBlendStateRefresh )
+    {
         float blendFactor[4] = {0, 0, 0, 0};
         g_pImmediateContext->OMSetBlendState( 
-            GetBlendState( srcFactor, dstFactor ),
+            GetBlendState(
+                colorMask, 
+                srcFactor, 
+                dstFactor ),
             blendFactor,
             ~0U );
+
+        g_RunState.colorMask = colorMask;
+        g_RunState.srcFactor = srcFactor;
+        g_RunState.dstFactor = dstFactor;
     }
 
-#if 0 
-    //
-    // In our shader we need to convert these operations:
-    //  pass if > 0
-    //  pass if < 0.5
-    //  pass if >= 0.5
-    // to: 
-    //  fail if <= 0
-    //  fail if >= 0.5
-    //  fail if < 0.5
-    // clip() will kill any alpha < 0.
-    if ( diff & GLS_ATEST_BITS ) 
+	//
+	// fill/line mode
+	//
+	if ( diff & GLS_POLYMODE_LINE ) 
     {
-        const float alphaEps = 0.00001f; // @pjb: HACK HACK HACK
-        switch ( stateBits & GLS_ATEST_BITS )
-        {
-        case 0:
-            g_RunState.psConstants.alphaClip[0] = 1;
-            g_RunState.psConstants.alphaClip[1] = 0;
-            break;
-        case GLS_ATEST_GT_0:
-            g_RunState.psConstants.alphaClip[0] = 1;
-            g_RunState.psConstants.alphaClip[1] = alphaEps;
-            break;
-        case GLS_ATEST_LT_80:
-            g_RunState.psConstants.alphaClip[0] = -1;
-            g_RunState.psConstants.alphaClip[1] = 0.5f;
-            break;
-        case GLS_ATEST_GE_80:
-            g_RunState.psConstants.alphaClip[0] = 1;
-            g_RunState.psConstants.alphaClip[1] = 0.5f;
-            break;
-        default:
-            ASSERT(0);
-            break;
-        }
+		g_RunState.lineMode = ( stateBits & GLS_POLYMODE_LINE ) != 0;
+	}
 
-        g_RunState.psDirtyConstants = true;
-    }
-#endif
+	//
+	// polygon offset
+	//
+	if ( diff & GLS_POLYGON_OFFSET ) {
+		g_RunState.polyOffsetEnabled = ( stateBits & GLS_POLYGON_OFFSET ) != 0;
+	    g_RunState.polyOffset[0] = backEnd.glState.polyOfsScale;
+        g_RunState.polyOffset[1] = backEnd.glState.polyOfsBias;
+	}
+
+    // TODO: stencil
 
     g_RunState.stateMask = stateBits;
 }
@@ -229,19 +229,20 @@ ID3D11DepthStencilState* GetDepthState( unsigned long mask )
 //----------------------------------------------------------------------------
 // Get the blend state based on a mask
 //----------------------------------------------------------------------------
-ID3D11BlendState* GetBlendState( int src, int dst )
+ID3D11BlendState* GetBlendState( int cmask, int src, int dst )
 {
     // Special-case zero
-    if ( src == 0 && dst == 0 )
-        return g_DrawState.blendStates.opaque;
-    else 
+    if ( src == 0 && dst == 0 ) 
     {
-        src--;
-        dst = (dst >> 4) - 1;
-        ASSERT( src < BLENDSTATE_SRC_COUNT );
-        ASSERT( dst < BLENDSTATE_DST_COUNT );
-        return g_DrawState.blendStates.states[src][dst];
+        src = GLS_SRCBLEND_ONE;
+        dst = GLS_DSTBLEND_ZERO;
     }
+
+    src--;
+    dst = (dst >> 4) - 1;
+    ASSERT( src < BLENDSTATE_SRC_COUNT );
+    ASSERT( dst < BLENDSTATE_DST_COUNT );
+    return g_DrawState.blendStates.states[cmask][src][dst];
 }
 
 //----------------------------------------------------------------------------
@@ -470,45 +471,45 @@ void InitBlendStates( d3dBlendStates_t* bs )
 {
     memset( bs, 0, sizeof( d3dBlendStates_t ) );
 
-    // 
-    // No blending
-    //
-    D3D11_BLEND_DESC bsd;
-    ZeroMemory( &bsd, sizeof( bsd ) );
-    bsd.RenderTarget[0].BlendEnable = FALSE;
-    bsd.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-    g_pDevice->CreateBlendState( &bsd, &bs->opaque );
-
     //
     // Blend-mode matrix
     //
-    bsd.RenderTarget[0].BlendEnable = TRUE;
+    D3D11_BLEND_DESC bsd;
     bsd.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
     bsd.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-    for ( int src = 0; src < BLENDSTATE_SRC_COUNT; ++src )
+    for ( int cmask = 0; cmask < COLORMASK_COUNT; ++cmask )
     {
-        for ( int dst = 0; dst < BLENDSTATE_DST_COUNT; ++dst )
+        bsd.RenderTarget[0].RenderTargetWriteMask = cmask;
+        for ( int src = 0; src < BLENDSTATE_SRC_COUNT; ++src )
         {
-            int qSrc = src + 1;
-            int qDst = (dst + 1) << 4;
-            bsd.RenderTarget[0].SrcBlend = GetSrcBlendConstant( qSrc );
-            bsd.RenderTarget[0].DestBlend = GetDestBlendConstant( qDst );
-            bsd.RenderTarget[0].SrcBlendAlpha = GetSrcBlendAlphaConstant( qSrc );
-            bsd.RenderTarget[0].DestBlendAlpha = GetDestBlendAlphaConstant( qDst );
-            g_pDevice->CreateBlendState( &bsd, &bs->states[src][dst] );
+            for ( int dst = 0; dst < BLENDSTATE_DST_COUNT; ++dst )
+            {
+                int qSrc = src + 1;
+                int qDst = (dst + 1) << 4;
+                bsd.RenderTarget[0].SrcBlend = GetSrcBlendConstant( qSrc );
+                bsd.RenderTarget[0].DestBlend = GetDestBlendConstant( qDst );
+                bsd.RenderTarget[0].SrcBlendAlpha = GetSrcBlendAlphaConstant( qSrc );
+                bsd.RenderTarget[0].DestBlendAlpha = GetDestBlendAlphaConstant( qDst );
+
+                // disable blending in the case of src one dst zero
+                bsd.RenderTarget[0].BlendEnable = ( qSrc != GLS_SRCBLEND_ONE || qDst != GLS_DSTBLEND_ZERO );
+
+                g_pDevice->CreateBlendState( &bsd, &bs->states[cmask][src][dst] );
+            }
         }
     }
 }
 
 void DestroyBlendStates( d3dBlendStates_t* bs )
 {
-    SAFE_RELEASE( bs->opaque );
-
-    for ( int src = 0; src < BLENDSTATE_SRC_COUNT; ++src )
+    for ( int c = 0; c < COLORMASK_COUNT; ++c )
     {
-        for ( int dst = 0; dst < BLENDSTATE_DST_COUNT; ++dst )
+        for ( int src = 0; src < BLENDSTATE_SRC_COUNT; ++src )
         {
-            SAFE_RELEASE( bs->states[src][dst] );
+            for ( int dst = 0; dst < BLENDSTATE_DST_COUNT; ++dst )
+            {
+                SAFE_RELEASE( bs->states[c][src][dst] );
+            }
         }
     }
 

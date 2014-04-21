@@ -36,6 +36,16 @@ enum
     RASTERIZERSTATE_COUNT = 4
 };
 
+enum
+{
+    COLORMASK_RED =     D3D11_COLOR_WRITE_ENABLE_RED,
+    COLORMASK_GREEN =   D3D11_COLOR_WRITE_ENABLE_GREEN,
+    COLORMASK_BLUE =    D3D11_COLOR_WRITE_ENABLE_BLUE,
+    COLORMASK_ALPHA =   D3D11_COLOR_WRITE_ENABLE_ALPHA,
+    COLORMASK_ALL =     D3D11_COLOR_WRITE_ENABLE_ALL,
+    COLORMASK_COUNT = 16
+};
+
 //----------------------------------------------------------------------------
 // Internal structures
 //----------------------------------------------------------------------------
@@ -76,8 +86,7 @@ struct d3dDepthStates_t
 // @pjb: stores common blend states
 struct d3dBlendStates_t
 {
-    ID3D11BlendState* opaque;
-    ID3D11BlendState* states[BLENDSTATE_SRC_COUNT][BLENDSTATE_DST_COUNT];
+    ID3D11BlendState* states[COLORMASK_COUNT][BLENDSTATE_SRC_COUNT][BLENDSTATE_DST_COUNT];
 };
 
 // @pjb: stores draw info like samplers and buffers
@@ -92,9 +101,15 @@ struct d3dDrawState_t
 
 // @pjb: stores the run-time game state. The game is set up like a state machine so we'll be doing the same.
 struct d3dRunState_t {
+    float polyOffset[2];
     unsigned long stateMask; // combination of GLS_* flags
     int cullMode; // CT_ flag
     unsigned long depthStateMask;
+    unsigned long colorMask;
+    int srcFactor;
+    int dstFactor;
+    bool lineMode;
+    bool polyOffsetEnabled;
     bool vsDirtyConstants;
     bool psDirtyConstants;
 };
@@ -126,7 +141,7 @@ void CommitRasterizerState( int cullMode, bool polyOffset, bool outline );
 
 ID3D11RasterizerState* GetRasterizerState( D3D11_CULL_MODE cullmode, unsigned long mask );
 ID3D11DepthStencilState* GetDepthState( unsigned long mask ); // DEPTHSTATE_FLAG_ enum
-ID3D11BlendState* GetBlendState( int src, int dst );
+ID3D11BlendState* GetBlendState( int cmask, int src, int dst );
 D3D11_BLEND GetSrcBlendConstant( int qConstant );
 D3D11_BLEND GetDestBlendConstant( int qConstant );
 D3D11_BLEND GetSrcBlendAlphaConstant( int qConstant );

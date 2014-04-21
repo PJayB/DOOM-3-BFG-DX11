@@ -546,23 +546,14 @@
     <ClInclude Include="renderer\D3D11\d3d_device.h">
       <Filter>Renderer\D3D11</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\D3D11\d3d_draw.h">
-      <Filter>Renderer\D3D11</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\D3D11\d3d_drawdata.h">
-      <Filter>Renderer\D3D11</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\D3D11\d3d_driver.h">
-      <Filter>Renderer\D3D11</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\D3D11\d3d_image.h">
-      <Filter>Renderer\D3D11</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\D3D11\d3d_shaders.h">
-      <Filter>Renderer\D3D11</Filter>
-    </ClInclude>
     <ClInclude Include="renderer\D3D11\d3d_state.h">
       <Filter>Renderer\D3D11</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\D3D11\d3d_backend.h">
+      <Filter>Renderer\D3D11</Filter>
+    </ClInclude>
+    <ClInclude Include="sys\win32\win_d3d.h">
+      <Filter>Sys\Win32</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1169,23 +1160,14 @@
     <ClCompile Include="renderer\D3D11\d3d_device.cpp">
       <Filter>Renderer\D3D11</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\D3D11\d3d_draw.cpp">
-      <Filter>Renderer\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\D3D11\d3d_drawdata.cpp">
-      <Filter>Renderer\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\D3D11\d3d_driver.cpp">
-      <Filter>Renderer\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\D3D11\d3d_image.cpp">
-      <Filter>Renderer\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\D3D11\d3d_shaders.cpp">
-      <Filter>Renderer\D3D11</Filter>
-    </ClCompile>
     <ClCompile Include="renderer\D3D11\d3d_state.cpp">
       <Filter>Renderer\D3D11</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\D3D11\d3d_backend.cpp">
+      <Filter>Renderer\D3D11</Filter>
+    </ClCompile>
+    <ClCompile Include="sys\win32\win_d3d.cpp">
+      <Filter>Sys\Win32</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

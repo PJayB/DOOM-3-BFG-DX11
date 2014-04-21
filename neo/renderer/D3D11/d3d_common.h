@@ -1,8 +1,6 @@
 #ifndef __D3D_COMMON_H__
 #define __D3D_COMMON_H__
 
-#define D3D_PUBLIC  extern "C"
-
 #ifndef __cplusplus
 #   error This must only be inluded from C++ source files.
 #endif

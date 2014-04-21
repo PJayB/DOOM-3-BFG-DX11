@@ -8,16 +8,24 @@
 
 enum 
 {
-    BLENDSTATE_SRC_COUNT = 9,
+    BLENDSTATE_SRC_COUNT = 8,
     BLENDSTATE_DST_COUNT = 8,
     CULLMODE_COUNT = 3
 };
 
+enum
+{
+    DEPTHFUNC_EQUAL,
+    DEPTHFUNC_ALWAYS,
+    DEPTHFUNC_LEQUAL,
+    DEPTHFUNC_GEQUAL,
+    DEPTHFUNC_COUNT
+};
+
 enum 
 {
-    DEPTHSTATE_FLAG_TEST = 1,
-    DEPTHSTATE_FLAG_MASK = 2,
-    DEPTHSTATE_FLAG_EQUAL = 4, // as opposed to the default, LEq.
+    DEPTHSTATE_FUNC_MASK = 3,
+    DEPTHSTATE_FLAG_MASK = 4, // "mask" being a depth mode in this case
     DEPTHSTATE_COUNT = 8
 };
 
@@ -26,47 +34,6 @@ enum
     RASTERIZERSTATE_FLAG_POLY_OFFSET = 1,
     RASTERIZERSTATE_FLAG_POLY_OUTLINE = 2,
     RASTERIZERSTATE_COUNT = 4
-};
-
-//----------------------------------------------------------------------------
-// Dynamic buffer layouts
-//----------------------------------------------------------------------------
-struct d3dQuadRenderVertex_t
-{
-    float coords[2];    
-    float texcoords[2];
-};
-
-struct d3dQuadRenderConstantBuffer_t 
-{
-    float color[4];
-};
-
-// @pjb: todo: consider splitting this up if it's a perf issue
-// reuploading the whole thing each time
-struct d3dViewVSConstantBuffer_t
-{
-    float projectionMatrix[16];
-    float modelViewMatrix[16];
-    float depthRange[2];
-    float __padding[2];
-};
-
-struct d3dViewPSConstantBuffer_t
-{
-    float clipPlane[4];
-    float alphaClip[2];
-    float __padding[2];
-};
-
-struct d3dSkyBoxVSConstantBuffer_t
-{
-    float eyePos[4];
-};
-
-struct d3dSkyBoxPSConstantBuffer_t
-{
-    float color[4];
 };
 
 //----------------------------------------------------------------------------
@@ -83,50 +50,6 @@ struct d3dImage_t
     int height;
     int frameUsed;
     bool dynamic;
-};
-
-struct d3dViewRenderData_t
-{
-    ID3D11Buffer* vsConstantBuffer;
-    ID3D11Buffer* psConstantBuffer;
-};
-
-struct d3dQuadRenderData_t
-{
-    // Shaders
-    ID3D11VertexShader* vertexShader;
-    ID3D11PixelShader* pixelShader;
-
-    // Vertex buffers
-    ID3D11InputLayout* inputLayout;
-    ID3D11Buffer* indexBuffer;
-    ID3D11Buffer* vertexBuffer;
-
-    // Constant buffers
-    ID3D11Buffer* constantBuffer;
-};
-
-struct d3dSkyBoxRenderData_t
-{
-    // Shaders
-    ID3D11VertexShader* vertexShader;
-    ID3D11PixelShader* pixelShader;
-
-    // Vertex buffers
-    ID3D11InputLayout* inputLayout;
-    ID3D11Buffer* vertexBuffer;
-
-    // Constant buffers
-    ID3D11Buffer* vsConstantBuffer;
-    ID3D11Buffer* psConstantBuffer;
-};
-
-struct d3dCircularBuffer_t
-{
-    ID3D11Buffer* buffer;
-    unsigned currentOffset;
-    unsigned nextOffset;
-    unsigned size;
 };
 
 // @pjb: stores the D3D state and only changes every WndInit
@@ -160,10 +83,6 @@ struct d3dBlendStates_t
 // @pjb: stores draw info like samplers and buffers
 struct d3dDrawState_t
 {
-    d3dQuadRenderData_t quadRenderData;
-    d3dSkyBoxRenderData_t skyBoxRenderData;
-    d3dViewRenderData_t viewRenderData;
-    
     d3dRasterStates_t rasterStates;
     d3dDepthStates_t depthStates;
     d3dBlendStates_t blendStates;
@@ -173,8 +92,6 @@ struct d3dDrawState_t
 
 // @pjb: stores the run-time game state. The game is set up like a state machine so we'll be doing the same.
 struct d3dRunState_t {
-    d3dViewVSConstantBuffer_t vsConstants;
-    d3dViewPSConstantBuffer_t psConstants;
     unsigned long stateMask; // combination of GLS_* flags
     int cullMode; // CT_ flag
     unsigned long depthStateMask;
@@ -203,13 +120,6 @@ extern IDXGISwapChain1* g_pSwapChain;
 
 void InitDrawState();
 void DestroyDrawState();
-
-void DrawQuad( 
-    const d3dQuadRenderData_t* qrd, 
-    const d3dImage_t* texture, 
-    const float* coords, 
-    const float* texcoords, 
-    const float* color );
 
 // cullmode = CT_ flags
 void CommitRasterizerState( int cullMode, bool polyOffset, bool outline );

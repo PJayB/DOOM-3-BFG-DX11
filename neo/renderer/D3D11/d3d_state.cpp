@@ -1,9 +1,8 @@
 #include "d3d_common.h"
 #include "d3d_state.h"
-#include "d3d_image.h"
-#include "d3d_shaders.h"
-#include "d3d_drawdata.h"
-#include "d3d_driver.h"
+#include "d3d_backend.h"
+
+extern const float s_identityMatrix[16];
 
 //----------------------------------------------------------------------------
 // Locals
@@ -69,7 +68,6 @@ void CommitRasterizerState( int cullType, bool polyOffset, bool outline )
     int maskBits = 
         ( ( outline & 1 ) << 5 ) |
         ( ( polyOffset & 1 ) << 4 ) |
-        ( ( backEnd.viewParms.isMirror & 1 ) << 3 ) | 
         ( cullType & 3 );
 
 	if ( g_RunState.cullMode == maskBits ) {
@@ -84,25 +82,11 @@ void CommitRasterizerState( int cullType, bool polyOffset, bool outline )
     {
 		if ( cullType == CT_BACK_SIDED )
 		{
-			if ( backEnd.viewParms.isMirror )
-			{
-                cullMode = D3D11_CULL_FRONT;
-			}
-			else
-			{
-                cullMode = D3D11_CULL_BACK;
-			}
+			cullMode = D3D11_CULL_BACK;
 		}
 		else
 		{
-			if ( backEnd.viewParms.isMirror )
-			{
-                cullMode = D3D11_CULL_BACK;
-			}
-			else
-			{
-                cullMode = D3D11_CULL_FRONT;
-			}
+			cullMode = D3D11_CULL_FRONT;
 		}
 	}
 
@@ -111,6 +95,30 @@ void CommitRasterizerState( int cullType, bool polyOffset, bool outline )
     if ( outline ) { rasterFlags |= RASTERIZERSTATE_FLAG_POLY_OUTLINE; }
 
     g_pImmediateContext->RSSetState( GetRasterizerState( cullMode, rasterFlags ) );
+}
+
+//----------------------------------------------------------------------------
+// Set the scissor rect
+//----------------------------------------------------------------------------
+void D3DDrv_SetScissor( int left, int top, int width, int height )
+{
+    RECT r = { left, top, left + width, top + height };
+    g_pImmediateContext->RSSetScissorRects( 1, &r );
+}
+
+//----------------------------------------------------------------------------
+// Set the viewport
+//----------------------------------------------------------------------------
+void D3DDrv_SetViewport( int left, int top, int width, int height )
+{
+    D3D11_VIEWPORT viewport;
+    viewport.TopLeftX = __max( 0, left );
+    viewport.TopLeftY = __max( 0, (int)g_BufferState.backBufferDesc.Height - top - height );
+    viewport.Width = __min( (int)g_BufferState.backBufferDesc.Width - viewport.TopLeftX, width );
+    viewport.Height = __min( (int)g_BufferState.backBufferDesc.Height - viewport.TopLeftY, height );
+    viewport.MinDepth = 0;
+    viewport.MaxDepth = 1;
+    g_pImmediateContext->RSSetViewports( 1, &viewport );
 }
 
 //----------------------------------------------------------------------------
@@ -133,17 +141,18 @@ void D3DDrv_SetState( unsigned long stateBits )
     //g_pImmediateContext->OMSetBlendState( g_DrawState.blendStates.opaque, blendFactor, ~0U );
 
     unsigned long newDepthStateMask = 0;
-	if ( stateBits & GLS_DEPTHFUNC_EQUAL )
+	if ( stateBits & GLS_DEPTHFUNC_BITS )
 	{
-        newDepthStateMask |= DEPTHSTATE_FLAG_EQUAL;
+		switch ( stateBits & GLS_DEPTHFUNC_BITS ) {
+			case GLS_DEPTHFUNC_EQUAL:	newDepthStateMask |= DEPTHFUNC_EQUAL ; break;
+			case GLS_DEPTHFUNC_ALWAYS:	newDepthStateMask |= DEPTHFUNC_ALWAYS; break;
+			case GLS_DEPTHFUNC_LESS:	newDepthStateMask |= DEPTHFUNC_LEQUAL; break;
+			case GLS_DEPTHFUNC_GREATER:	newDepthStateMask |= DEPTHFUNC_GEQUAL; break;
+		}
     }
-    if ( stateBits & GLS_DEPTHMASK_TRUE )
+    if ( stateBits & GLS_DEPTHMASK )
     {
         newDepthStateMask |= DEPTHSTATE_FLAG_MASK;
-    }
-    if ( !( stateBits & GLS_DEPTHTEST_DISABLE ) )
-    {
-        newDepthStateMask |= DEPTHSTATE_FLAG_TEST;
     }
 
     if ( newDepthStateMask != g_RunState.depthStateMask )
@@ -164,6 +173,7 @@ void D3DDrv_SetState( unsigned long stateBits )
             ~0U );
     }
 
+#if 0 
     //
     // In our shader we need to convert these operations:
     //  pass if > 0
@@ -202,6 +212,7 @@ void D3DDrv_SetState( unsigned long stateBits )
 
         g_RunState.psDirtyConstants = true;
     }
+#endif
 
     g_RunState.stateMask = stateBits;
 }
@@ -266,8 +277,6 @@ D3D11_BLEND GetSrcBlendConstant( int qConstant )
 		return D3D11_BLEND_DEST_ALPHA;
 	case GLS_SRCBLEND_ONE_MINUS_DST_ALPHA:
 		return D3D11_BLEND_INV_DEST_ALPHA;
-	case GLS_SRCBLEND_ALPHA_SATURATE:
-		return D3D11_BLEND_SRC_ALPHA_SAT;
     default:
         ASSERT(0);
         return D3D11_BLEND_ONE;
@@ -320,8 +329,6 @@ D3D11_BLEND GetSrcBlendAlphaConstant( int qConstant )
 		return D3D11_BLEND_DEST_ALPHA;
 	case GLS_SRCBLEND_ONE_MINUS_DST_ALPHA:
 		return D3D11_BLEND_INV_DEST_ALPHA;
-	case GLS_SRCBLEND_ALPHA_SATURATE:
-		return D3D11_BLEND_SRC_ALPHA_SAT;
     default:
         ASSERT(0);
         return D3D11_BLEND_ONE;
@@ -354,6 +361,160 @@ D3D11_BLEND GetDestBlendAlphaConstant( int qConstant )
 	}
 }
 
+void InitRasterStates( d3dRasterStates_t* rs )
+{
+    memset( rs, 0, sizeof( d3dRasterStates_t ) );
+
+    D3D11_RASTERIZER_DESC rd;
+    ZeroMemory( &rd, sizeof( rd ) );
+    rd.FrontCounterClockwise = TRUE;
+    rd.DepthClipEnable = TRUE;
+    rd.DepthBiasClamp = 0;
+
+    for ( int cullMode = 0; cullMode < CULLMODE_COUNT; ++cullMode )
+    {
+        rd.CullMode = (D3D11_CULL_MODE)( cullMode + 1 );
+
+        for ( int rasterMode = 0; rasterMode < RASTERIZERSTATE_COUNT; ++rasterMode )
+        {
+            if ( rasterMode & RASTERIZERSTATE_FLAG_POLY_OFFSET ) {
+                rd.DepthBias = r_offsetFactor.GetFloat();
+                rd.SlopeScaledDepthBias = r_offsetUnits.GetFloat();
+            } else {
+                rd.DepthBias = 0;
+                rd.SlopeScaledDepthBias = 0;
+            }
+
+            if ( rasterMode & RASTERIZERSTATE_FLAG_POLY_OUTLINE ) {
+                rd.FillMode = D3D11_FILL_WIREFRAME;
+            } else {
+                rd.FillMode = D3D11_FILL_SOLID;
+            }
+
+            g_pDevice->CreateRasterizerState( &rd, &rs->states[cullMode][rasterMode] );
+        }
+    }
+}
+
+void DestroyRasterStates( d3dRasterStates_t* rs )
+{
+    for ( int cullMode = 0; cullMode < CULLMODE_COUNT; ++cullMode )
+    {
+        for ( int rasterMode = 0; rasterMode < RASTERIZERSTATE_COUNT; ++rasterMode )
+        {
+            SAFE_RELEASE( rs->states[cullMode][rasterMode] );
+        }
+    }
+
+    memset( rs, 0, sizeof( d3dRasterStates_t ) );
+}
+
+static ID3D11DepthStencilState* CreateDepthStencilStateFromMask( unsigned long mask )
+{
+    ID3D11DepthStencilState* state = nullptr;
+
+    D3D11_DEPTH_STENCIL_DESC dsd;
+    ZeroMemory( &dsd, sizeof( dsd ) );
+
+    unsigned long depthFunc = mask & DEPTHSTATE_FUNC_MASK;
+
+    if ( mask & DEPTHSTATE_FLAG_MASK ) {
+        dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+    }
+    
+    switch ( depthFunc )
+    {
+    case DEPTHFUNC_EQUAL:
+        dsd.DepthFunc = D3D11_COMPARISON_EQUAL;
+        break;
+    case DEPTHFUNC_ALWAYS:
+        dsd.DepthFunc = D3D11_COMPARISON_ALWAYS; 
+        break;
+    case DEPTHFUNC_LEQUAL:
+        dsd.DepthFunc = D3D11_COMPARISON_LESS_EQUAL; 
+        break;
+    case DEPTHFUNC_GEQUAL:
+        dsd.DepthFunc = D3D11_COMPARISON_GREATER_EQUAL; 
+        break;
+    }
+
+    g_pDevice->CreateDepthStencilState( &dsd, &state );
+    if ( !state ) {
+        common->FatalError( "Failed to create DepthStencilState of mask %x\n", mask );
+    }
+
+    return state;
+}
+
+void InitDepthStates( d3dDepthStates_t* ds )
+{
+    memset( ds, 0, sizeof( d3dDepthStates_t ) );
+
+    for ( int i = 0; i < _countof( ds->states ); ++i )
+    {
+        ds->states[i] = CreateDepthStencilStateFromMask( i );
+    }
+}
+
+void DestroyDepthStates( d3dDepthStates_t* ds )
+{
+    for ( int i = 0; i < _countof( ds->states ); ++i )
+    {
+        SAFE_RELEASE( ds->states[i] );
+    }
+
+    memset( ds, 0, sizeof( d3dDepthStates_t ) );
+}
+
+void InitBlendStates( d3dBlendStates_t* bs )
+{
+    memset( bs, 0, sizeof( d3dBlendStates_t ) );
+
+    // 
+    // No blending
+    //
+    D3D11_BLEND_DESC bsd;
+    ZeroMemory( &bsd, sizeof( bsd ) );
+    bsd.RenderTarget[0].BlendEnable = FALSE;
+    bsd.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+    g_pDevice->CreateBlendState( &bsd, &bs->opaque );
+
+    //
+    // Blend-mode matrix
+    //
+    bsd.RenderTarget[0].BlendEnable = TRUE;
+    bsd.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+    bsd.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+    for ( int src = 0; src < BLENDSTATE_SRC_COUNT; ++src )
+    {
+        for ( int dst = 0; dst < BLENDSTATE_DST_COUNT; ++dst )
+        {
+            int qSrc = src + 1;
+            int qDst = (dst + 1) << 4;
+            bsd.RenderTarget[0].SrcBlend = GetSrcBlendConstant( qSrc );
+            bsd.RenderTarget[0].DestBlend = GetDestBlendConstant( qDst );
+            bsd.RenderTarget[0].SrcBlendAlpha = GetSrcBlendAlphaConstant( qSrc );
+            bsd.RenderTarget[0].DestBlendAlpha = GetDestBlendAlphaConstant( qDst );
+            g_pDevice->CreateBlendState( &bsd, &bs->states[src][dst] );
+        }
+    }
+}
+
+void DestroyBlendStates( d3dBlendStates_t* bs )
+{
+    SAFE_RELEASE( bs->opaque );
+
+    for ( int src = 0; src < BLENDSTATE_SRC_COUNT; ++src )
+    {
+        for ( int dst = 0; dst < BLENDSTATE_DST_COUNT; ++dst )
+        {
+            SAFE_RELEASE( bs->states[src][dst] );
+        }
+    }
+
+    memset( bs, 0, sizeof( d3dBlendStates_t ) );
+}
+
 //----------------------------------------------------------------------------
 //
 // ENTRY POINTS
@@ -363,14 +524,10 @@ D3D11_BLEND GetDestBlendAlphaConstant( int qConstant )
 void InitDrawState()
 {
     // Don't memset g_BufferState here.
-    Com_Memset( &g_RunState, 0, sizeof( g_RunState ) );
-    Com_Memset( &g_DrawState, 0, sizeof( g_DrawState ) );
+    memset( &g_RunState, 0, sizeof( g_RunState ) );
+    memset( &g_DrawState, 0, sizeof( g_DrawState ) );
 
     // Set up default state
-    Com_Memcpy( g_RunState.vsConstants.modelViewMatrix, s_identityMatrix, sizeof(float) * 16 );
-    Com_Memcpy( g_RunState.vsConstants.projectionMatrix, s_identityMatrix, sizeof(float) * 16 );
-    g_RunState.vsConstants.depthRange[0] = 0;
-    g_RunState.vsConstants.depthRange[1] = 1;
     g_RunState.stateMask = 0;
     g_RunState.vsDirtyConstants = true;
     g_RunState.psDirtyConstants = true;
@@ -379,14 +536,7 @@ void InitDrawState()
     // Create D3D objects
     DestroyBuffers();
     CreateBuffers();
-    InitImages();
-    InitShaders();
 
-    InitQuadRenderData( &g_DrawState.quadRenderData );
-    InitSkyBoxRenderData( &g_DrawState.skyBoxRenderData );
-    InitViewRenderData( &g_DrawState.viewRenderData );
-    InitGenericStageRenderData( &g_DrawState.genericStage );
-    InitTessBuffers( &g_DrawState.tessBufs );
     InitRasterStates( &g_DrawState.rasterStates );
     InitDepthStates( &g_DrawState.depthStates );
     InitBlendStates( &g_DrawState.blendStates );
@@ -414,16 +564,9 @@ void DestroyDrawState()
     DestroyRasterStates( &g_DrawState.rasterStates );
     DestroyDepthStates( &g_DrawState.depthStates );
     DestroyBlendStates( &g_DrawState.blendStates );
-    DestroyTessBuffers( &g_DrawState.tessBufs );
-    DestroyGenericStageRenderData( &g_DrawState.genericStage );
-    DestroyQuadRenderData( &g_DrawState.quadRenderData );
-    DestroySkyBoxRenderData( &g_DrawState.skyBoxRenderData );
-    DestroyViewRenderData( &g_DrawState.viewRenderData );
-    DestroyShaders();
-    DestroyImages();
     DestroyBuffers();
 
-    Com_Memset( &g_RunState, 0, sizeof( g_RunState ) );
-    Com_Memset( &g_DrawState, 0, sizeof( g_DrawState ) );
+    memset( &g_RunState, 0, sizeof( g_RunState ) );
+    memset( &g_DrawState, 0, sizeof( g_DrawState ) );
 }
 

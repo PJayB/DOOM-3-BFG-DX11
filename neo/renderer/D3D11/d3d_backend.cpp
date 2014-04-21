@@ -28,6 +28,17 @@ size_t D3DDrv_LastError( void )
     return (size_t) g_hrLastError;
 }
 
+QD3D11Device* D3DDrv_GetDevice()
+{
+    return g_pDevice;
+}
+
+ID3D11DeviceContext1* D3DDrv_GetImmediateContext()
+{
+    return g_pImmediateContext;
+}
+
+
 //----------------------------------------------------------------------------
 // Clear the back buffers
 //----------------------------------------------------------------------------

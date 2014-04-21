@@ -12,6 +12,10 @@ void D3DDrv_SetState( unsigned long stateMask );
 void D3DDrv_Init( void );
 void D3DDrv_Shutdown( void );
 
+QD3D11Device* D3DDrv_GetDevice();
+ID3D11DeviceContext1* D3DDrv_GetImmediateContext();
+
+
 //void D3DDrv_UnbindResources( void );
 //size_t D3DDrv_LastError( void );
 //void D3DDrv_ReadDepth( int x, int y, int width, int height, float* dest );

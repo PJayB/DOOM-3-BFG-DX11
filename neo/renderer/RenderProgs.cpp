@@ -126,9 +126,6 @@ void idRenderProgManager::Init() {
 	builtinShaders[BUILTIN_SHADOW] = FindVertexShader( "shadow.vp" );
 	builtinShaders[BUILTIN_SHADOW_SKINNED] = FindVertexShader( "shadow_skinned.vp" );
 
-	FindGLSLProgram( "shadow.vp", builtinShaders[BUILTIN_SHADOW], -1 );
-	FindGLSLProgram( "shadow_skinned.vp", builtinShaders[BUILTIN_SHADOW_SKINNED], -1 );
-
 	glslUniforms.SetNum( RENDERPARM_USER + MAX_GLSL_USER_PARMS, vec4_zero );
 
 	vertexShaders[builtinShaders[BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED]].usesJoints = true;
@@ -164,7 +161,6 @@ idRenderProgManager::KillAllShaders()
 ================================================================================================
 */
 void idRenderProgManager::KillAllShaders() {
-	Unbind();
 	for ( int i = 0; i < vertexShaders.Num(); i++ ) {
 		SAFE_RELEASE( vertexShaders[i].pShader );
 		SAFE_DELETE_ARRAY( vertexShaders[i].pByteCode );
@@ -277,6 +273,6 @@ idRenderProgManager::SetRenderParm
 ================================================================================================
 */
 void idRenderProgManager::SetRenderParm( renderParm_t rp, const float * value ) {
-	SetUniformValue( rp, value );
+	// @pjb: todo: SetUniformValue( rp, value );
 }
 

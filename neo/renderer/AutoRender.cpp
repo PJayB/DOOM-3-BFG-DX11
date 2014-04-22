@@ -77,10 +77,6 @@ void idAutoRender::StartBackgroundAutoSwaps( autoRenderIconType_t iconType ) {
 	const bool captureToImage = true;
 	common->UpdateScreen( captureToImage );
 
-	// unbind any shaders prior to entering the background autoswaps so we don't run 
-	// into any problems with cached vertex shader indices from the main thread
-	renderProgManager.Unbind();
-
 	// unbind all texture units so we don't run into a race condition where the device is owned
 	// by the autorender thread but an image is trying to be unset from the main thread because
 	// it is getting purged before our our first frame has been rendered.

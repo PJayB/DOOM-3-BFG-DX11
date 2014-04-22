@@ -190,7 +190,6 @@ typedef struct {
 	int					vertexParms[MAX_VERTEX_PARMS][4];	// evaluated register indexes
 
 	int					fragmentProgram;
-	int					glslProgram;
 	int					numFragmentProgramImages;
 	idImage *			fragmentProgramImages[MAX_FRAGMENT_IMAGES];
 } newShaderStage_t;

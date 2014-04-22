@@ -30,7 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 
 struct PS_OUT {	
 	float depth : DEPTH;
-	float4 color : COLOR;
+	float4 color : SV_TARGET;
 };
 
 void main( out PS_OUT result ) {

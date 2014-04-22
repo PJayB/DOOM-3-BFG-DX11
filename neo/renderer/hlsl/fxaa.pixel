@@ -35,6 +35,10 @@ uniform sampler2D samp0 : register(s0);
 uniform sampler2D samp1 : register(s1); // exponent bias -1
 uniform sampler2D samp2 : register(s2); // exponent bias -2
 
+uniform Texture2D tex0 : register(t0);
+uniform Texture2D tex1 : register(t1);
+uniform Texture2D tex2 : register(t2);
+
 uniform float4 rpUser0 : register( c128 );
 uniform float4 rpUser1 : register( c129 );
 uniform float4 rpUser2 : register( c130 );
@@ -49,7 +53,7 @@ struct PS_IN {
 };
 
 struct PS_OUT {	
-	float4 color : COLOR;
+	float4 color : SV_TARGET;
 };
 
 void main( PS_IN fragment, out PS_OUT result ) {

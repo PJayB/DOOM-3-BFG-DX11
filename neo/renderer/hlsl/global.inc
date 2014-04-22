@@ -167,7 +167,7 @@ float rand( float2 co ) {
 #define _float4( x )	float4( x )
 
 #define VPOS WPOS
-static float4 idtex2Dproj( sampler2D samp, float4 texCoords ) { return tex2Dproj( samp, texCoords ); }
+static float4 idtex2Dproj( Texture2D tex, SamplerState samp, float4 texCoords ) { return tex.Sample( samp, 0.5f * (texCoords.xy / texCoords.w + 1) ); }
 static float4 swizzleColor( float4 c ) { return c; }
 static float2 vposToScreenPosTexCoord( float2 vpos ) { return vpos.xy * rpWindowCoord.xy; }
 

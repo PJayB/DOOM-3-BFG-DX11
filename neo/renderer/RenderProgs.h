@@ -36,6 +36,11 @@ static const int PC_ATTRIB_INDEX_COLOR2		= 4;
 static const int PC_ATTRIB_INDEX_ST			= 8;
 static const int PC_ATTRIB_INDEX_TANGENT	= 9;
 
+enum shaderType_t {
+    SHADERTYPE_VERTEX,
+    SHADERTYPE_PIXEL
+};
+
 // This enum list corresponds to the global constant register indecies as defined in global.inc for all
 // shaders.  We used a shared pool to keeps things simple.  If something changes here then it also
 // needs to change in global.inc and vice versa
@@ -203,6 +208,8 @@ public:
 protected:
 	void	LoadVertexShader( int index );
 	void	LoadFragmentShader( int index );
+
+    int     LoadShaderBlob( const char* name, void** ppOut, shaderType_t shaderType ) const;
 
 	enum {
 		BUILTIN_GUI,

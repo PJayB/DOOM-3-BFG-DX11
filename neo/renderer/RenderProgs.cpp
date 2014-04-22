@@ -163,7 +163,7 @@ idRenderProgManager::KillAllShaders()
 void idRenderProgManager::KillAllShaders() {
 	for ( int i = 0; i < vertexShaders.Num(); i++ ) {
 		SAFE_RELEASE( vertexShaders[i].pShader );
-		SAFE_DELETE_ARRAY( vertexShaders[i].pByteCode );
+		Mem_Free( vertexShaders[i].pByteCode );
 	}
 	for ( int i = 0; i < fragmentShaders.Num(); i++ ) {
 		SAFE_RELEASE( fragmentShaders[i].pShader );
@@ -230,7 +230,27 @@ int idRenderProgManager::FindFragmentShader( const char * name ) {
 }
 
 
+/*
+================================================================================================
+idRenderProgManager::LoadShaderBlob
+================================================================================================
+*/
+int idRenderProgManager::LoadShaderBlob( const char* name, void** ppOut, shaderType_t shaderType ) const {
+    idStr inFile;
+    inFile.Format( "compiled_shaders\\%s", name );
+    inFile.StripFileExtension();
+    
+    switch (shaderType) {
+    case SHADERTYPE_VERTEX:
+        inFile += ".vertex.cso";
+        break;
+    case SHADERTYPE_PIXEL:
+        inFile += ".pixel.cso";
+        break;
+    }
 
+    return fileSystem->ReadFile( inFile.c_str(), ppOut, nullptr );
+}
 
 /*
 ================================================================================================
@@ -238,10 +258,33 @@ idRenderProgManager::LoadVertexShader
 ================================================================================================
 */
 void idRenderProgManager::LoadVertexShader( int index ) {
-	if ( vertexShaders[index].pShader != NULL ) {
+
+    vertexShader_t* vshader = &vertexShaders[index];
+
+	if ( vshader->pShader != NULL ) {
 		return; // Already loaded
 	}
-	// @pjb: todo
+	
+    void* blob = nullptr;
+    int blobLen = LoadShaderBlob( vshader->name, &blob, SHADERTYPE_VERTEX );
+    if ( blobLen == -1 ) {
+        common->FatalError( "Couldn't load vertex shader '%s'", vshader->name.c_str() );
+    }
+
+    auto device = D3DDrv_GetDevice();
+
+    vshader->pShader = nullptr;
+    HRESULT hr = device->CreateVertexShader( 
+        blob,
+        blobLen,
+        nullptr,
+        &vshader->pShader );
+    if ( FAILED( hr ) ) {
+        common->FatalError( "Failed to create vertex shader '%s': %08X", vshader->name, hr );
+    }
+
+    vshader->pByteCode = blob;
+    vshader->ByteCodeSize = blobLen;
 }
 
 /*
@@ -250,10 +293,29 @@ idRenderProgManager::LoadFragmentShader
 ================================================================================================
 */
 void idRenderProgManager::LoadFragmentShader( int index ) {
+    fragmentShader_t* pshader = &fragmentShaders[index];
+
 	if ( fragmentShaders[index].pShader != NULL ) {
 		return; // Already loaded
 	}
-	// @pjb: todo
+	
+    void* blob = nullptr;
+    int blobLen = LoadShaderBlob( pshader->name, &blob, SHADERTYPE_PIXEL );
+    if ( blobLen == -1 ) {
+        common->FatalError( "Couldn't load pixel shader '%s'", pshader->name.c_str() );
+    }
+
+    auto device = D3DDrv_GetDevice();
+
+    pshader->pShader = nullptr;
+    HRESULT hr = device->CreatePixelShader( 
+        blob,
+        blobLen,
+        nullptr,
+        &pshader->pShader );
+    if ( FAILED( hr ) ) {
+        common->FatalError( "Failed to create pixel shader '%s': %08X", pshader->name, hr );
+    }
 }
 
 /*

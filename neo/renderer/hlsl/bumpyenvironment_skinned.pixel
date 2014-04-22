@@ -28,8 +28,11 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "global.inc"
 
-uniform samplerCUBE	samp0 : register(s0); // texture 0 is the cube map
-uniform sampler2D	samp1 : register(s1); // normal map
+uniform SamplerState samp0 : register(s0); // texture 0 is the cube map
+uniform SamplerState samp1 : register(s1); // normal map
+
+uniform TextureCube  tex0 : register(t0);
+uniform Texture2D    tex1 : register(t1);
 
 struct PS_IN {
 	float4 position		: VPOS;
@@ -42,7 +45,7 @@ struct PS_IN {
 };
 
 struct PS_OUT {
-	float4 color : COLOR;
+	float4 color : SV_TARGET;
 };
 
 void main( PS_IN fragment, out PS_OUT result ) {

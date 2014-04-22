@@ -28,7 +28,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "global.inc"
 
-uniform matrices_ubo { float4 matrices[408]; };
+uniform float4 matrices[408];
 
 struct VS_IN {
 	float4 position : POSITION;

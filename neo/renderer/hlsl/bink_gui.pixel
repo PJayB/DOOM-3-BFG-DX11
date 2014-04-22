@@ -49,9 +49,9 @@ void main( PS_IN fragment, out PS_OUT result ) {
 	const float3 adj = float3( -0.87065506, 0.529705048f, -1.081668854f );
 	const float3 YScalar = float3( 1.164123535f, 1.164123535f, 1.164123535f );
 
-	float Y = tex2D( samp0, fragment.texcoord0.xy ).x;
-	float Cr = tex2D( samp1, fragment.texcoord0.xy ).x;
-	float Cb = tex2D( samp2, fragment.texcoord0.xy ).x;
+	float Y = tex0.Sample( samp0, fragment.texcoord0.xy ).x;
+	float Cr = tex1.Sample( samp1, fragment.texcoord0.xy ).x;
+	float Cb = tex2.Sample( samp2, fragment.texcoord0.xy ).x;
 
 	float3 p = ( YScalar * Y );
 	p += ( crc * Cr ) + ( crb * Cb ) + adj;

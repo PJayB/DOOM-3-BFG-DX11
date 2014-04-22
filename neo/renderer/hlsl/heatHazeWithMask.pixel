@@ -50,14 +50,14 @@ struct PS_OUT {
 void main( PS_IN fragment, out PS_OUT result ) {
 
 	// load the distortion map
-	float4 mask = tex2D( samp2, fragment.texcoord0.xy );
+	float4 mask = tex2.Sample( samp2, fragment.texcoord0.xy );
 
 	// kill the pixel if the distortion wound up being very small
 	mask.xy -= 0.01f;
 	clip( mask );
 
 	// load the filtered normal map and convert to -1 to 1 range
-	float4 bumpMap = ( tex2D( samp1, fragment.texcoord1.xy ) * 2.0f ) - 1.0f;
+	float4 bumpMap = ( tex1.Sample( samp1, fragment.texcoord1.xy ) * 2.0f ) - 1.0f;
 	float2 localNormal = bumpMap.wy;
 	localNormal *= mask.xy;
 
@@ -66,5 +66,5 @@ void main( PS_IN fragment, out PS_OUT result ) {
 	screenTexCoord += ( localNormal * fragment.texcoord2.xy );
 	screenTexCoord = saturate( screenTexCoord );
 
-	result.color = tex2D( samp0, screenTexCoord );
+	result.color = tex0.Sample( samp0, screenTexCoord );
 }

@@ -47,12 +47,12 @@ struct PS_OUT {
 void main( PS_IN fragment, out PS_OUT result ) {
 
 	float4 redTint = float4( 1, 0.98, 0.98, 1 );
-	float4 accumSample = tex2D( samp0, fragment.texcoord0 ) * redTint;
+	float4 accumSample = tex0.Sample( samp0, fragment.texcoord0 ) * redTint;
 
-	float4 maskSample = tex2D( samp2, fragment.texcoord1 );
+	float4 maskSample = tex2.Sample( samp2, fragment.texcoord1 );
 
 	float4 tint = float4( 1.0, 0.8, 0.8, 1 );
-	float4 currentRenderSample = tex2D( samp1, fragment.texcoord2 ) * tint;
+	float4 currentRenderSample = tex1.Sample( samp1, fragment.texcoord2 ) * tint;
 
 	result.color = lerp( accumSample, currentRenderSample, maskSample.a );
 }

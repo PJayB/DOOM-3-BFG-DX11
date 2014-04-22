@@ -47,7 +47,7 @@ struct PS_OUT {
 
 void main( PS_IN fragment, out PS_OUT result ) {
 
-	float4 bump = tex2D( samp1, fragment.texcoord0 ) * 2.0f - 1.0f;
+	float4 bump = tex1.Sample( samp1, fragment.texcoord0 ) * 2.0f - 1.0f;
 	float3 localNormal = float3( bump.wy, 0.0f );
 	localNormal.z = sqrt( 1.0f - dot3( localNormal, localNormal ) );
 

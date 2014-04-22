@@ -43,9 +43,9 @@ struct PS_OUT {
 
 void main( PS_IN fragment, out PS_OUT result ) {
 
-	float4 accumSample = tex2D( samp0, fragment.texcoord0 );
-	float4 currentRenderSample = tex2D( samp1, fragment.texcoord0 );
-	float4 maskSample = tex2D( samp2, fragment.texcoord0 );
+	float4 accumSample = tex0.Sample( samp0, fragment.texcoord0 );
+	float4 currentRenderSample = tex1.Sample( samp1, fragment.texcoord0 );
+	float4 maskSample = tex2.Sample( samp2, fragment.texcoord0 );
 
 	result.color = lerp( accumSample, currentRenderSample, maskSample.a );
 }

@@ -52,13 +52,13 @@ void main( PS_IN fragment, out PS_OUT result ) {
 	float4 color1 = float4( 1.0f,	0.95f - colorFactor,		0.95f,	0.5f );
 	float4 color2 = float4( 0.015f,	0.015f, 0.015f, 0.01f );
 
-	float4 accumSample0 = tex2D( samp0, fragment.texcoord0 ) * color0;
-	float4 accumSample1 = tex2D( samp0, fragment.texcoord1 ) * color1;
-	float4 accumSample2 = tex2D( samp0, fragment.texcoord2 ) * color2;
-	float4 maskSample = tex2D( samp2, fragment.texcoord3 );
+	float4 accumSample0 = tex0.Sample( samp0, fragment.texcoord0 ) * color0;
+	float4 accumSample1 = tex0.Sample( samp0, fragment.texcoord1 ) * color1;
+	float4 accumSample2 = tex0.Sample( samp0, fragment.texcoord2 ) * color2;
+	float4 maskSample = tex2.Sample( samp2, fragment.texcoord3 );
 
 	float4 tint = float4( 0.8, 0.5, 0.5, 1 );
-	float4 currentRenderSample = tex2D( samp1, fragment.texcoord3 ) * tint;
+	float4 currentRenderSample = tex1.Sample( samp1, fragment.texcoord3 ) * tint;
 
 	// blend of the first 2 accumulation samples
 	float4 accumColor = lerp( accumSample0, accumSample1, 0.5f );

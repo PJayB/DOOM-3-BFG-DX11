@@ -44,8 +44,8 @@ struct PS_OUT {
 void main( PS_IN fragment, out PS_OUT result ) {
     // texcoords will run from 0 to 1 across the entire screen
     if ( fract( fragment.position.y * 0.5 ) < 0.5 ) {
-        result.color = tex2D( samp0, vec2( fragment.texcoord0 ) );
+        result.color = tex0.Sample( samp0, vec2( fragment.texcoord0 ) );
     } else {
-        result.color = tex2D( samp1, vec2( fragment.texcoord0 ) );
+        result.color = tex1.Sample( samp1, vec2( fragment.texcoord0 ) );
     }
 }

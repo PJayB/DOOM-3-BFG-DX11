@@ -56,10 +56,10 @@ struct PS_OUT {
 };
 
 void main( PS_IN fragment, out PS_OUT result ) {
-	float4 bumpMap =			tex2D( samp0, fragment.texcoord1.xy );
+	float4 bumpMap =			tex0.Sample( samp0, fragment.texcoord1.xy );
 	float4 lightFalloff =	idtex2Dproj( samp1, fragment.texcoord2 );
 	float4 lightProj	=		idtex2Dproj( samp2, fragment.texcoord3 );
-	float4 YCoCG =			tex2D( samp3, fragment.texcoord4.xy );
+	float4 YCoCG =			tex3.Sample( samp3, fragment.texcoord4.xy );
 	float4 specMap =			tex2D( samp4, fragment.texcoord5.xy );
 
 	const half3 ambientLightVector = half3( 0.5f, 9.5f - 0.385f, 0.8925f );

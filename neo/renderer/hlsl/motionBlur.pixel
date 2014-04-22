@@ -49,12 +49,12 @@ void main( PS_IN fragment, out PS_OUT result ) {
     }
 #endif
 	// don't motion blur the hands, which were drawn with alpha = 0
-	if ( tex2D( samp0, fragment.texcoord0 ).w == 0.0 ) {
+	if ( tex0.Sample( samp0, fragment.texcoord0 ).w == 0.0 ) {
 		discard;
 	}
 
 	// derive clip space from the depth buffer and screen position
-	float windowZ = tex2D( samp1, fragment.texcoord0 ).x;
+	float windowZ = tex1.Sample( samp1, fragment.texcoord0 ).x;
 	float3 ndc = float3( fragment.texcoord0 * 2.0 - 1.0, windowZ * 2.0 - 1.0 );
 	float clipW = -rpProjectionMatrixZ.w / ( -rpProjectionMatrixZ.z - ndc.z );
 
@@ -83,7 +83,7 @@ void main( PS_IN fragment, out PS_OUT result ) {
 
 	for ( float i = 0 ; i < samples ; i = i + 1 ) {
 		float2 pos = fragment.texcoord0 + delta * ( ( i / ( samples - 1 ) ) - 0.5 );
-		float4 color = tex2D( samp0, pos );
+		float4 color = tex0.Sample( samp0, pos );
 		// only take the values that are not part of the weapon
 		sum += color.xyz * color.w;
 		goodSamples += color.w;

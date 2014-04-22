@@ -1165,42 +1165,6 @@
     <None Include="sys\win32\rc\res\doom3bfg.bin">
       <Filter>Sys\RC\res</Filter>
     </None>
-    <None Include="renderer\hlsl\bink.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </None>
-    <None Include="renderer\hlsl\bink_gui.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </None>
-    <None Include="renderer\hlsl\bink.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </None>
-    <None Include="renderer\hlsl\bink_gui.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </None>
-    <None Include="renderer\hlsl\blendLight.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </None>
-    <None Include="renderer\hlsl\bloodorb_draw.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </None>
-    <None Include="renderer\hlsl\bloodorb1_capture.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </None>
-    <None Include="renderer\hlsl\bloodorb2_capture.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </None>
-    <None Include="renderer\hlsl\bloodorb3_capture.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </None>
-    <None Include="renderer\hlsl\bumpyenvironment.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </None>
-    <None Include="renderer\hlsl\bumpyenvironment_skinned.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </None>
-    <None Include="renderer\hlsl\color.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </None>
     <None Include="renderer\hlsl\skinning.inc">
       <Filter>Renderer\Shaders</Filter>
     </None>
@@ -1442,5 +1406,17 @@
     <FxCompile Include="renderer\hlsl\zcullReconstruct.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
+    <FxCompile Include="renderer\hlsl\bink.vertex" />
+    <FxCompile Include="renderer\hlsl\bink_gui.vertex" />
+    <FxCompile Include="renderer\hlsl\bink.pixel" />
+    <FxCompile Include="renderer\hlsl\bink_gui.pixel" />
+    <FxCompile Include="renderer\hlsl\blendLight.pixel" />
+    <FxCompile Include="renderer\hlsl\bloodorb1_capture.pixel" />
+    <FxCompile Include="renderer\hlsl\bloodorb2_capture.pixel" />
+    <FxCompile Include="renderer\hlsl\bloodorb3_capture.pixel" />
+    <FxCompile Include="renderer\hlsl\bloodorb_draw.pixel" />
+    <FxCompile Include="renderer\hlsl\bumpyenvironment.pixel" />
+    <FxCompile Include="renderer\hlsl\bumpyenvironment_skinned.pixel" />
+    <FxCompile Include="renderer\hlsl\color.pixel" />
   </ItemGroup>
 </Project>

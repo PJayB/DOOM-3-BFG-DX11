@@ -158,18 +158,21 @@ float rand( float2 co ) {
     return frac( sin( dot( co.xy, float2( 12.9898, 78.233 ) ) ) * 43758.5453 );
 }
 
+float4 _half4( half x ) { return x.xxxx; }
+float3 _half3( half x ) { return x.xxx; }
+float2 _half2( half x ) { return x.xx; }
 
-#define _half2( x )		half2( x )
-#define _half3( x )		half3( x )
-#define _float4( x )		float4( x )
-#define _float2( x )	float2( x )
-#define _float3( x )	float3( x )
-#define _float4( x )	float4( x )
+float4 _float4( float x ) { return x.xxxx; }
+float3 _float3( float x ) { return x.xxx; }
+float2 _float2( float x ) { return x.xx; }
 
 #define VPOS WPOS
 static float4 idtex2Dproj( Texture2D tex, SamplerState samp, float4 texCoords ) { return tex.Sample( samp, 0.5f * (texCoords.xy / texCoords.w + 1) ); }
 static float4 swizzleColor( float4 c ) { return c; }
 static float2 vposToScreenPosTexCoord( float2 vpos ) { return vpos.xy * rpWindowCoord.xy; }
+
+
+#define _dot3( a, b )  dot(a, b).xxx
 
 
 #define BRANCH

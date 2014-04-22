@@ -29,7 +29,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "global.inc"
 
 struct PS_OUT {
-	float4 color : COLOR;
+	float4 color : SV_TARGET;
 };
 
 void main( out PS_OUT result ) {

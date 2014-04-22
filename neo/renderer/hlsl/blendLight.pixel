@@ -33,8 +33,8 @@ uniform sampler2D samp1 : register(s1);
 
 struct PS_IN {
 	float4 position : VPOS;
-	float4 texcoord0 : TEXCOORD0_centroid;
-	float2 texcoord1 : TEXCOORD1_centroid;
+	float4 texcoord0 : TEXCOORD0;
+	float2 texcoord1 : TEXCOORD1;
 };
 
 struct PS_OUT {
@@ -42,5 +42,5 @@ struct PS_OUT {
 };
 
 void main( PS_IN fragment, out PS_OUT result ) {
-	result.color = idtex2Dproj( samp0, fragment.texcoord0 ) * tex1.Sample( samp1, fragment.texcoord1 ) * rpColor;
+	result.color = idtex2Dproj( tex0, samp0, fragment.texcoord0 ) * tex1.Sample( samp1, fragment.texcoord1 ) * rpColor;
 }

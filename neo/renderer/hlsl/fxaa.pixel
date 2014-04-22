@@ -29,6 +29,8 @@ If you have questions concerning this license or the applicable additional terms
 #include "global.inc"
 #define FXAA_GREEN_AS_LUMA 1
 #define FXAA_EARLY_EXIT 0
+#define FXAA_PC 1
+#define FXAA_HLSL_4 1
 #include "Fxaa3_11.h"
 
 uniform SamplerState samp0 : register(s0);
@@ -49,7 +51,7 @@ uniform float4 rpUser6 : register( c134 );
 
 struct PS_IN {
 	float4 position : VPOS;
-	float2 texcoord0 : TEXCOORD0_centroid;
+	float2 texcoord0 : TEXCOORD0;
 };
 
 struct PS_OUT {	
@@ -92,12 +94,15 @@ void main( PS_IN fragment, out PS_OUT result ) {
 	// does not unoptimize the shader
 	FxaaFloat4	fxaaConsole360ConstDir = FXAAConsole360ConstDir;
 
+    FxaaTex st0 = { samp0, tex0 };
+    FxaaTex st1 = { samp1, tex1 };
+    FxaaTex st2 = { samp2, tex2 };
 
 	float4 colorSample = FxaaPixelShader(	fxaaPos,
 											fxaaConsolePos,
-											samp0,
-											samp1,
-											samp2,
+											st0,
+											st1,
+											st2,
 											fxaaQualityRcpFrame,
 											fxaaConsoleRcpFrameOpt,
 											fxaaConsoleRcpFrameOpt2,

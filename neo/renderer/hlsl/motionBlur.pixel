@@ -34,7 +34,7 @@ uniform Texture2D tex0 : register(t0);
 uniform Texture2D tex1 : register(t1);
 
 struct PS_IN {
-	float2 texcoord0 : TEXCOORD0_centroid;
+	float2 texcoord0 : TEXCOORD0;
 };
 
 struct PS_OUT {
@@ -77,7 +77,7 @@ void main( PS_IN fragment, out PS_OUT result ) {
 	float2 texCoord = prevTexCoord; //fragment.texcoord0;
 	float2 delta = ( fragment.texcoord0 - prevTexCoord );
 
-	float3 sum = float3( 0.0 );
+	float3 sum = _float3( 0.0 );
 	float goodSamples = 0;
 	float samples = rpOverbright.x;
 

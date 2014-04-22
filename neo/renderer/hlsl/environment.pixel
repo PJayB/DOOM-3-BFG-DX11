@@ -33,8 +33,8 @@ uniform TextureCube     tex0 : register(t0);
 
 struct PS_IN {
 	float4 position		: VPOS;
-	float3 texcoord0	: TEXCOORD0_centroid;
-	float3 texcoord1	: TEXCOORD1_centroid;
+	float3 texcoord0	: TEXCOORD0;
+	float3 texcoord1	: TEXCOORD1;
 	float4 color		: COLOR0;
 };
 
@@ -51,7 +51,7 @@ void main( PS_IN fragment, out PS_OUT result ) {
 	reflectionVector *= globalNormal;
 	reflectionVector = ( reflectionVector * 2.0f ) - globalEye;
 
-	float4 envMap = texCUBE( samp0, reflectionVector );
+	float4 envMap = tex0.Sample( samp0, reflectionVector );
 
 	result.color = float4( envMap.xyz, 1.0f ) * fragment.color;
 }

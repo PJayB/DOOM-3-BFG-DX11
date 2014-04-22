@@ -28,9 +28,9 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "global.inc"
 
-uniform sampler2D	samp0 : register(s0); // texture 0 is _current Render
-uniform sampler2D	samp1 : register(s1); // texture 1 is the per-surface bump map
-uniform sampler2D	samp2 : register(s2); // texture 2 is the mask texture
+uniform SamplerState samp0 : register(s0); // texture 0 is _current Render
+uniform SamplerState samp1 : register(s1); // texture 1 is the per-surface bump map
+uniform SamplerState samp2 : register(s2); // texture 2 is the mask texture
 
 uniform Texture2D tex0 : register(t0);
 uniform Texture2D tex1 : register(t1);

@@ -28,8 +28,8 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "global.inc"
 
-uniform sampler2D	samp0 : register(s0); // texture 0 is _current Render
-uniform sampler2D	samp1 : register(s1); // texture 1 is the per-surface bump map
+uniform SamplerState samp0 : register(s0); // texture 0 is _current Render
+uniform SamplerState samp1 : register(s1); // texture 1 is the per-surface bump map
 
 uniform Texture2D tex0 : register(t0);
 uniform Texture2D tex1 : register(t1);
@@ -49,12 +49,12 @@ void main( PS_IN fragment, out PS_OUT result ) {
 	float2 screenTexCoord = fragment.texcoord;
 	
 	// compute warp factor
-	float4 warpFactor = 1.0 - ( tex2D( samp1, screenTexCoord.xy ) * fragment.color );
+	float4 warpFactor = 1.0 - ( tex1.Sample( samp1, screenTexCoord.xy ) * fragment.color );
 	screenTexCoord -= float2( 0.5, 0.5 );
 	screenTexCoord *= warpFactor.xy;
 	screenTexCoord += float2( 0.5, 0.5 );
 
 	// load the screen render
-	result.color = tex2D( samp0, screenTexCoord );
+	result.color = tex0.Sample( samp0, screenTexCoord );
 
 }

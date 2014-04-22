@@ -28,8 +28,8 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "global.inc"
 
-uniform samplerCUBE samp0 : register(s0);
-uniform Texture2D tex0 : register(t0);
+uniform SamplerState samp0 : register(s0);
+uniform TextureCube tex0 : register(t0);
 
 struct PS_IN {
 	float4 position : VPOS;

@@ -31,9 +31,9 @@ If you have questions concerning this license or the applicable additional terms
 #define FXAA_EARLY_EXIT 0
 #include "Fxaa3_11.h"
 
-uniform sampler2D samp0 : register(s0);
-uniform sampler2D samp1 : register(s1); // exponent bias -1
-uniform sampler2D samp2 : register(s2); // exponent bias -2
+uniform SamplerState samp0 : register(s0);
+uniform SamplerState samp1 : register(s1); // exponent bias -1
+uniform SamplerState samp2 : register(s2); // exponent bias -2
 
 uniform Texture2D tex0 : register(t0);
 uniform Texture2D tex1 : register(t1);

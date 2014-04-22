@@ -64,6 +64,15 @@
     <Filter Include="Renderer\D3D11">
       <UniqueIdentifier>{12fd9f5e-2924-4c0f-ae4f-446fba05bbf1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Renderer\Shaders">
+      <UniqueIdentifier>{83fc90fd-2e17-4e6f-b6d0-4c9b77556496}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\Shaders\Vertex">
+      <UniqueIdentifier>{8e830f8f-5c9c-4b21-ac1b-56e8acb60d1a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\Shaders\Pixel">
+      <UniqueIdentifier>{acbc490e-612d-45b1-b217-e9175d8399a0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -1156,10 +1165,282 @@
     <None Include="sys\win32\rc\res\doom3bfg.bin">
       <Filter>Sys\RC\res</Filter>
     </None>
+    <None Include="..\base\renderprogs\bink.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </None>
+    <None Include="..\base\renderprogs\bink_gui.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </None>
+    <None Include="..\base\renderprogs\bink.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </None>
+    <None Include="..\base\renderprogs\bink_gui.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </None>
+    <None Include="..\base\renderprogs\blendLight.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </None>
+    <None Include="..\base\renderprogs\bloodorb_draw.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </None>
+    <None Include="..\base\renderprogs\bloodorb1_capture.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </None>
+    <None Include="..\base\renderprogs\bloodorb2_capture.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </None>
+    <None Include="..\base\renderprogs\bloodorb3_capture.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </None>
+    <None Include="..\base\renderprogs\bumpyenvironment.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </None>
+    <None Include="..\base\renderprogs\bumpyenvironment_skinned.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </None>
+    <None Include="..\base\renderprogs\color.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </None>
+    <None Include="..\base\renderprogs\skinning.inc">
+      <Filter>Renderer\Shaders</Filter>
+    </None>
+    <None Include="..\base\renderprogs\global.inc">
+      <Filter>Renderer\Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="sys\win32\rc\doom.rc">
       <Filter>Sys\RC</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\base\renderprogs\blendLight.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\bloodorb_draw.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\bloodorb1_capture.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\bloodorb2_capture.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\bloodorb3_capture.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\bumpyenvironment.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\bumpyenvironment_skinned.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\color.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\colorProcess.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\depth.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\depth_skinned.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\environment.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\environment_skinned.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\enviroSuit.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\fog.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\fog_skinned.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\fxaa.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\gui.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\heathaze.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\heatHazeWithMask.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\heatHazeWithMaskAndVertex.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\interaction.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\interaction_skinned.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\interactionAmbient.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\interactionAmbient_skinned.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\motionBlur.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\postprocess.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\shadow.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\shadow_skinned.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\shadowDebug.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\shadowDebug_skinned.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\simpleshade.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\skybox.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\stereoDeGhost.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\stereoInterlace.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\stereoWarp.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\texture.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\texture_color.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\texture_color_skinned.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\texture_color_texgen.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\wobblesky.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\zcullReconstruct.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\colorProcess.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\depth.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\depth_skinned.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\environment.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\environment_skinned.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\enviroSuit.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\fog.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\fog_skinned.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\fxaa.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\gui.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\heathaze.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\heatHazeWithMask.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\heatHazeWithMaskAndVertex.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\interaction.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\interaction_skinned.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\interactionAmbient.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\interactionAmbient_skinned.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\motionBlur.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\postprocess.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\shadow.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\shadow_skinned.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\shadowDebug.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\shadowDebug_skinned.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\simpleshade.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\skybox.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\stereoDeGhost.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\stereoInterlace.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\stereoWarp.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\texture.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\texture_color.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\texture_color_skinned.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\texture_color_texgen.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\wobblesky.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="..\base\renderprogs\zcullReconstruct.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

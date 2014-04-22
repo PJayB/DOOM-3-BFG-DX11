@@ -165,6 +165,7 @@ void SetupVideoConfig()
     glConfig.multisamples = g_BufferState.swapChainDesc.SampleDesc.Count;
     glConfig.pixelAspect = glConfig.nativeScreenWidth / (float)glConfig.nativeScreenHeight;
     glConfig.global_vao = 0;
+    glConfig.uniformBufferOffsetAlignment = 256;
 
 #if !defined(_ARM_) && !defined(D3D_NO_ENUM_DISPLAY)
 	DEVMODE dm;

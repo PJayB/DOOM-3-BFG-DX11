@@ -119,10 +119,13 @@ ID3D11Buffer *CreateDirect3DBuffer( const void* data, UINT numBytes, UINT bindFl
 	desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	desc.ByteWidth = (UINT)numBytes;
 
-    if (data)
+    if (data) {
 	    desc.Usage = D3D11_USAGE_IMMUTABLE;
-    else
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    } else {
         desc.Usage = D3D11_USAGE_DYNAMIC;
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    }
 
 	D3D11_SUBRESOURCE_DATA srd;
 	ZeroMemory(&srd, sizeof(srd));

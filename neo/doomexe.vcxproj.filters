@@ -794,16 +794,10 @@
     <ClCompile Include="aas\AASFileManager.cpp">
       <Filter>AAS</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\OpenGL\gl_backend.cpp">
-      <Filter>Renderer\OpenGL</Filter>
-    </ClCompile>
     <ClCompile Include="sys\win32\win_cpu.cpp">
       <Filter>Sys\Win32</Filter>
     </ClCompile>
     <ClCompile Include="sys\win32\win_wndproc.cpp">
-      <Filter>Sys\Win32</Filter>
-    </ClCompile>
-    <ClCompile Include="sys\win32\win_glimp.cpp">
       <Filter>Sys\Win32</Filter>
     </ClCompile>
     <ClCompile Include="sys\win32\win_input.cpp">
@@ -813,9 +807,6 @@
       <Filter>Sys\Win32</Filter>
     </ClCompile>
     <ClCompile Include="sys\win32\win_net.cpp">
-      <Filter>Sys\Win32</Filter>
-    </ClCompile>
-    <ClCompile Include="sys\win32\win_qgl.cpp">
       <Filter>Sys\Win32</Filter>
     </ClCompile>
     <ClCompile Include="sys\win32\win_shared.cpp">
@@ -910,9 +901,6 @@
     </ClCompile>
     <ClCompile Include="renderer\RenderLog.cpp">
       <Filter>Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\OpenGL\gl_image.cpp">
-      <Filter>Renderer\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="renderer\BinaryImage.cpp">
       <Filter>Renderer</Filter>
@@ -1135,12 +1123,6 @@
     </ClCompile>
     <ClCompile Include="renderer\RenderWorld_defs.cpp">
       <Filter>Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\RenderProgs_GLSL.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\OpenGL\gl_GraphicsAPIWrapper.cpp">
-      <Filter>Renderer\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="renderer\ScreenRect.cpp">
       <Filter>Renderer</Filter>

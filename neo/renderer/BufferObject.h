@@ -43,10 +43,6 @@ enum bufferMapType_t {
 	BM_WRITE			// map for writing
 };
 
-// Returns all targets to virtual memory use instead of buffer object use.
-// Call this before doing any conventional buffer reads, like screenshots.
-void UnbindBufferObjects();
-
 /*
 ================================================
 idVertexBuffer
@@ -58,6 +54,7 @@ public:
 						~idVertexBuffer();
 
 	// Allocate or free the buffer.
+    // A null data value implies a mappable buffer.
 	bool				AllocBufferObject( const void * data, int allocSize );
 	void				FreeBufferObject();
 
@@ -75,13 +72,13 @@ public:
 
 	int					GetSize() const { return ( size & ~MAPPED_FLAG ); }
 	int					GetAllocedSize() const { return ( ( size & ~MAPPED_FLAG ) + 15 ) & ~15; }
-	void *				GetAPIObject() const { return apiObject; }
+	ID3D11Buffer*		GetBuffer() const { return pBuffer; }
 	int					GetOffset() const { return ( offsetInOtherBuffer & ~OWNS_BUFFER_FLAG ); }
 
 private:
 	int					size;					// size in bytes
 	int					offsetInOtherBuffer;	// offset in bytes
-	void *				apiObject;
+	ID3D11Buffer*		pBuffer;
 
 	// sizeof() confuses typeinfo...
 	static const int	MAPPED_FLAG			= 1 << ( 4 /* sizeof( int ) */ * 8 - 1 );
@@ -107,6 +104,7 @@ public:
 						~idIndexBuffer();
 
 	// Allocate or free the buffer.
+    // A null data value implies a mappable buffer.
 	bool				AllocBufferObject( const void * data, int allocSize );
 	void				FreeBufferObject();
 
@@ -124,13 +122,13 @@ public:
 
 	int					GetSize() const { return ( size & ~MAPPED_FLAG ); }
 	int					GetAllocedSize() const { return ( ( size & ~MAPPED_FLAG ) + 15 ) & ~15; }
-	void *				GetAPIObject() const { return apiObject; }
+	ID3D11Buffer*		GetBuffer() const { return pBuffer; }
 	int					GetOffset() const { return ( offsetInOtherBuffer & ~OWNS_BUFFER_FLAG ); }
 
 private:
 	int					size;					// size in bytes
 	int					offsetInOtherBuffer;	// offset in bytes
-	void *				apiObject;
+	ID3D11Buffer*		pBuffer;
 
 	// sizeof() confuses typeinfo...
 	static const int	MAPPED_FLAG			= 1 << ( 4 /* sizeof( int ) */ * 8 - 1 );
@@ -160,6 +158,7 @@ public:
 						~idJointBuffer();
 
 	// Allocate or free the buffer.
+    // A null data value implies a mappable buffer.
 	bool				AllocBufferObject( const float * joints, int numAllocJoints );
 	void				FreeBufferObject();
 
@@ -176,7 +175,7 @@ public:
 
 	int					GetNumJoints() const { return ( numJoints & ~MAPPED_FLAG ); }
 	int					GetAllocedSize() const { return ( numJoints & ~MAPPED_FLAG ) * 3 * 4 * sizeof( float ); }
-	void *				GetAPIObject() const { return apiObject; }
+	ID3D11Buffer*		GetBuffer() const { return pBuffer; }
 	int					GetOffset() const { return ( offsetInOtherBuffer & ~OWNS_BUFFER_FLAG ); }
 
 	void				Swap( idJointBuffer & other );
@@ -184,7 +183,7 @@ public:
 private:
 	int					numJoints;
 	int					offsetInOtherBuffer;	// offset in bytes
-	void *				apiObject;
+	ID3D11Buffer*		pBuffer;
 
 	// sizeof() confuses typeinfo...
 	static const int	MAPPED_FLAG			= 1 << ( 4 /* sizeof( int ) */ * 8 - 1 );

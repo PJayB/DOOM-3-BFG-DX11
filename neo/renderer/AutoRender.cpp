@@ -123,10 +123,9 @@ void idAutoRender::RenderFrame() {
 		loadingIconPosY = 0.73f;
 	}
 
-
-	GL_SetDefaultState();
-	
-	GL_Cull( CT_TWO_SIDED );
+    /*
+    @pjb: todo: reset state, set cull to CT_TWO_SIDED
+    */
 	
 	const bool stereoRender = false;
 
@@ -136,12 +135,15 @@ void idAutoRender::RenderFrame() {
 
 	if ( stereoRender ) {
 		for ( int viewNum = 0 ; viewNum < 2; viewNum++ ) {
-			GL_ViewportAndScissor( 0, viewNum * ( height + guardBand ), width, height );
+            int y = viewNum * ( height + guardBand );
+		    D3DDrv_SetViewport( 0, y, width, height );
+            D3DDrv_SetScissor( 0, y, width, height );
 			RenderBackground();
 			RenderLoadingIcon( loadingIconPosX, loadingIconPosY, loadingIconScale, loadingIconSpeed );
 		}
 	} else {
-		GL_ViewportAndScissor( 0, 0, width, height );
+		D3DDrv_SetViewport( 0, 0, width, height );
+        D3DDrv_SetScissor( 0, 0, width, height );
 		RenderBackground();
 		RenderLoadingIcon( loadingIconPosX, loadingIconPosY, loadingIconScale, loadingIconSpeed );
 	}
@@ -154,9 +156,15 @@ idAutoRender::RenderBackground
 ============================
 */
 void idAutoRender::RenderBackground() {
-	GL_SelectTexture( 0 );
+	/*
 
-	globalImages->currentRenderImage->Bind();
+    @pjb: todo
+
+    GL_SelectTexture( 0 );
+
+    auto pIC = D3DDrv_GetImmediateContext();
+    auto pSRV = globalImages->currentRenderImage->GetSRV();
+    pIC->PSSetShaderResources( 0, 1, &pSRV );
 
 	GL_State( GLS_DEPTHFUNC_ALWAYS | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO );
 
@@ -182,6 +190,7 @@ void idAutoRender::RenderBackground() {
 	renderProgManager.BindShader_TextureVertexColor();
 
 	RB_DrawElementsWithCounters( &backEnd.unitSquareSurface );
+    */
 }
 
 /*
@@ -190,11 +199,13 @@ idAutoRender::RenderLoadingIcon
 ============================
 */
 void idAutoRender::RenderLoadingIcon( float fracX, float fracY, float size, float speed ) {
-
+    /*
 	float s = 0.0f; 
 	float c = 1.0f;
 
-	if ( autoRenderIcon != AUTORENDER_HELLICON ) {
+    @pjb: todo
+
+    if ( autoRenderIcon != AUTORENDER_HELLICON ) {
 		if ( Sys_Milliseconds() >= nextRotateTime ) {
 			nextRotateTime = Sys_Milliseconds() + 100;
 			currentRotation -= 90.0f;
@@ -276,4 +287,5 @@ void idAutoRender::RenderLoadingIcon( float fracX, float fracY, float size, floa
 	renderProgManager.BindShader_TextureVertexColor();
 
 	RB_DrawElementsWithCounters( &backEnd.unitSquareSurface );
+    */
 }

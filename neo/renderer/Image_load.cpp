@@ -427,41 +427,6 @@ void idImage::ActuallyLoadImage( bool fromBackEnd ) {
 }
 
 /*
-==============
-Bind
-
-Automatically enables 2D mapping or cube mapping if needed
-==============
-*/
-void idImage::Bind() {
-
-	RENDERLOG_PRINTF( "idImage::Bind( %s )\n", GetName() );
-
-	// load the image if necessary (FIXME: not SMP safe!)
-	if ( !IsLoaded() ) {
-		// load the image on demand here, which isn't our normal game operating mode
-		ActuallyLoadImage( true );
-	}
-
-	const int texUnit = backEnd.glState.currenttmu;
-
-	tmu_t * tmu = &backEnd.glState.tmu[texUnit];
-	// bind the texture
-	if ( opts.textureType == TT_2D ) {
-		if ( tmu->current2DMap != texnum ) {
-			tmu->current2DMap = texnum;
-			qglBindMultiTextureEXT( GL_TEXTURE0_ARB + texUnit, GL_TEXTURE_2D, texnum );
-		}
-	} else if ( opts.textureType == TT_CUBIC ) {
-		if ( tmu->currentCubeMap != texnum ) {
-			tmu->currentCubeMap = texnum;
-			qglBindMultiTextureEXT( GL_TEXTURE0_ARB + texUnit, GL_TEXTURE_CUBE_MAP_EXT, texnum );
-		}
-	}
-
-}
-
-/*
 ================
 MakePowerOfTwo
 ================
@@ -480,6 +445,8 @@ CopyFramebuffer
 */
 void idImage::CopyFramebuffer( int x, int y, int imageWidth, int imageHeight ) {
 
+    /*
+    @pjb: todo: copy contents of backbuffer into this?
 
 	qglBindTexture( ( opts.textureType == TT_CUBIC ) ? GL_TEXTURE_CUBE_MAP_EXT : GL_TEXTURE_2D, texnum );
 
@@ -497,6 +464,7 @@ void idImage::CopyFramebuffer( int x, int y, int imageWidth, int imageHeight ) {
 	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
 
 	backEnd.pc.c_copyFrameBuffer++;
+    */
 }
 
 /*
@@ -505,6 +473,11 @@ CopyDepthbuffer
 ====================
 */
 void idImage::CopyDepthbuffer( int x, int y, int imageWidth, int imageHeight ) {
+
+    /*
+
+    @pjb: todo: 
+
 	qglBindTexture( ( opts.textureType == TT_CUBIC ) ? GL_TEXTURE_CUBE_MAP_EXT : GL_TEXTURE_2D, texnum );
 
 	opts.width = imageWidth;
@@ -512,6 +485,7 @@ void idImage::CopyDepthbuffer( int x, int y, int imageWidth, int imageHeight ) {
 	qglCopyTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, x, y, imageWidth, imageHeight, 0 );
 
 	backEnd.pc.c_copyFrameBuffer++;
+    */
 }
 
 /*
@@ -710,6 +684,61 @@ void idImage::SetSamplerState( textureFilter_t tf, textureRepeat_t tr ) {
 	}
 	filter = tf;
 	repeat = tr;
-	qglBindTexture( ( opts.textureType == TT_CUBIC ) ? GL_TEXTURE_CUBE_MAP_EXT : GL_TEXTURE_2D, texnum );
-	SetTexParameters();
+	
+    RegenerateSamplerState();
+}
+
+/*
+========================
+idImage::Resize
+========================
+*/
+void idImage::Resize( int width, int height ) {
+	if ( opts.width == width && opts.height == height ) {
+		return;
+	}
+	opts.width = width;
+	opts.height = height;
+	AllocImage();
+}
+
+/*
+========================
+idImage::PurgeImage
+========================
+*/
+void idImage::PurgeImage() {
+	// @pjb: Todo
+}
+
+/*
+========================
+idImage::AllocImage
+
+Every image will pass through this function. Allocates all the necessary MipMap levels for the 
+Image, but doesn't put anything in them.
+
+This should not be done during normal game-play, if you can avoid it.
+========================
+*/
+void idImage::AllocImage() {
+	PurgeImage();
+
+    // @pjb: todo
+}
+/*
+========================
+idImage::SubImageUpload
+========================
+*/
+void idImage::SubImageUpload( int mipLevel, int x, int y, int z, int width, int height, const void * pic, int pixelPitch ) const {
+    // @pjb: todo:
+}
+
+//
+//
+// 
+void idImage::RegenerateSamplerState()
+{
+    // @pjb: todo
 }

@@ -182,6 +182,9 @@ bool D3DWnd_Init( glimpParms_t parms )
     return true;
 }
 
+//----------------------------------------------------------------------------
+// Sets up d3d in the same window
+//----------------------------------------------------------------------------
 bool D3DWnd_SetScreenParms( glimpParms_t parms ) 
 {
     DestroyBuffers();
@@ -243,4 +246,361 @@ void D3DWnd_Shutdown( void )
     ::DestroyWindow( win32.hWnd );
 
     win32.hWnd = NULL;
+}
+
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+
+
+/*
+========================
+GetDeviceName
+========================
+*/
+static idStr GetDeviceName( const int deviceNum ) {
+	DISPLAY_DEVICE	device = {};
+	device.cb = sizeof( device );
+	if ( !EnumDisplayDevices(
+			0,			// lpDevice
+			deviceNum,
+			&device,
+			0 /* dwFlags */ ) ) {
+		return false;
+	}
+
+	// get the monitor for this display
+	if ( ! (device.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP ) ) {
+		return false;
+	}
+
+	return idStr( device.DeviceName );
+}
+
+/*
+========================
+GetDisplayCoordinates
+========================
+*/
+static bool GetDisplayCoordinates( const int deviceNum, int & x, int & y, int & width, int & height, int & displayHz ) {
+	idStr deviceName = GetDeviceName( deviceNum );
+	if ( deviceName.Length() == 0 ) {
+		return false;
+	}
+
+	DISPLAY_DEVICE	device = {};
+	device.cb = sizeof( device );
+	if ( !EnumDisplayDevices(
+			0,			// lpDevice
+			deviceNum,
+			&device,
+			0 /* dwFlags */ ) ) {
+		return false;
+	}
+
+	DISPLAY_DEVICE	monitor;
+	monitor.cb = sizeof( monitor );
+	if ( !EnumDisplayDevices(
+			deviceName.c_str(),
+			0,
+			&monitor,
+			0 /* dwFlags */ ) ) {
+		return false;
+	}
+
+	DEVMODE	devmode;
+	devmode.dmSize = sizeof( devmode );
+	if ( !EnumDisplaySettings( deviceName.c_str(),ENUM_CURRENT_SETTINGS, &devmode ) ) {
+		return false;
+	}
+
+	common->Printf( "display device: %i\n", deviceNum );
+	common->Printf( "  DeviceName  : %s\n", device.DeviceName );
+	common->Printf( "  DeviceString: %s\n", device.DeviceString );
+	common->Printf( "  StateFlags  : 0x%x\n", device.StateFlags );
+	common->Printf( "  DeviceID    : %s\n", device.DeviceID );
+	common->Printf( "  DeviceKey   : %s\n", device.DeviceKey );
+	common->Printf( "      DeviceName  : %s\n", monitor.DeviceName );
+	common->Printf( "      DeviceString: %s\n", monitor.DeviceString );
+	common->Printf( "      StateFlags  : 0x%x\n", monitor.StateFlags );
+	common->Printf( "      DeviceID    : %s\n", monitor.DeviceID );
+	common->Printf( "      DeviceKey   : %s\n", monitor.DeviceKey );
+	common->Printf( "          dmPosition.x      : %i\n", devmode.dmPosition.x );
+	common->Printf( "          dmPosition.y      : %i\n", devmode.dmPosition.y );
+	common->Printf( "          dmBitsPerPel      : %i\n", devmode.dmBitsPerPel );
+	common->Printf( "          dmPelsWidth       : %i\n", devmode.dmPelsWidth );
+	common->Printf( "          dmPelsHeight      : %i\n", devmode.dmPelsHeight );
+	common->Printf( "          dmDisplayFlags    : 0x%x\n", devmode.dmDisplayFlags );
+	common->Printf( "          dmDisplayFrequency: %i\n", devmode.dmDisplayFrequency );
+
+	x = devmode.dmPosition.x;
+	y = devmode.dmPosition.y;
+	width = devmode.dmPelsWidth;
+	height = devmode.dmPelsHeight;
+	displayHz = devmode.dmDisplayFrequency;
+
+	return true;
+}
+/*
+====================
+DMDFO
+====================
+*/
+static const char * DMDFO( int dmDisplayFixedOutput ) {
+	switch( dmDisplayFixedOutput ) {
+	case DMDFO_DEFAULT: return "DMDFO_DEFAULT";
+	case DMDFO_CENTER: return "DMDFO_CENTER";
+	case DMDFO_STRETCH: return "DMDFO_STRETCH";
+	}
+	return "UNKNOWN";
+}
+
+/*
+====================
+PrintDevMode
+====================
+*/
+static void PrintDevMode( DEVMODE & devmode ) {
+	common->Printf( "          dmPosition.x        : %i\n", devmode.dmPosition.x );
+	common->Printf( "          dmPosition.y        : %i\n", devmode.dmPosition.y );
+	common->Printf( "          dmBitsPerPel        : %i\n", devmode.dmBitsPerPel );
+	common->Printf( "          dmPelsWidth         : %i\n", devmode.dmPelsWidth );
+	common->Printf( "          dmPelsHeight        : %i\n", devmode.dmPelsHeight );
+	common->Printf( "          dmDisplayFixedOutput: %s\n", DMDFO( devmode.dmDisplayFixedOutput ) );
+	common->Printf( "          dmDisplayFlags      : 0x%x\n", devmode.dmDisplayFlags );
+	common->Printf( "          dmDisplayFrequency  : %i\n", devmode.dmDisplayFrequency );
+}
+
+/*
+====================
+DumpAllDisplayDevices
+====================
+*/
+void DumpAllDisplayDevices() {
+	common->Printf( "\n" );
+	for ( int deviceNum = 0 ; ; deviceNum++ ) {
+		DISPLAY_DEVICE	device = {};
+		device.cb = sizeof( device );
+		if ( !EnumDisplayDevices(
+				0,			// lpDevice
+				deviceNum,
+				&device,
+				0 /* dwFlags */ ) ) {
+			break;
+		}
+
+		common->Printf( "display device: %i\n", deviceNum );
+		common->Printf( "  DeviceName  : %s\n", device.DeviceName );
+		common->Printf( "  DeviceString: %s\n", device.DeviceString );
+		common->Printf( "  StateFlags  : 0x%x\n", device.StateFlags );
+		common->Printf( "  DeviceID    : %s\n", device.DeviceID );
+		common->Printf( "  DeviceKey   : %s\n", device.DeviceKey );
+
+		for ( int monitorNum = 0 ; ; monitorNum++ ) {
+			DISPLAY_DEVICE	monitor = {};
+			monitor.cb = sizeof( monitor );
+			if ( !EnumDisplayDevices(
+					device.DeviceName,
+					monitorNum,
+					&monitor,
+					0 /* dwFlags */ ) ) {
+				break;
+			}
+
+			common->Printf( "      DeviceName  : %s\n", monitor.DeviceName );
+			common->Printf( "      DeviceString: %s\n", monitor.DeviceString );
+			common->Printf( "      StateFlags  : 0x%x\n", monitor.StateFlags );
+			common->Printf( "      DeviceID    : %s\n", monitor.DeviceID );
+			common->Printf( "      DeviceKey   : %s\n", monitor.DeviceKey );
+
+			DEVMODE	currentDevmode = {};
+			if ( !EnumDisplaySettings( device.DeviceName,ENUM_CURRENT_SETTINGS, &currentDevmode ) ) {
+				common->Printf( "ERROR:  EnumDisplaySettings(ENUM_CURRENT_SETTINGS) failed!\n" );
+			}
+			common->Printf( "          -------------------\n" );
+			common->Printf( "          ENUM_CURRENT_SETTINGS\n" );
+			PrintDevMode( currentDevmode );
+
+			DEVMODE	registryDevmode = {};
+			if ( !EnumDisplaySettings( device.DeviceName,ENUM_REGISTRY_SETTINGS, &registryDevmode ) ) {
+				common->Printf( "ERROR:  EnumDisplaySettings(ENUM_CURRENT_SETTINGS) failed!\n" );
+			}
+			common->Printf( "          -------------------\n" );
+			common->Printf( "          ENUM_CURRENT_SETTINGS\n" );
+			PrintDevMode( registryDevmode );
+
+			for ( int modeNum = 0 ; ; modeNum++ ) {
+				DEVMODE	devmode = {};
+
+				if ( !EnumDisplaySettings( device.DeviceName,modeNum, &devmode ) ) {
+					break;
+				}
+
+				if ( devmode.dmBitsPerPel != 32 ) {
+					continue;
+				}
+				if ( devmode.dmDisplayFrequency < 60 ) {
+					continue;
+				}
+				if ( devmode.dmPelsHeight < 720 ) {
+					continue;
+				}
+				common->Printf( "          -------------------\n" );
+				common->Printf( "          modeNum             : %i\n", modeNum );
+				PrintDevMode( devmode );
+			}
+		}
+	}
+	common->Printf( "\n" );
+}
+/*
+====================
+GLW_GetWindowDimensions
+====================
+*/
+bool GLW_GetWindowDimensions( const glimpParms_t parms, int &x, int &y, int &w, int &h ) {
+	//
+	// compute width and height
+	//
+	if ( parms.fullScreen != 0 ) {
+		if ( parms.fullScreen == -1 ) {
+			// borderless window at specific location, as for spanning
+			// multiple monitor outputs
+			x = parms.x;
+			y = parms.y;
+			w = parms.width;
+			h = parms.height;
+		} else {
+			// get the current monitor position and size on the desktop, assuming
+			// any required ChangeDisplaySettings has already been done
+			int displayHz = 0;
+			if ( !GetDisplayCoordinates( parms.fullScreen - 1, x, y, w, h, displayHz ) ) {
+				return false;
+			}
+		}
+	} else {
+		RECT	r;
+
+		// adjust width and height for window border
+		r.bottom = parms.height;
+		r.left = 0;
+		r.top = 0;
+		r.right = parms.width;
+
+		AdjustWindowRect (&r, WINDOW_STYLE|WS_SYSMENU, FALSE);
+
+		w = r.right - r.left;
+		h = r.bottom - r.top;
+
+		x = parms.x;
+		y = parms.y;
+	}
+
+	return true;
+}
+
+/*
+====================
+R_GetModeListForDisplay
+====================
+*/
+bool R_GetModeListForDisplay( const int requestedDisplayNum, idList<vidMode_t> & modeList ) {
+	modeList.Clear();
+
+	bool	verbose = false;
+
+	for ( int displayNum = requestedDisplayNum; ; displayNum++ ) {
+		DISPLAY_DEVICE	device;
+		device.cb = sizeof( device );
+		if ( !EnumDisplayDevices(
+				0,			// lpDevice
+				displayNum,
+				&device,
+				0 /* dwFlags */ ) ) {
+			return false;
+		}
+
+		// get the monitor for this display
+		if ( ! (device.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP ) ) {
+			continue;
+		}
+
+		DISPLAY_DEVICE	monitor;
+		monitor.cb = sizeof( monitor );
+		if ( !EnumDisplayDevices(
+				device.DeviceName,
+				0,
+				&monitor,
+				0 /* dwFlags */ ) ) {
+			continue;
+		}
+
+		DEVMODE	devmode;
+		devmode.dmSize = sizeof( devmode );
+
+		if ( verbose ) {
+			common->Printf( "display device: %i\n", displayNum );
+			common->Printf( "  DeviceName  : %s\n", device.DeviceName );
+			common->Printf( "  DeviceString: %s\n", device.DeviceString );
+			common->Printf( "  StateFlags  : 0x%x\n", device.StateFlags );
+			common->Printf( "  DeviceID    : %s\n", device.DeviceID );
+			common->Printf( "  DeviceKey   : %s\n", device.DeviceKey );
+			common->Printf( "      DeviceName  : %s\n", monitor.DeviceName );
+			common->Printf( "      DeviceString: %s\n", monitor.DeviceString );
+			common->Printf( "      StateFlags  : 0x%x\n", monitor.StateFlags );
+			common->Printf( "      DeviceID    : %s\n", monitor.DeviceID );
+			common->Printf( "      DeviceKey   : %s\n", monitor.DeviceKey );
+		}
+
+		for ( int modeNum = 0 ; ; modeNum++ ) {
+			if ( !EnumDisplaySettings( device.DeviceName,modeNum, &devmode ) ) {
+				break;
+			}
+
+			if ( devmode.dmBitsPerPel != 32 ) {
+				continue;
+			}
+			if ( ( devmode.dmDisplayFrequency != 60 ) && ( devmode.dmDisplayFrequency != 120 ) ) {
+				continue;
+			}
+			if ( devmode.dmPelsHeight < 720 ) {
+				continue;
+			}
+			if ( verbose ) {
+				common->Printf( "          -------------------\n" );
+				common->Printf( "          modeNum             : %i\n", modeNum );
+				common->Printf( "          dmPosition.x        : %i\n", devmode.dmPosition.x );
+				common->Printf( "          dmPosition.y        : %i\n", devmode.dmPosition.y );
+				common->Printf( "          dmBitsPerPel        : %i\n", devmode.dmBitsPerPel );
+				common->Printf( "          dmPelsWidth         : %i\n", devmode.dmPelsWidth );
+				common->Printf( "          dmPelsHeight        : %i\n", devmode.dmPelsHeight );
+				common->Printf( "          dmDisplayFixedOutput: %s\n", DMDFO( devmode.dmDisplayFixedOutput ) );
+				common->Printf( "          dmDisplayFlags      : 0x%x\n", devmode.dmDisplayFlags );
+				common->Printf( "          dmDisplayFrequency  : %i\n", devmode.dmDisplayFrequency );
+			}
+			vidMode_t mode;
+			mode.width = devmode.dmPelsWidth;
+			mode.height = devmode.dmPelsHeight;
+			mode.displayHz = devmode.dmDisplayFrequency;
+			modeList.AddUnique( mode );
+		}
+		if ( modeList.Num() > 0 ) {
+
+			class idSort_VidMode : public idSort_Quick< vidMode_t, idSort_VidMode > {
+			public:
+				int Compare( const vidMode_t & a, const vidMode_t & b ) const {
+					int wd = a.width - b.width;
+					int hd = a.height - b.height;
+					int fd = a.displayHz - b.displayHz;
+					return ( hd != 0 ) ? hd : ( wd != 0 ) ? wd : fd;
+				}
+			};
+
+			// sort with lowest resolution first
+			modeList.SortWithTemplate( idSort_VidMode() );
+
+			return true;
+		}
+	}
+	// Never gets here
 }

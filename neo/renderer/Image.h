@@ -73,13 +73,15 @@ public:
 
 	const char *	GetName() const { return imgName; }
 
-	// Makes this image active on the current GL texture unit.
-	// automatically enables or disables cube mapping
-	// May perform file loading if the image was not preloaded.
-	void		Bind();
+    ID_INLINE ID3D11Texture2D* GetTexture() const { return pTexture; }
+    ID_INLINE ID3D11SamplerState* GetSampler() const { return pSampler; }
+    ID_INLINE ID3D11ShaderResourceView* GetSRV() const { assert(IsLoaded()); return pSRV; }
 
 	// Should be called at least once
 	void		SetSamplerState( textureFilter_t tf, textureRepeat_t tr );
+
+    // Regenerate sampler state (used if aniso cvar has been touched)
+    void        RegenerateSamplerState();
 
 	// used by callback functions to specify the actual data
 	// data goes from the bottom to the top line of the image, as OpenGL expects it
@@ -135,12 +137,6 @@ public:
 								int width, int height, const void * data, 
 								int pixelPitch = 0 ) const;
 
-	// SetPixel is assumed to be a fast memory write on consoles, degenerating to a 
-	// SubImageUpload on PCs.  Used to update the page mapping images.
-	// We could remove this now, because the consoles don't use the intermediate page mapping
-	// textures now that they can pack everything into the virtual page table images.
-	void		SetPixel( int mipLevel, int x, int y, const void * data, int dataSize );
-
 	// some scratch images are dynamically resized based on the display window size.  This 
 	// simply purges the image and recreates it if the sizes are different, so it should not be 
 	// done under any normal circumstances, and probably not at all on consoles.
@@ -152,7 +148,7 @@ public:
 	void		SetTexParameters();	// update aniso and trilinear
 #endif
 
-	bool		IsLoaded() const { return texnum != TEXTURE_NOT_LOADED; }
+	bool		IsLoaded() const { return pTexture != nullptr; }
 
 	static void			GetGeneratedName( idStr &_name, const textureUsage_t &_usage, const cubeFiles_t &_cube );
 
@@ -183,30 +179,18 @@ private:
 
 	static const GLuint TEXTURE_NOT_LOADED = 0xFFFFFFFF;
 
-#ifdef RENDER_OPENGL
-	GLuint				texnum;				// gl texture binding
-
-	// we could derive these in subImageUpload each time if necessary
-	GLuint				internalFormat;
-	GLuint				dataFormat;
-	GLuint				dataType;
-#endif
-
-#ifdef RENDER_D3D11
     ID3D11Texture2D*    pTexture;
     ID3D11ShaderResourceView* pSRV;
     ID3D11SamplerState* pSampler;
     DXGI_FORMAT         dxgiFormat;
     bool                dynamic;
-#endif
-
 };
 
 ID_INLINE idImage::idImage( const char * name ) : imgName( name ) {
-	texnum = TEXTURE_NOT_LOADED;
-	internalFormat = 0;
-	dataFormat = 0;
-	dataType = 0;
+	pTexture = nullptr;
+    pSRV = nullptr;
+    pSampler = nullptr;
+	dxgiFormat = DXGI_FORMAT_UNKNOWN;
 	generatorFunction = NULL;
 	filter = TF_DEFAULT;
 	repeat = TR_REPEAT;

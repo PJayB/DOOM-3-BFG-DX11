@@ -78,7 +78,7 @@ QD3D11Device* GetDevice()
     return g_pDevice;
 }
 
-static idCVar d3d_multisamples( "d3d_multisamples", "32", CVAR_ARCHIVE | CVAR_INTEGER | CVAR_RENDERER, "the number of multisamples to use");
+static idCVar d3d_multisamples( "d3d_multisamples", "0", CVAR_ARCHIVE | CVAR_INTEGER | CVAR_RENDERER, "the number of multisamples to use");
 
 void GetSwapChainDescFromConfig( DXGI_SWAP_CHAIN_DESC1* scDesc )
 {

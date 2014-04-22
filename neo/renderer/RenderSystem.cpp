@@ -115,13 +115,14 @@ void idRenderSystemLocal::RenderCommandBuffers( const emptyCommand_t * const cmd
 	// draw 2D graphics
 	if ( !r_skipBackEnd.GetBool() ) {
 		if ( glConfig.timerQueryAvailable ) {
-			if ( tr.timerQueryId == 0 ) {
-				qglGenQueriesARB( 1, & tr.timerQueryId );
-			}
-			qglBeginQueryARB( GL_TIME_ELAPSED_EXT, tr.timerQueryId );
+            // @pjb: todo
+			//if ( tr.timerQueryId == 0 ) {
+			//	qglGenQueriesARB( 1, & tr.timerQueryId );
+			//}
+			//qglBeginQueryARB( GL_TIME_ELAPSED_EXT, tr.timerQueryId );
 			RB_ExecuteBackEndCommands( cmdHead );
-			qglEndQueryARB( GL_TIME_ELAPSED_EXT );
-			qglFlush();
+			//qglEndQueryARB( GL_TIME_ELAPSED_EXT );
+			//qglFlush();
 		} else {
 			RB_ExecuteBackEndCommands( cmdHead );
 		}
@@ -216,7 +217,7 @@ static void R_CheckCvars() {
 	if ( r_gamma.IsModified() || r_brightness.IsModified() ) {
 		r_gamma.ClearModified();
 		r_brightness.ClearModified();
-		R_SetColorMappings();
+        // @pjb: todo: set gamma
 	}
 
 	// filtering
@@ -227,47 +228,10 @@ static void R_CheckCvars() {
 		r_lodBias.ClearModified();
 		for ( int i = 0 ; i < globalImages->images.Num() ; i++ ) {
 			if ( globalImages->images[i] ) {
-				globalImages->images[i]->Bind();
-				globalImages->images[i]->SetTexParameters();
+				globalImages->images[i]->RegenerateSamplerState();
 			}
 		}
 	}
-
-	extern idCVar r_useSeamlessCubeMap;
-	if ( r_useSeamlessCubeMap.IsModified() ) {
-		r_useSeamlessCubeMap.ClearModified();
-		if ( glConfig.seamlessCubeMapAvailable ) {
-			if ( r_useSeamlessCubeMap.GetBool() ) {
-				qglEnable( GL_TEXTURE_CUBE_MAP_SEAMLESS );
-			} else {
-				qglDisable( GL_TEXTURE_CUBE_MAP_SEAMLESS );
-			}
-		}
-	}
-
-	extern idCVar r_useSRGB;
-	if ( r_useSRGB.IsModified() ) {
-		r_useSRGB.ClearModified();
-		if ( glConfig.sRGBFramebufferAvailable ) {
-			if ( r_useSRGB.GetBool() ) {
-				qglEnable( GL_FRAMEBUFFER_SRGB );
-			} else {
-				qglDisable( GL_FRAMEBUFFER_SRGB );
-			}
-		}
-	}
-
-
-	if ( r_multiSamples.IsModified() ) {
-		if ( r_multiSamples.GetInteger() > 0 ) {
-			qglEnable( GL_MULTISAMPLE_ARB );
-		} else {
-			qglDisable( GL_MULTISAMPLE_ARB );
-		}
-	}
-
-	// check for changes to logging state
-	GLimp_EnableLogging( r_logFile.GetInteger() != 0 );
 }
 
 /*
@@ -645,15 +609,17 @@ void idRenderSystemLocal::SwapCommandBuffers_FinishRendering(
 	if ( frameData->cmdHead->next != NULL ) {
 		// wait for our fence to hit, which means the swap has actually happened
 		// We must do this before clearing any resources the GPU may be using
-		void GL_BlockingSwapBuffers();
-		GL_BlockingSwapBuffers();
+		// @pjb: todo 
+        // extern void GL_BlockingSwapBuffers();
+		// GL_BlockingSwapBuffers();
 	}
 
 	// read back the start and end timer queries from the previous frame
 	if ( glConfig.timerQueryAvailable ) {
 		uint64 drawingTimeNanoseconds = 0;
 		if ( tr.timerQueryId != 0 ) {
-			qglGetQueryObjectui64vEXT( tr.timerQueryId, GL_QUERY_RESULT, &drawingTimeNanoseconds );
+			//qglGetQueryObjectui64vEXT( tr.timerQueryId, GL_QUERY_RESULT, &drawingTimeNanoseconds );
+            // @pjb: todo
 		}
 		if ( gpuMicroSec != NULL ) {
 			*gpuMicroSec = drawingTimeNanoseconds / 1000;
@@ -678,9 +644,6 @@ void idRenderSystemLocal::SwapCommandBuffers_FinishRendering(
 
 	// check for dynamic changes that require some initialization
 	R_CheckCvars();
-
-    // check for errors
-	GL_CheckErrors();
 }
 
 /*
@@ -938,33 +901,7 @@ void idRenderSystemLocal::CaptureRenderToFile( const char *fileName, bool fixAlp
 		return;
 	}
 
-	idScreenRect & rc = renderCrops[currentRenderCrop];
-
-	guiModel->EmitFullScreen();
-	guiModel->Clear();
-	RenderCommandBuffers( frameData->cmdHead );
-
-	qglReadBuffer( GL_BACK );
-
-	// include extra space for OpenGL padding to word boundaries
-	int	c = ( rc.GetWidth() + 3 ) * rc.GetHeight();
-	byte *data = (byte *)R_StaticAlloc( c * 3 );
-	
-	qglReadPixels( rc.x1, rc.y1, rc.GetWidth(), rc.GetHeight(), GL_RGB, GL_UNSIGNED_BYTE, data ); 
-
-	byte *data2 = (byte *)R_StaticAlloc( c * 4 );
-
-	for ( int i = 0 ; i < c ; i++ ) {
-		data2[ i * 4 ] = data[ i * 3 ];
-		data2[ i * 4 + 1 ] = data[ i * 3 + 1 ];
-		data2[ i * 4 + 2 ] = data[ i * 3 + 2 ];
-		data2[ i * 4 + 3 ] = 0xff;
-	}
-
-	R_WriteTGA( fileName, data2, rc.GetWidth(), rc.GetHeight(), true );
-
-	R_StaticFree( data );
-	R_StaticFree( data2 );
+    // @pjb: todo
 }
 
 

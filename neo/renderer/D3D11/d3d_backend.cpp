@@ -28,7 +28,7 @@ void D3DDrv_Init( void )
     InitDrawState();
 }
 
-size_t D3DDrv_LastError( void )
+HRESULT D3DDrv_LastError( void )
 {
     return (size_t) g_hrLastError;
 }

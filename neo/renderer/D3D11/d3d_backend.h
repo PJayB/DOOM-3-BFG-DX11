@@ -28,4 +28,6 @@ void D3DDrv_SetState( uint64 stateBits );
 void D3DDrv_SetScissor( int left, int top, int width, int height );
 void D3DDrv_SetViewport( int left, int top, int width, int height );
 
+HRESULT D3DDrv_LastError( void );
+
 #endif

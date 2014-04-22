@@ -431,11 +431,7 @@
     <ClCompile Include="renderer\ModelDecal.cpp" />
     <ClCompile Include="renderer\ModelManager.cpp" />
     <ClCompile Include="renderer\ModelOverlay.cpp" />
-    <ClCompile Include="renderer\OpenGL\gl_GraphicsAPIWrapper.cpp" />
-    <ClCompile Include="renderer\OpenGL\gl_image.cpp" />
-    <ClCompile Include="renderer\OpenGL\gl_backend.cpp" />
     <ClCompile Include="renderer\RenderProgs.cpp" />
-    <ClCompile Include="renderer\RenderProgs_GLSL.cpp" />
     <ClCompile Include="renderer\RenderWorld_defs.cpp" />
     <ClCompile Include="renderer\ResolutionScale.cpp" />
     <ClCompile Include="renderer\RenderEntity.cpp" />
@@ -511,12 +507,10 @@
     <ClCompile Include="sys\win32\win_achievements.cpp" />
     <ClCompile Include="sys\win32\win_cpu.cpp" />
     <ClCompile Include="sys\win32\win_d3d.cpp" />
-    <ClCompile Include="sys\win32\win_glimp.cpp" />
     <ClCompile Include="sys\win32\win_input.cpp" />
     <ClCompile Include="sys\win32\win_localuser.cpp" />
     <ClCompile Include="sys\win32\win_main.cpp" />
     <ClCompile Include="sys\win32\win_net.cpp" />
-    <ClCompile Include="sys\win32\win_qgl.cpp" />
     <ClCompile Include="sys\win32\win_savegame.cpp" />
     <ClCompile Include="sys\win32\win_session_local.cpp" />
     <ClCompile Include="sys\win32\win_shared.cpp" />

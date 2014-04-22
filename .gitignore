@@ -25,3 +25,4 @@ base/renderprogs/hlsl
 *.WAD
 *.lang
 *.PAT
+compiled_shaders

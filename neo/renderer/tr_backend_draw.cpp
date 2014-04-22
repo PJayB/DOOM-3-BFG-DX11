@@ -58,8 +58,6 @@ void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye ) {
 	// this used to be in the gui emit code, but now that it can be running
 	// in a separate thread, it must not try to load images, so do it here.
 	//-------------------------------------------------
-	/*
-    @pjb: todo: uncomment this when you're ready to go
     drawSurf_t **drawSurfs = (drawSurf_t **)&viewDef->drawSurfs[0];
 	const int numDrawSurfs = viewDef->numDrawSurfs;
 
@@ -69,7 +67,6 @@ void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye ) {
 			const_cast<idMaterial *>( ds->material )->EnsureNotPurged();
 		}
 	}
-    */
 
 	//-------------------------------------------------
 	// RB_BeginDrawingView
@@ -96,14 +93,10 @@ void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye ) {
 	backEnd.glState.faceCulling = -1;		// force face culling to set next time
 
 	// ensures that depth writes are enabled for the depth clear
-	// @pjb: Todo: reset state
-
+    D3DDrv_SetDefaultState();
 
 	// Clear the depth buffer and clear the stencil to 128 for stencil shadows as well as gui masking
 	D3DDrv_Clear( CLEAR_DEPTH | CLEAR_STENCIL, nullptr, STENCIL_SHADOW_TEST_VALUE, 1 );
-
-	// normal face culling
-	// @pjb: todo: CT_FRONT_SIDED
     
 	//------------------------------------
 	// sets variables that can be used by all programs
@@ -120,6 +113,13 @@ void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye ) {
 		R_MatrixTranspose( backEnd.viewDef->projectionMatrix, projMatrixTranspose );
 		// @pjb: todo: SetVertexParms( RENDERPARM_PROJMATRIX_X, projMatrixTranspose, 4 );
 	}	
+
+    //
+    // @pjb: todo: Draw things
+    //
+
+
+
 
 	renderLog.CloseBlock();
 }

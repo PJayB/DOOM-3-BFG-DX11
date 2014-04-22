@@ -134,8 +134,8 @@ void D3DDrv_SetViewport( int left, int top, int width, int height )
 //----------------------------------------------------------------------------
 void D3DDrv_SetDefaultState()
 {
-    memset( &g_RunState, 0, sizeof( g_RunState ) );
     D3DDrv_SetState( 0 );
+    CommitRasterizerState( CT_FRONT_SIDED, false, false );
 }
 
 //----------------------------------------------------------------------------

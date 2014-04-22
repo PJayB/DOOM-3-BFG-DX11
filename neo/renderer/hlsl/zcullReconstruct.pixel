@@ -29,7 +29,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "global.inc"
 
 struct PS_OUT {	
-	float depth : DEPTH;
+	float depth : SV_DEPTH;
 	float4 color : SV_TARGET;
 };
 

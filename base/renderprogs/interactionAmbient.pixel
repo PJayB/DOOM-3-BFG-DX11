@@ -35,26 +35,26 @@ uniform sampler2D	samp3 : register(s3); // texture 4 is the per-surface diffuse 
 uniform sampler2D	samp4 : register(s4); // texture 5 is the per-surface specular map
 
 struct PS_IN {
-	half4 position	: VPOS;
-	half4 texcoord1	: TEXCOORD1_centroid;
-	half4 texcoord2	: TEXCOORD2_centroid;
-	half4 texcoord3	: TEXCOORD3_centroid;
-	half4 texcoord4	: TEXCOORD4_centroid;
-	half4 texcoord5	: TEXCOORD5_centroid;
-	half4 texcoord6	: TEXCOORD6_centroid;
-	half4 color		: COLOR0;
+	float4 position	: VPOS;
+	float4 texcoord1	: TEXCOORD1_centroid;
+	float4 texcoord2	: TEXCOORD2_centroid;
+	float4 texcoord3	: TEXCOORD3_centroid;
+	float4 texcoord4	: TEXCOORD4_centroid;
+	float4 texcoord5	: TEXCOORD5_centroid;
+	float4 texcoord6	: TEXCOORD6_centroid;
+	float4 color		: COLOR0;
 };
 
 struct PS_OUT {
-	half4 color : COLOR;
+	float4 color : COLOR;
 };
 
 void main( PS_IN fragment, out PS_OUT result ) {
-	half4 bumpMap =			tex2D( samp0, fragment.texcoord1.xy );
-	half4 lightFalloff =	idtex2Dproj( samp1, fragment.texcoord2 );
-	half4 lightProj	=		idtex2Dproj( samp2, fragment.texcoord3 );
-	half4 YCoCG =			tex2D( samp3, fragment.texcoord4.xy );
-	half4 specMap =			tex2D( samp4, fragment.texcoord5.xy );
+	float4 bumpMap =			tex2D( samp0, fragment.texcoord1.xy );
+	float4 lightFalloff =	idtex2Dproj( samp1, fragment.texcoord2 );
+	float4 lightProj	=		idtex2Dproj( samp2, fragment.texcoord3 );
+	float4 YCoCG =			tex2D( samp3, fragment.texcoord4.xy );
+	float4 specMap =			tex2D( samp4, fragment.texcoord5.xy );
 
 	const half3 ambientLightVector = half3( 0.5f, 9.5f - 0.385f, 0.8925f );
 	half3 lightVector = normalize( ambientLightVector );

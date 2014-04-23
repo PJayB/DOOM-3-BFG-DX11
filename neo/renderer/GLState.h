@@ -60,6 +60,7 @@ static const uint64 GLS_GREENMASK						= 1 << 8;
 static const uint64 GLS_BLUEMASK						= 1 << 9;
 static const uint64 GLS_ALPHAMASK						= 1 << 10;
 static const uint64 GLS_COLORMASK						= (GLS_REDMASK|GLS_GREENMASK|GLS_BLUEMASK);
+static const uint64 GLS_COLORALPHAMASK					= (GLS_COLORMASK|GLS_ALPHAMASK);
 
 static const uint64 GLS_POLYMODE_LINE					= 1 << 11;
 static const uint64 GLS_POLYGON_OFFSET					= 1 << 12;

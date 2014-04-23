@@ -31,6 +31,8 @@ ID3D11DepthStencilState* D3DDrv_GetDepthState( uint64 stateBits );
 ID3D11BlendState* D3DDrv_GetBlendState( uint64 stateBits );
 void D3DDrv_SetRasterizerOptions( uint64 stateBits );
 
+void D3DDrv_CreateDepthStencilState( uint64 stateBits, ID3D11DepthStencilState** ppDepthStencilState );
+
 HRESULT D3DDrv_LastError( void );
 
 #endif

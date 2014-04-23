@@ -142,22 +142,11 @@ void D3DDrv_SetDefaultState()
 //----------------------------------------------------------------------------
 ID3D11DepthStencilState* D3DDrv_GetDepthState( uint64 stateBits )
 {
-    unsigned long newDepthStateMask = 0;
-	if ( stateBits & GLS_DEPTHFUNC_BITS )
-	{
-		switch ( stateBits & GLS_DEPTHFUNC_BITS ) {
-			case GLS_DEPTHFUNC_EQUAL:	newDepthStateMask |= DEPTHFUNC_EQUAL ; break;
-			case GLS_DEPTHFUNC_ALWAYS:	newDepthStateMask |= DEPTHFUNC_ALWAYS; break;
-			case GLS_DEPTHFUNC_LESS:	newDepthStateMask |= DEPTHFUNC_LEQUAL; break;
-			case GLS_DEPTHFUNC_GREATER:	newDepthStateMask |= DEPTHFUNC_GEQUAL; break;
-		}
-    }
-    if ( stateBits & GLS_DEPTHMASK )
-    {
-        newDepthStateMask |= DEPTHSTATE_FLAG_MASK;
-    }
+    // Reject anything with stencil
+    if ( stateBits & GLS_STENCIL_FUNC_BITS )
+        return nullptr;
 
-    return GetDepthState( newDepthStateMask );
+    return GetDepthState( stateBits );
 }
 
 //----------------------------------------------------------------------------
@@ -165,26 +154,12 @@ ID3D11DepthStencilState* D3DDrv_GetDepthState( uint64 stateBits )
 //----------------------------------------------------------------------------
 ID3D11BlendState* D3DDrv_GetBlendState( uint64 stateBits )
 {
-    unsigned long colorMask = 0;
-    int srcFactor = GLS_SRCBLEND_ONE;
-    int dstFactor = GLS_DSTBLEND_ZERO;
-
-    if ( stateBits & (GLS_REDMASK|GLS_GREENMASK|GLS_BLUEMASK|GLS_ALPHAMASK) ) 
-    {
-        if ( stateBits & GLS_REDMASK )      colorMask |= COLORMASK_RED;
-        if ( stateBits & GLS_GREENMASK )    colorMask |= COLORMASK_GREEN;
-        if ( stateBits & GLS_BLUEMASK )     colorMask |= COLORMASK_BLUE;
-        if ( stateBits & GLS_ALPHAMASK )    colorMask |= COLORMASK_ALPHA;
-    }
-
-	if ( stateBits & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) )
-	{
-		srcFactor = stateBits & GLS_SRCBLEND_BITS;
-        dstFactor = stateBits & GLS_DSTBLEND_BITS; 
-    }
+    uint64 colorMask = stateBits & GLS_COLORALPHAMASK;
+    uint64 srcFactor = stateBits & GLS_SRCBLEND_BITS;
+    uint64 dstFactor = stateBits & GLS_DSTBLEND_BITS;
 
     return GetBlendState(
-                (~colorMask) & 0xF, 
+                colorMask, 
                 srcFactor, 
                 dstFactor );
 }
@@ -215,24 +190,52 @@ void D3DDrv_SetRasterizerOptions( uint64 stateBits )
 }
 
 //----------------------------------------------------------------------------
+// Create a depth stencil with stencil parameters
+//----------------------------------------------------------------------------
+void D3DDrv_CreateDepthStencilState( uint64 stateBits, ID3D11DepthStencilState** ppDepthStencilState )
+{
+}
+
+//----------------------------------------------------------------------------
 // Get the depth stencil state based on a mask
 //----------------------------------------------------------------------------
-ID3D11DepthStencilState* GetDepthState( unsigned long mask )
+ID3D11DepthStencilState* GetDepthState( uint64 mask )
 {
     ASSERT( mask < DEPTHSTATE_COUNT );
-    return g_DrawState.depthStates.states[mask];
+
+    uint64 rmask = ( mask & GLS_DEPTHFUNC_BITS ) >> 13;
+
+    assert( rmask <= DEPTHSTATE_FUNC_MASK );
+
+    if ( !( mask & GLS_DEPTHMASK ) )
+    {
+        rmask |= DEPTHSTATE_FLAG_MASK;
+    }
+
+    return g_DrawState.depthStates.states[rmask];
 }
 
 //----------------------------------------------------------------------------
 // Get the blend state based on a mask
 //----------------------------------------------------------------------------
-ID3D11BlendState* GetBlendState( int cmask, int src, int dst )
+ID3D11BlendState* GetBlendState( uint64 cmask, uint64 src, uint64 dst )
 {
     dst >>= 3;
-    ASSERT( cmask < COLORMASK_COUNT );
+    cmask = ~( cmask & GLS_COLORALPHAMASK );
+
+    int cindex = 0;
+    if ( cmask ) 
+    {
+        if ( cmask & GLS_REDMASK )      cindex |= D3D11_COLOR_WRITE_ENABLE_RED;
+        if ( cmask & GLS_GREENMASK )    cindex |= D3D11_COLOR_WRITE_ENABLE_GREEN;
+        if ( cmask & GLS_BLUEMASK )     cindex |= D3D11_COLOR_WRITE_ENABLE_BLUE;
+        if ( cmask & GLS_ALPHAMASK )    cindex |= D3D11_COLOR_WRITE_ENABLE_ALPHA;
+    }
+
+    ASSERT( cindex < COLORMASK_COUNT );
     ASSERT( src < BLENDSTATE_SRC_COUNT );
     ASSERT( dst < BLENDSTATE_DST_COUNT );
-    return g_DrawState.blendStates.states[cmask][src][dst];
+    return g_DrawState.blendStates.states[cindex][src][dst];
 }
 
 //----------------------------------------------------------------------------
@@ -400,38 +403,56 @@ void DestroyRasterStates( d3dRasterStates_t* rs )
     memset( rs, 0, sizeof( d3dRasterStates_t ) );
 }
 
-static ID3D11DepthStencilState* CreateDepthStencilStateFromMask( unsigned long mask )
+static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 mask )
 {
-    ID3D11DepthStencilState* state = nullptr;
+    ZeroMemory( dsd, sizeof( *dsd ) );
 
-    D3D11_DEPTH_STENCIL_DESC dsd;
-    ZeroMemory( &dsd, sizeof( dsd ) );
+    uint64 depthFunc = mask & GLS_DEPTHFUNC_BITS;
+    uint64 stencilFunc = mask & GLS_STENCIL_FUNC_BITS;
 
-    unsigned long depthFunc = mask & DEPTHSTATE_FUNC_MASK;
+    dsd->DepthEnable = TRUE;
+    dsd->StencilEnable = stencilFunc != 0;
 
-    if ( mask & DEPTHSTATE_FLAG_MASK ) {
-        dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+    if ( !( mask & GLS_DEPTHMASK ) ) {
+        dsd->DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
     }
     
     switch ( depthFunc )
     {
-    case DEPTHFUNC_EQUAL:
-        dsd.DepthFunc = D3D11_COMPARISON_EQUAL;
+    case GLS_DEPTHFUNC_EQUAL:
+        dsd->DepthFunc = D3D11_COMPARISON_EQUAL;
         break;
-    case DEPTHFUNC_ALWAYS:
-        dsd.DepthFunc = D3D11_COMPARISON_ALWAYS; 
+    case GLS_DEPTHFUNC_ALWAYS:
+        dsd->DepthFunc = D3D11_COMPARISON_ALWAYS; 
         break;
-    case DEPTHFUNC_LEQUAL:
-        dsd.DepthFunc = D3D11_COMPARISON_LESS_EQUAL; 
+    case GLS_DEPTHFUNC_LESS:
+        dsd->DepthFunc = D3D11_COMPARISON_LESS_EQUAL; 
         break;
-    case DEPTHFUNC_GEQUAL:
-        dsd.DepthFunc = D3D11_COMPARISON_GREATER_EQUAL; 
+    case GLS_DEPTHFUNC_GREATER:
+        dsd->DepthFunc = D3D11_COMPARISON_GREATER_EQUAL; 
         break;
     }
 
+    // @pjb: TODO: stencil
+}
+
+static ID3D11DepthStencilState* CreateDepthStencilStateFromMask( uint64 mask )
+{
+    ID3D11DepthStencilState* state = nullptr;
+
+    // Convert the mask to a GLS code
+    uint64 gls = ( mask & DEPTHSTATE_FUNC_MASK ) << 13;
+
+    if ( !( mask & DEPTHSTATE_FLAG_MASK ) ) {
+        gls |= GLS_DEPTHMASK; 
+    }
+
+    D3D11_DEPTH_STENCIL_DESC dsd;
+    ConfigureDepthStencilState( &dsd, gls );
+
     g_pDevice->CreateDepthStencilState( &dsd, &state );
     if ( !state ) {
-        common->FatalError( "Failed to create DepthStencilState of mask %x\n", mask );
+        common->FatalError( "Failed to create DepthStencilState of mask %x\n", gls );
     }
 
     return state;
@@ -441,7 +462,7 @@ void InitDepthStates( d3dDepthStates_t* ds )
 {
     memset( ds, 0, sizeof( d3dDepthStates_t ) );
 
-    for ( int i = 0; i < _countof( ds->states ); ++i )
+    for ( uint64 i = 0; i < _countof( ds->states ); ++i )
     {
         ds->states[i] = CreateDepthStencilStateFromMask( i );
     }

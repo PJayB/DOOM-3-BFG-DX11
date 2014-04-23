@@ -309,6 +309,7 @@ void idResourceContainer::ExtractResourceFile ( const char * _fileName, const ch
 	uint32 magic;
 	inFile->ReadBig( magic );
 	if ( magic != RESOURCE_FILE_MAGIC ) {
+		idLib::Warning( "%s has bag magic.", _fileName );
 		delete inFile;
 		return;
 	}

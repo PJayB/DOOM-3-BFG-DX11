@@ -1834,8 +1834,10 @@ int idFileSystemLocal::GetFileList( const char *relativePath, const idStrList &e
 				}
  
 				// ensure we have a path, and not just a filename containing the path
-				if ( rt.filename[ pathLength ] == '\0' || rt.filename[pathLength - 1] != '/' ) {
-					continue;
+				if ( pathLength ) {
+                    if ( rt.filename[ pathLength ] == '\0' || rt.filename[pathLength - 1] != '/' ) {
+					    continue;
+                    }
 				}
  
 				// make sure the file is not in a subdirectory

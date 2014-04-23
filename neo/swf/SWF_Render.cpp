@@ -384,11 +384,11 @@ uint64 idSWF::GLStateForRenderState( const swfRenderState_t & renderState ) {
 	uint64 extraGLState = GLS_OVERRIDE | GLS_DEPTHFUNC_LESS | GLS_DEPTHMASK; // SWF GL State always overrides what's set in the material
 
 	if ( renderState.activeMasks > 0 ) {
-		extraGLState |= GLS_STENCIL_FUNC_EQUAL | GLS_STENCIL_MAKE_REF( 128 + renderState.activeMasks ) | GLS_STENCIL_MAKE_MASK( 255 );
+		extraGLState |= GLS_DEPTH_STENCIL_PACKAGE_REF_EQUAL | GLS_STENCIL_MAKE_REF( 128 + renderState.activeMasks );
 	} else if ( renderState.activeMasks == STENCIL_INCR ) {
-		return GLS_COLORMASK | GLS_ALPHAMASK | GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_KEEP | GLS_STENCIL_OP_PASS_INCR;
+		return GLS_COLORMASK | GLS_ALPHAMASK | GLS_DEPTH_STENCIL_PACKAGE_INC;
 	} else if ( renderState.activeMasks == STENCIL_DECR ) {
-		return GLS_COLORMASK | GLS_ALPHAMASK | GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_KEEP | GLS_STENCIL_OP_PASS_DECR;
+		return GLS_COLORMASK | GLS_ALPHAMASK | GLS_DEPTH_STENCIL_PACKAGE_DEC;
 	}
 
 	switch ( renderState.blendMode ) {

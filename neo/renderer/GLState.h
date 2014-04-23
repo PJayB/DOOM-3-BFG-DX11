@@ -87,6 +87,22 @@ static const uint64 GLS_STENCIL_FUNC_MASK_BITS			= 0xFFll << GLS_STENCIL_FUNC_MA
 #define GLS_STENCIL_MAKE_REF( x ) ( ( (uint64)(x) << GLS_STENCIL_FUNC_REF_SHIFT ) & GLS_STENCIL_FUNC_REF_BITS )
 #define GLS_STENCIL_MAKE_MASK( x ) ( ( (uint64)(x) << GLS_STENCIL_FUNC_MASK_SHIFT ) & GLS_STENCIL_FUNC_MASK_BITS )
 
+// @pjb: NOTE: removed these because they caused a combinatorial explosion.
+// Instead we're going to use pre-baked depth-stencil combinations.
+
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_BITS		= 7ull << 36;
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_NONE      = 0ull << 36;
+
+// GLS_STENCIL_FUNC_EQUAL | GLS_STENCIL_MAKE_MASK( 255 );
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_REF_EQUAL = (1ull << 36);
+
+// GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_KEEP | GLS_STENCIL_OP_PASS_INCR;
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_INC       = (2ull << 36);
+
+// GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_KEEP | GLS_STENCIL_OP_PASS_DECR;
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_DEC       = (3ull << 36);
+
+/*
 static const uint64 GLS_STENCIL_FUNC_ALWAYS				= 0ull << 36;
 static const uint64 GLS_STENCIL_FUNC_LESS				= 1ull << 36;
 static const uint64 GLS_STENCIL_FUNC_LEQUAL				= 2ull << 36;
@@ -126,7 +142,9 @@ static const uint64 GLS_STENCIL_OP_PASS_INVERT			= 5ull << 45;
 static const uint64 GLS_STENCIL_OP_PASS_INCR_WRAP		= 6ull << 45;
 static const uint64 GLS_STENCIL_OP_PASS_DECR_WRAP		= 7ull << 45;
 static const uint64 GLS_STENCIL_OP_PASS_BITS			= 7ull << 45;
+*/
 
+/*
 static const uint64 GLS_ALPHATEST_FUNC_REF_SHIFT		= 48;
 static const uint64 GLS_ALPHATEST_FUNC_REF_BITS			= 0xFFll << GLS_ALPHATEST_FUNC_REF_SHIFT;
 #define GLS_ALPHATEST_MAKE_REF( x ) ( ( (uint64)(x) << GLS_ALPHATEST_FUNC_REF_SHIFT ) & GLS_ALPHATEST_FUNC_REF_BITS )
@@ -136,8 +154,11 @@ static const uint64 GLS_ALPHATEST_FUNC_LESS				= 1ull << 56;
 static const uint64 GLS_ALPHATEST_FUNC_GREATER			= 2ull << 56;
 static const uint64 GLS_ALPHATEST_FUNC_EQUAL			= 3ull << 56;
 static const uint64 GLS_ALPHATEST_FUNC_BITS				= 3ull << 56;
+*/
 
+/*
 static const uint64 GLS_STENCIL_OP_BITS					= GLS_STENCIL_OP_FAIL_BITS | GLS_STENCIL_OP_ZFAIL_BITS | GLS_STENCIL_OP_PASS_BITS;
+*/
 
 static const uint64 GLS_OVERRIDE						= 1ull << 63;		// override the render prog state
 

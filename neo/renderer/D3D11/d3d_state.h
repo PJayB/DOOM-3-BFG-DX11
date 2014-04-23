@@ -18,6 +18,7 @@ enum
     DEPTHSTATE_FUNC_MASK = 3,
     DEPTHSTATE_FLAG_MASK = 4, // "mask" being a depth mode in this case
     DEPTHSTATE_COUNT = 8,
+    STENCILPACKAGE_COUNT = 4,
     COLORMASK_COUNT = 16
 };
 
@@ -62,7 +63,7 @@ struct d3dRasterStates_t
 // @pjb: stores common depth states
 struct d3dDepthStates_t
 {
-    ID3D11DepthStencilState* states[DEPTHSTATE_COUNT];
+    ID3D11DepthStencilState* states[STENCILPACKAGE_COUNT][DEPTHSTATE_COUNT];
 };
 
 // @pjb: stores common blend states

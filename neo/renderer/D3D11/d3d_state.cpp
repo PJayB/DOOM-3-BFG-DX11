@@ -143,10 +143,6 @@ void D3DDrv_SetDefaultState()
 //----------------------------------------------------------------------------
 ID3D11DepthStencilState* D3DDrv_GetDepthState( uint64 stateBits )
 {
-    // Reject anything with stencil
-    if ( stateBits & GLS_STENCIL_FUNC_BITS )
-        return nullptr;
-
     return GetDepthState( stateBits );
 }
 
@@ -210,6 +206,8 @@ ID3D11DepthStencilState* D3DDrv_CreateDepthStencilState( uint64 stateBits )
 //----------------------------------------------------------------------------
 ID3D11DepthStencilState* GetDepthState( uint64 mask )
 {
+    uint64 stencilPackage = ( mask & GLS_DEPTH_STENCIL_PACKAGE_BITS ) >> 36;
+
     uint64 rmask = ( mask & GLS_DEPTHFUNC_BITS ) >> 13;
 
     assert( rmask <= DEPTHSTATE_FUNC_MASK );
@@ -219,7 +217,7 @@ ID3D11DepthStencilState* GetDepthState( uint64 mask )
         rmask |= DEPTHSTATE_FLAG_MASK;
     }
 
-    return g_DrawState.depthStates.states[rmask];
+    return g_DrawState.depthStates.states[stencilPackage][rmask];
 }
 
 //----------------------------------------------------------------------------
@@ -415,7 +413,7 @@ static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 ma
     ZeroMemory( dsd, sizeof( *dsd ) );
 
     uint64 depthFunc = mask & GLS_DEPTHFUNC_BITS;
-    uint64 stencilFunc = mask & GLS_STENCIL_FUNC_BITS;
+    uint64 stencilPackage = mask & GLS_DEPTH_STENCIL_PACKAGE_BITS;
 
     dsd->DepthEnable = TRUE;
 
@@ -439,18 +437,55 @@ static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 ma
         break;
     }
 
-    // @pjb: TODO: stencil
-    //dsd->StencilEnable = stencilFunc != 0;
+    if ( stencilPackage != GLS_DEPTH_STENCIL_PACKAGE_NONE )
+    {
+        dsd->StencilEnable = TRUE;
+        dsd->StencilReadMask = 255; // @pjb: todo: Never anything else right now.
+        dsd->StencilWriteMask = 255; // @pjb: todo: Never anything else right now.
+
+        // @pjb: todo: we may want more control here
+        dsd->BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+        dsd->BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+        dsd->BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+        dsd->BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+
+        dsd->FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+
+        switch ( stencilPackage )
+        {
+        case GLS_DEPTH_STENCIL_PACKAGE_REF_EQUAL:
+            dsd->FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+            dsd->FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+            dsd->FrontFace.StencilPassOp = D3D11_STENCIL_OP_REPLACE;
+            dsd->FrontFace.StencilFunc = D3D11_COMPARISON_EQUAL;
+            break;
+        case GLS_DEPTH_STENCIL_PACKAGE_INC:
+            dsd->FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+            dsd->FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+            dsd->FrontFace.StencilPassOp = D3D11_STENCIL_OP_INCR;
+            break;
+        case GLS_DEPTH_STENCIL_PACKAGE_DEC:
+            dsd->FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+            dsd->FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+            dsd->FrontFace.StencilPassOp = D3D11_STENCIL_OP_DECR;
+            break;
+        }
+    }
 }
 
-static ID3D11DepthStencilState* CreateDepthStencilStateFromMask( uint64 mask )
+static ID3D11DepthStencilState* CreateDepthStencilStateFromMask( uint64 stencilBits, uint64 depthBits )
 {
     ID3D11DepthStencilState* state = nullptr;
 
-    // Convert the mask to a GLS code
-    uint64 gls = ( mask & DEPTHSTATE_FUNC_MASK ) << 13;
+    assert( stencilBits < STENCILPACKAGE_COUNT );
+    assert( depthBits < DEPTHSTATE_COUNT );
 
-    if ( !( mask & DEPTHSTATE_FLAG_MASK ) ) {
+    // Convert the mask to a GLS code
+    uint64 gls = 
+        ( stencilBits << 36 ) |
+        ( depthBits & DEPTHSTATE_FUNC_MASK ) << 13;
+
+    if ( !( depthBits & DEPTHSTATE_FLAG_MASK ) ) {
         gls |= GLS_DEPTHMASK; 
     }
 
@@ -469,17 +504,23 @@ void InitDepthStates( d3dDepthStates_t* ds )
 {
     memset( ds, 0, sizeof( d3dDepthStates_t ) );
 
-    for ( uint64 i = 0; i < _countof( ds->states ); ++i )
+    for ( uint64 sp = 0; sp < STENCILPACKAGE_COUNT; ++sp )
     {
-        ds->states[i] = CreateDepthStencilStateFromMask( i );
+        for ( uint64 i = 0; i < DEPTHSTATE_COUNT; ++i )
+        {
+            ds->states[sp][i] = CreateDepthStencilStateFromMask( sp, i );
+        }
     }
 }
 
 void DestroyDepthStates( d3dDepthStates_t* ds )
 {
-    for ( int i = 0; i < _countof( ds->states ); ++i )
+    for ( uint64 sp = 0; sp < STENCILPACKAGE_COUNT; ++sp )
     {
-        SAFE_RELEASE( ds->states[i] );
+        for ( uint64 i = 0; i < DEPTHSTATE_COUNT; ++i )
+        {
+            SAFE_RELEASE( ds->states[sp][i] );
+        }
     }
 
     memset( ds, 0, sizeof( d3dDepthStates_t ) );

@@ -126,8 +126,6 @@ void idRenderProgManager::Init() {
 	builtinShaders[BUILTIN_SHADOW] = FindVertexShader( "shadow.vp" );
 	builtinShaders[BUILTIN_SHADOW_SKINNED] = FindVertexShader( "shadow_skinned.vp" );
 
-	glslUniforms.SetNum( RENDERPARM_USER + MAX_GLSL_USER_PARMS, vec4_zero );
-
 	vertexShaders[builtinShaders[BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED]].usesJoints = true;
 	vertexShaders[builtinShaders[BUILTIN_INTERACTION_SKINNED]].usesJoints = true;
 	vertexShaders[builtinShaders[BUILTIN_INTERACTION_AMBIENT_SKINNED]].usesJoints = true;
@@ -317,24 +315,3 @@ void idRenderProgManager::LoadFragmentShader( int index ) {
         common->FatalError( "Failed to create pixel shader '%s': %08X", pshader->name, hr );
     }
 }
-
-/*
-================================================================================================
-idRenderProgManager::SetRenderParms
-================================================================================================
-*/
-void idRenderProgManager::SetRenderParms( renderParm_t rp, const float * value, int num ) {
-	for ( int i = 0; i < num; i++ ) {
-		SetRenderParm( (renderParm_t)(rp + i), value + ( i * 4 ) );
-	}
-}
-
-/*
-================================================================================================
-idRenderProgManager::SetRenderParm
-================================================================================================
-*/
-void idRenderProgManager::SetRenderParm( renderParm_t rp, const float * value ) {
-	// @pjb: todo: SetUniformValue( rp, value );
-}
-

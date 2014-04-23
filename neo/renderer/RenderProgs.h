@@ -143,9 +143,6 @@ public:
 	void	Init();
 	void	Shutdown();
 
-	void	SetRenderParm( renderParm_t rp, const float * value );
-	void	SetRenderParms( renderParm_t rp, const float * values, int numValues );
-
 	int		FindVertexShader( const char * name );
 	int		FindFragmentShader( const char * name );
 
@@ -189,21 +186,17 @@ public:
 	void	BindShader_MotionBlur() { BindShader_Builtin( BUILTIN_MOTION_BLUR); }
     */
 
+    /*
+    @pjb: todo
 	// the joints buffer should only be bound for vertex programs that use joints
 	bool	ShaderUsesJoints() const { return vertexShaders[currentVertexShader].usesJoints; }
 	// the rpEnableSkinning render parm should only be set for vertex programs that use it
 	bool	ShaderHasOptionalSkinning() const { return vertexShaders[currentVertexShader].optionalSkinning; }
+    */
 
     // this should only be called via the reload shader console command
 	void	LoadAllShaders();
 	void	KillAllShaders();
-
-	static const int	MAX_GLSL_USER_PARMS = 8;
-	const char*	GetGLSLParmName( int rp ) const;
-	void		SetUniformValue( const renderParm_t rp, const float * value );
-	void		CommitUniforms();
-	int			FindGLSLProgram( const char* name, int vIndex, int fIndex );
-	void		ZeroUniforms();
 
 protected:
 	void	LoadVertexShader( int index );
@@ -269,9 +262,6 @@ protected:
 		ID3D11PixelShader* pShader;
 		idList<int>	uniforms;
 	};
-
-	idStaticList<idVec4, RENDERPARM_USER + MAX_GLSL_USER_PARMS> glslUniforms;
-
 
 	int				currentVertexShader;
 	int				currentFragmentShader;

@@ -657,28 +657,11 @@ void idFileSystemLocal::AddRenderProgs( idStrList &files ) {
 	idStrList work;
 
 	// grab all the renderprogs
-	idStr path = RelativePathToOSPath( "renderprogs/cgb", "fs_basepath" );
-	ListOSFiles( path, "*.cgb", work );
+	idStr path = RelativePathToOSPath( "compiled_shaders", "fs_basepath" );
+	ListOSFiles( path, "*.cso", work );
 	for ( int i = 0; i < work.Num(); i++ ) {
-		files.Append( idStr( "renderprogs/cgb/" ) + work[i] );
+		files.Append( idStr( "compiled_shaders/" ) + work[i] );
 	}
-
-	path = RelativePathToOSPath( "renderprogs/hlsl", "fs_basepath" );
-	ListOSFiles( path, "*.v360", work );
-	for ( int i = 0; i < work.Num(); i++ ) {
-		files.Append( idStr( "renderprogs/hlsl/" ) + work[i] );
-	}
-	ListOSFiles( path, "*.p360", work );
-	for ( int i = 0; i < work.Num(); i++ ) {
-		files.Append( idStr( "renderprogs/hlsl/" ) + work[i] );
-	}
-
-	path = RelativePathToOSPath( "renderprogs/gl", "fs_basepath" );
-	ListOSFiles( path, "*.*", work );
-	for ( int i = 0; i < work.Num(); i++ ) {
-		files.Append( idStr( "renderprogs/gl/" ) + work[i] );
-	}
-
 }
 
 /*

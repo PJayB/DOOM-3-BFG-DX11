@@ -1409,9 +1409,6 @@
     <FxCompile Include="renderer\hlsl\bink.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\bink.vertex">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\bink_gui.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
@@ -1440,6 +1437,9 @@
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\bink_gui.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\bink.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
   </ItemGroup>

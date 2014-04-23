@@ -194,6 +194,12 @@ void D3DDrv_SetRasterizerOptions( uint64 stateBits )
 //----------------------------------------------------------------------------
 void D3DDrv_CreateDepthStencilState( uint64 stateBits, ID3D11DepthStencilState** ppDepthStencilState )
 {
+    D3D11_DEPTH_STENCIL_DESC dsd;
+    ZeroMemory( &dsd, sizeof( dsd ) );
+
+    ConfigureDepthStencilState( &dsd, stateBits );
+
+    g_pDevice->CreateDepthStencilState( &dsd, ppDepthStencilState );
 }
 
 //----------------------------------------------------------------------------

@@ -210,8 +210,6 @@ ID3D11DepthStencilState* D3DDrv_CreateDepthStencilState( uint64 stateBits )
 //----------------------------------------------------------------------------
 ID3D11DepthStencilState* GetDepthState( uint64 mask )
 {
-    ASSERT( mask < DEPTHSTATE_COUNT );
-
     uint64 rmask = ( mask & GLS_DEPTHFUNC_BITS ) >> 13;
 
     assert( rmask <= DEPTHSTATE_FUNC_MASK );
@@ -420,7 +418,6 @@ static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 ma
     uint64 stencilFunc = mask & GLS_STENCIL_FUNC_BITS;
 
     dsd->DepthEnable = TRUE;
-    dsd->StencilEnable = stencilFunc != 0;
 
     if ( !( mask & GLS_DEPTHMASK ) ) {
         dsd->DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
@@ -443,6 +440,7 @@ static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 ma
     }
 
     // @pjb: TODO: stencil
+    //dsd->StencilEnable = stencilFunc != 0;
 }
 
 static ID3D11DepthStencilState* CreateDepthStencilStateFromMask( uint64 mask )

@@ -712,9 +712,7 @@ public:
 
 	virtual void			SetColor( const idVec4 & color );
 	virtual uint32			GetColor();
-	virtual void			SetDepthStencilState( ID3D11DepthStencilState* pDepthStencilState, uint stencilRef );
-	virtual void			SetBlendState( ID3D11BlendState* pBlendState );
-    virtual void            SetState( const uint64 stateMask );
+	virtual void			SetGLState( const uint64 glState ) ;
 	virtual void			DrawFilled( const idVec4 & color, float x, float y, float w, float h );
 	virtual void			DrawStretchPic ( float x, float y, float w, float h, float s1, float t1, float s2, float t2, const idMaterial *material );
 	virtual void			DrawStretchPic( const idVec4 & topLeft, const idVec4 & topRight, const idVec4 & bottomRight, const idVec4 & bottomLeft, const idMaterial * material );

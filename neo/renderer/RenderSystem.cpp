@@ -274,36 +274,11 @@ uint32 idRenderSystemLocal::GetColor() {
 
 /*
 =============
-idRenderSystemLocal::SetDepthStencilState
+idRenderSystemLocal::SetGLState
 =============
 */
-void idRenderSystemLocal::SetDepthStencilState( ID3D11DepthStencilState* pDepthStencilState, uint stencilRef ) {
-	assert( pDepthStencilState );
-    D3DDrv_GetImmediateContext()->OMSetDepthStencilState( pDepthStencilState, (UINT) stencilRef );
-}
-
-/*
-=============
-idRenderSystemLocal::SetBlendState
-=============
-*/
-void idRenderSystemLocal::SetBlendState( ID3D11BlendState* pBlendState ) {
-	assert( pBlendState );
-    FLOAT factors[4] = { 0, 0, 0, 0 };
-    UINT mask = ~0U;
-    D3DDrv_GetImmediateContext()->OMSetBlendState( pBlendState, factors, mask );
-}
-
-/*
-=============
-idRenderSystemLocal::SetState - absolutely NO STENCIL BITS must be used here.
-=============
-*/
-void idRenderSystemLocal::SetState( const uint64 stateBits ) {
-	assert( ( stateBits & GLS_STENCIL_FUNC_BITS ) == 0 );
-    SetBlendState( D3DDrv_GetBlendState( stateBits ) );
-    SetDepthStencilState( D3DDrv_GetDepthState( stateBits ), 0 );
-    D3DDrv_SetRasterizerOptions( stateBits );
+void idRenderSystemLocal::SetGLState( const uint64 stateBits ) {
+	currentGLState = stateBits;
 }
 
 /*

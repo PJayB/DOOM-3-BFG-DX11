@@ -40,6 +40,7 @@ QD3D11Device* D3DDrv_GetDevice()
 
 ID3D11DeviceContext1* D3DDrv_GetImmediateContext()
 {
+    // @pjb: todo: assert( !idLib::IsMainThread() );
     return g_pImmediateContext;
 }
 

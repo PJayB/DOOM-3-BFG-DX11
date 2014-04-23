@@ -134,22 +134,14 @@ void D3DDrv_SetViewport( int left, int top, int width, int height )
 //----------------------------------------------------------------------------
 void D3DDrv_SetDefaultState()
 {
-    D3DDrv_SetState( 0 );
     CommitRasterizerState( CT_FRONT_SIDED, false, false );
 }
 
 //----------------------------------------------------------------------------
-// Set the state based on the mask
+// Get the depth state based on the mask (no stencil)
 //----------------------------------------------------------------------------
-void D3DDrv_SetState( uint64 stateBits )
+ID3D11DepthStencilState* D3DDrv_GetDepthState( uint64 stateBits )
 {
-	unsigned long diff = stateBits ^ g_RunState.stateMask;
-
-	if ( !diff )
-	{
-		return;
-	}
-    
     unsigned long newDepthStateMask = 0;
 	if ( stateBits & GLS_DEPTHFUNC_BITS )
 	{
@@ -165,54 +157,47 @@ void D3DDrv_SetState( uint64 stateBits )
         newDepthStateMask |= DEPTHSTATE_FLAG_MASK;
     }
 
-    if ( newDepthStateMask != g_RunState.depthStateMask )
+    return GetDepthState( newDepthStateMask );
+}
+
+//----------------------------------------------------------------------------
+// Get the blend state based on the mask
+//----------------------------------------------------------------------------
+ID3D11BlendState* D3DDrv_GetBlendState( uint64 stateBits )
+{
+    unsigned long colorMask = 0;
+    int srcFactor = GLS_SRCBLEND_ONE;
+    int dstFactor = GLS_DSTBLEND_ZERO;
+
+    if ( stateBits & (GLS_REDMASK|GLS_GREENMASK|GLS_BLUEMASK|GLS_ALPHAMASK) ) 
     {
-        g_pImmediateContext->OMSetDepthStencilState( GetDepthState( newDepthStateMask ), 0 );
-        g_RunState.depthStateMask = newDepthStateMask;
+        if ( stateBits & GLS_REDMASK )      colorMask |= COLORMASK_RED;
+        if ( stateBits & GLS_GREENMASK )    colorMask |= COLORMASK_GREEN;
+        if ( stateBits & GLS_BLUEMASK )     colorMask |= COLORMASK_BLUE;
+        if ( stateBits & GLS_ALPHAMASK )    colorMask |= COLORMASK_ALPHA;
     }
 
-    bool requiresBlendStateRefresh = true;
-    unsigned long colorMask = g_RunState.colorMask;
-    int srcFactor = g_RunState.srcFactor;
-    int dstFactor = g_RunState.dstFactor;
-
-    if ( diff & (GLS_REDMASK|GLS_GREENMASK|GLS_BLUEMASK|GLS_ALPHAMASK) ) 
-    {
-        colorMask = COLORMASK_ALL;
-        if ( stateBits & GLS_REDMASK ) colorMask &= ~COLORMASK_RED;
-        if ( stateBits & GLS_GREENMASK ) colorMask &= ~COLORMASK_GREEN;
-        if ( stateBits & GLS_BLUEMASK ) colorMask &= ~COLORMASK_BLUE;
-        if ( stateBits & GLS_ALPHAMASK ) colorMask &= ~COLORMASK_ALPHA;
-        requiresBlendStateRefresh = true;
-    }
-
-	if ( diff & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) )
+	if ( stateBits & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) )
 	{
 		srcFactor = stateBits & GLS_SRCBLEND_BITS;
         dstFactor = stateBits & GLS_DSTBLEND_BITS; 
-        requiresBlendStateRefresh = true;
     }
 
-    if ( requiresBlendStateRefresh )
-    {
-        float blendFactor[4] = {0, 0, 0, 0};
-        g_pImmediateContext->OMSetBlendState( 
-            GetBlendState(
-                colorMask, 
+    return GetBlendState(
+                (~colorMask) & 0xF, 
                 srcFactor, 
-                dstFactor ),
-            blendFactor,
-            ~0U );
+                dstFactor );
+}
 
-        g_RunState.colorMask = colorMask;
-        g_RunState.srcFactor = srcFactor;
-        g_RunState.dstFactor = dstFactor;
-    }
-
+//----------------------------------------------------------------------------
+// Set the rasterizer mode based on the mask, but defer until later
+//----------------------------------------------------------------------------
+void D3DDrv_SetRasterizerOptions( uint64 stateBits )
+{
 	//
 	// fill/line mode
 	//
-	if ( diff & GLS_POLYMODE_LINE ) 
+	if ( stateBits & GLS_POLYMODE_LINE ) 
     {
 		g_RunState.lineMode = ( stateBits & GLS_POLYMODE_LINE ) != 0;
 	}
@@ -220,23 +205,13 @@ void D3DDrv_SetState( uint64 stateBits )
 	//
 	// polygon offset
 	//
-	if ( diff & GLS_POLYGON_OFFSET ) {
-		g_RunState.polyOffsetEnabled = ( stateBits & GLS_POLYGON_OFFSET ) != 0;
+    bool shouldEnable = ( stateBits & GLS_POLYGON_OFFSET ) != 0;
+    bool alreadyEnabled = ( stateBits & GLS_POLYGON_OFFSET ) != 0;
+	if ( shouldEnable != alreadyEnabled ) {
+		g_RunState.polyOffsetEnabled = shouldEnable;
 	    g_RunState.polyOffset[0] = backEnd.glState.polyOfsScale;
         g_RunState.polyOffset[1] = backEnd.glState.polyOfsBias;
 	}
-
-    // TODO: stencil
-
-    g_RunState.stateMask = stateBits;
-}
-
-//----------------------------------------------------------------------------
-// Get the current state
-//----------------------------------------------------------------------------
-uint64 D3DDrv_GetCurrentState() 
-{
-    return g_RunState.stateMask;
 }
 
 //----------------------------------------------------------------------------
@@ -244,7 +219,7 @@ uint64 D3DDrv_GetCurrentState()
 //----------------------------------------------------------------------------
 ID3D11DepthStencilState* GetDepthState( unsigned long mask )
 {
-    ASSERT( mask < 8 );
+    ASSERT( mask < DEPTHSTATE_COUNT );
     return g_DrawState.depthStates.states[mask];
 }
 
@@ -254,6 +229,7 @@ ID3D11DepthStencilState* GetDepthState( unsigned long mask )
 ID3D11BlendState* GetBlendState( int cmask, int src, int dst )
 {
     dst >>= 3;
+    ASSERT( cmask < COLORMASK_COUNT );
     ASSERT( src < BLENDSTATE_SRC_COUNT );
     ASSERT( dst < BLENDSTATE_DST_COUNT );
     return g_DrawState.blendStates.states[cmask][src][dst];
@@ -544,7 +520,6 @@ void InitDrawState()
     memset( &g_DrawState, 0, sizeof( g_DrawState ) );
 
     // Set up default state
-    g_RunState.stateMask = 0;
     g_RunState.vsDirtyConstants = true;
     g_RunState.psDirtyConstants = true;
     g_RunState.cullMode = -1;
@@ -560,7 +535,7 @@ void InitDrawState()
     // Set up some default state
     g_pImmediateContext->OMSetRenderTargets( 1, &g_BufferState.backBufferView, g_BufferState.depthBufferView );
     D3DDrv_SetViewport( 0, 0, g_BufferState.backBufferDesc.Width, g_BufferState.backBufferDesc.Height );
-    D3DDrv_SetState( GLS_DEFAULT );
+    D3DDrv_SetDefaultState();
 
     // Clear the targets
     FLOAT clearCol[4] = { 0, 0, 0, 0 };

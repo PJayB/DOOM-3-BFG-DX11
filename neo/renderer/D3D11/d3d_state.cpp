@@ -34,6 +34,7 @@ static const DXGI_FORMAT DEPTH_SHADER_VIEW_FORMAT = DXGI_FORMAT_R24_UNORM_X8_TYP
 //
 //----------------------------------------------------------------------------
 
+static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 mask );
 
 //----------------------------------------------------------------------------
 // Get the back buffer and depth/stencil buffer.
@@ -192,14 +193,16 @@ void D3DDrv_SetRasterizerOptions( uint64 stateBits )
 //----------------------------------------------------------------------------
 // Create a depth stencil with stencil parameters
 //----------------------------------------------------------------------------
-void D3DDrv_CreateDepthStencilState( uint64 stateBits, ID3D11DepthStencilState** ppDepthStencilState )
+ID3D11DepthStencilState* D3DDrv_CreateDepthStencilState( uint64 stateBits )
 {
     D3D11_DEPTH_STENCIL_DESC dsd;
     ZeroMemory( &dsd, sizeof( dsd ) );
 
     ConfigureDepthStencilState( &dsd, stateBits );
 
-    g_pDevice->CreateDepthStencilState( &dsd, ppDepthStencilState );
+    ID3D11DepthStencilState* pDSS = nullptr;
+    g_pDevice->CreateDepthStencilState( &dsd, &pDSS );
+    return pDSS;
 }
 
 //----------------------------------------------------------------------------
@@ -247,7 +250,7 @@ ID3D11BlendState* GetBlendState( uint64 cmask, uint64 src, uint64 dst )
 //----------------------------------------------------------------------------
 // Get the blend state based on a mask
 //----------------------------------------------------------------------------
-ID3D11RasterizerState* GetRasterizerState( D3D11_CULL_MODE cullMode, unsigned long rmask )
+ID3D11RasterizerState* GetRasterizerState( D3D11_CULL_MODE cullMode, uint64 rmask )
 {
     ASSERT( cullMode > 0 && cullMode <= CULLMODE_COUNT );
     ASSERT( rmask < RASTERIZERSTATE_COUNT );

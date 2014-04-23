@@ -185,6 +185,10 @@ private:
 
 	const idMaterial *		atlasMaterial;
 
+    ID3D11DepthStencilState* depthStencilRef;
+    ID3D11DepthStencilState* depthStencilInc;
+    ID3D11DepthStencilState* depthStencilDec;
+
 	idBlockAlloc< idSWFSpriteInstance, 16 >	spriteInstanceAllocator;
 	idBlockAlloc< idSWFTextInstance, 16 >	textInstanceAllocator;
 
@@ -295,6 +299,11 @@ private:
 	friend class idSWFSprite;
 	friend class idSWFSpriteInstance;
 
+    void            CreateDepthStencilStates();
+    void            SetStateForRenderState( idRenderSystem* gui, const swfRenderState_t & renderState ) const;
+	ID3D11DepthStencilState* GetDepthStateForRenderState( const swfRenderState_t & renderState ) const;
+    ID3D11BlendState* GetBlendStateForRenderState( const swfRenderState_t & renderState ) const;
+
 	bool			LoadSWF( const char * fullpath );
 	bool			LoadBinary( const char * bfilename, ID_TIME_T sourceTime );
 	void			WriteBinary( const char * bfilename );
@@ -330,7 +339,6 @@ private:
 	void			DrawEditCursor( idRenderSystem * gui, float x, float y, float w, float h, const swfMatrix_t & matrix );
 	void			DrawLine( idRenderSystem * gui, const idVec2 & p1, const idVec2 & p2, float width, const swfMatrix_t & matrix );
 	void			RenderEditText( idRenderSystem * gui, idSWFTextInstance * textInstance, const swfRenderState_t & renderState, int time, bool isSplitscreen = false );
-	uint64			GLStateForRenderState( const swfRenderState_t & renderState );
 	void			FindTooltipIcons( idStr * text );
 
 	//----------------------------------

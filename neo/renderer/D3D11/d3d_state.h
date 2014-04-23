@@ -116,9 +116,9 @@ void DestroyDrawState();
 // cullmode = CT_ flags
 void CommitRasterizerState( int cullMode, bool polyOffset, bool outline );
 
-ID3D11RasterizerState* GetRasterizerState( D3D11_CULL_MODE cullmode, unsigned long mask );
-ID3D11DepthStencilState* GetDepthState( unsigned long mask ); // DEPTHSTATE_FLAG_ enum
-ID3D11BlendState* GetBlendState( int cmask, int src, int dst );
+ID3D11RasterizerState* GetRasterizerState( D3D11_CULL_MODE cullmode, uint64 mask );
+ID3D11DepthStencilState* GetDepthState( uint64 mask ); // DEPTHSTATE_FLAG_ enum
+ID3D11BlendState* GetBlendState( uint64 cmask, uint64 src, uint64 dst );
 D3D11_BLEND GetSrcBlendConstant( int qConstant );
 D3D11_BLEND GetDestBlendConstant( int qConstant );
 D3D11_BLEND GetSrcBlendAlphaConstant( int qConstant );

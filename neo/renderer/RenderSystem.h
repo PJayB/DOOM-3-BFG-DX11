@@ -239,6 +239,8 @@ public:
 	virtual uint32			GetColor() = 0;
 
     // Will barf if you try and use stencil.
+    virtual void            SetBlendState( ID3D11BlendState* pBlendState ) = 0;
+    virtual void            SetDepthStencilState( ID3D11DepthStencilState* pDepthStencilState, uint stencilRef ) = 0;
 	virtual void			SetState( const uint64 glState ) = 0;
 
 	virtual void			DrawFilled( const idVec4 & color, float x, float y, float w, float h ) = 0;

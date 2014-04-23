@@ -202,6 +202,9 @@ idSWF::idSWF( const char * filename_, idSoundWorld * soundWorld_ ) {
 	}
 
 	soundWorld = soundWorld_;
+
+    // Create the depth stencil states
+    CreateDepthStencilStates();
 }
 
 /*
@@ -242,6 +245,10 @@ idSWF::~idSWF() {
 
 	shortcutKeys->Clear();
 	shortcutKeys->Release();
+
+    SAFE_RELEASE(depthStencilRef);
+    SAFE_RELEASE(depthStencilInc);
+    SAFE_RELEASE(depthStencilDec);
 }
 
 /*

@@ -146,7 +146,7 @@ void idSWF::Render( idRenderSystem * gui, int time, bool isSplitscreen ) {
 	}
 
 	if ( isMouseInClientArea && ( mouseEnabled && useMouse ) && ( InhibitControl() || ( !InhibitControl() && !useInhibtControl ) ) ) {
-		gui->SetGLState( GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
+		gui->SetState( GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 		gui->SetColor( idVec4( 1.0f, 1.0f, 1.0f, 1.0f ) );
 		idVec2 mouse = renderState.matrix.Transform( idVec2( mouseX - 1, mouseY - 2 ) );
 		//idSWFScriptObject * hitObject = HitTest( mainspriteInstance, swfRenderState_t(), mouseX, mouseY, NULL );
@@ -158,7 +158,7 @@ void idSWF::Render( idRenderSystem * gui, int time, bool isSplitscreen ) {
 	}
 
 	// restore the GL State
-	gui->SetGLState( 0 );
+	gui->SetState( 0 );
 }
 
 /*
@@ -376,10 +376,108 @@ void idSWF::RenderSprite( idRenderSystem * gui, idSWFSpriteInstance * spriteInst
 }
 
 /*
+===================
+idSWF::CreateDepthStencilStates
+===================
+*/
+void idSWF::CreateDepthStencilStates()
+{
+    depthStencilRef = D3DDrv_CreateDepthStencilState( 
+        GLS_DEPTHFUNC_LESS | 
+        GLS_DEPTHMASK | 
+        GLS_STENCIL_FUNC_EQUAL | 
+        GLS_STENCIL_MAKE_MASK( 255 ) );
+
+    depthStencilInc = D3DDrv_CreateDepthStencilState(
+        GLS_STENCIL_OP_FAIL_KEEP | 
+        GLS_STENCIL_OP_ZFAIL_KEEP | 
+        GLS_STENCIL_OP_PASS_INCR );
+
+    depthStencilDec = D3DDrv_CreateDepthStencilState(
+        GLS_STENCIL_OP_FAIL_KEEP | 
+        GLS_STENCIL_OP_ZFAIL_KEEP | 
+        GLS_STENCIL_OP_PASS_DECR );
+
+    assert( depthStencilRef );
+    assert( depthStencilInc );
+    assert( depthStencilDec );
+}
+
+/*
+========================
+idSWF::GetDepthStateForBlendMode
+========================
+*/
+ID3D11DepthStencilState* idSWF::GetDepthStateForRenderState( const swfRenderState_t & renderState ) const {
+    if ( renderState.activeMasks > 0 ) {
+	    return depthStencilRef;
+    } else if ( renderState.activeMasks == STENCIL_INCR ) {
+		return depthStencilInc;
+	} else if ( renderState.activeMasks == STENCIL_DECR ) {
+		return depthStencilDec;
+	} else {
+        return D3DDrv_GetDepthState( GLS_DEPTHFUNC_LESS | GLS_DEPTHMASK );
+    }
+}
+
+/*
+========================
+idSWF::GetBlendStateForBlendMode
+========================
+*/
+static uint64 GetGlsStateForRenderState( const swfRenderState_t & renderState ) {
+	uint64 extraGLState = 0;
+
+    if ( renderState.activeMasks == STENCIL_INCR ) {
+		return GLS_COLORMASK | GLS_ALPHAMASK;
+	} else if ( renderState.activeMasks == STENCIL_DECR ) {
+		return GLS_COLORMASK | GLS_ALPHAMASK;
+	}
+
+	switch ( renderState.blendMode ) {
+		case 7: // difference : dst = abs( dst - src )
+		case 9: // subtract : dst = dst - src
+			return extraGLState | ( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_BLENDOP_SUB );
+		case 8: // add : dst = dst + src
+			return extraGLState | ( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
+		case 6: // darken : dst = min( dst, src )
+			return extraGLState | ( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_BLENDOP_MIN );
+		case 5: // lighten : dst = max( dst, src )
+			return extraGLState | ( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_BLENDOP_MAX );
+		case 4: // screen : dst = dst + src - dst*src ( we only do dst - dst * src, we could do the extra + src with another pass if we need to)
+			return extraGLState | ( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ONE | GLS_BLENDOP_SUB );
+		case 14: // hardlight : src < 0.5 ? multiply : screen
+		case 13: // overlay : dst < 0.5 ? multiply  : screen
+		case 3: // multiply : dst = ( dst * src ) + ( dst * (1-src.a) )
+			return extraGLState | ( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
+		case 12: // erase
+		case 11: // alpha
+		case 10: // invert
+		case 2: // layer
+		case 1: // normal
+		case 0: // normaler
+		default:
+			return extraGLState | ( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
+	}
+}
+
+ID3D11BlendState* idSWF::GetBlendStateForRenderState( const swfRenderState_t & renderState ) const {
+
+    ID3D11BlendState* pBlendState = D3DDrv_GetBlendState( GetGlsStateForRenderState( renderState ) );
+    assert( pBlendState );
+    return pBlendState;
+}
+
+void idSWF::SetStateForRenderState( idRenderSystem* gui, const swfRenderState_t & renderState ) const {
+    gui->SetDepthStencilState( GetDepthStateForRenderState( renderState ), renderState.activeMasks + 128 );
+	gui->SetBlendState( GetBlendStateForRenderState( renderState ) );
+}
+
+/*
 ========================
 idSWF::GLStateForBlendMode
 ========================
-*/
+
 uint64 idSWF::GLStateForRenderState( const swfRenderState_t & renderState ) {
 	uint64 extraGLState = GLS_OVERRIDE | GLS_DEPTHFUNC_LESS | GLS_DEPTHMASK; // SWF GL State always overrides what's set in the material
 
@@ -417,6 +515,7 @@ uint64 idSWF::GLStateForRenderState( const swfRenderState_t & renderState ) {
 			return extraGLState | ( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 	}
 }
+*/
 
 /*
 ========================
@@ -479,7 +578,7 @@ void idSWF::RenderMorphShape( idRenderSystem * gui, const idSWFShape * shape, co
 
 		swfMatrix_t invMatrix = styleMatrix.Inverse();
 
-		gui->SetGLState( GLStateForRenderState( renderState ) );
+        SetStateForRenderState( gui, renderState );
 
 		idDrawVert * verts = gui->AllocTris( fill.startVerts.Num(), fill.indices.Ptr(), fill.indices.Num(), material, renderState.stereoDepth );	
 		if ( verts == NULL ) {
@@ -577,7 +676,7 @@ void idSWF::RenderShape( idRenderSystem * gui, const idSWFShape * shape, const s
 		}
 		idVec2 oneOverSize( 1.0f / size.x, 1.0f / size.y );
 
-		gui->SetGLState( GLStateForRenderState( renderState ) );
+		SetStateForRenderState( gui, renderState );
 
 		idDrawVert * verts = gui->AllocTris( fill.startVerts.Num(), fill.indices.Ptr(), fill.indices.Num(), material, renderState.stereoDepth );	
 		if ( verts == NULL ) {
@@ -641,7 +740,8 @@ void idSWF::RenderShape( idRenderSystem * gui, const idSWFShape * shape, const s
 		uint32 packedColorM = LittleLong( PackColor( color.mul ) );
 		uint32 packedColorA = LittleLong( PackColor( ( color.add * 0.5f ) + idVec4( 0.5f ) ) ); // Compress from -1..1 to 0..1
 
-		gui->SetGLState( GLStateForRenderState( renderState ) | GLS_POLYMODE_LINE );
+        gui->SetState( GLS_POLYMODE_LINE );
+        SetStateForRenderState( gui, renderState );
 
 		idDrawVert * verts = gui->AllocTris( line.startVerts.Num(), line.indices.Ptr(), line.indices.Num(), white, renderState.stereoDepth );	
 		if ( verts == NULL ) {
@@ -805,7 +905,7 @@ void idSWF::RenderEditText( idRenderSystem * gui, idSWFTextInstance * textInstan
 	selColor.w *= 0.5f;
 
 	gui->SetColor( defaultColor );
-	gui->SetGLState( GLStateForRenderState( renderState ) );
+	SetStateForRenderState( gui, renderState );
 
 	swfRect_t bounds;
 	bounds.tl.x = xScale * ( shape->bounds.tl.x + SWFTWIP( shape->leftMargin ) );

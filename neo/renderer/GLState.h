@@ -78,13 +78,9 @@ static const uint64 GLS_BLENDOP_MAX						= 3 << 18;
 static const uint64 GLS_BLENDOP_BITS					= 3 << 18;
 
 // stencil bits
-static const uint64 GLS_STENCIL_FUNC_REF_SHIFT			= 20;
-static const uint64 GLS_STENCIL_FUNC_REF_BITS			= 0xFFll << GLS_STENCIL_FUNC_REF_SHIFT;
-
 static const uint64 GLS_STENCIL_FUNC_MASK_SHIFT			= 28;
 static const uint64 GLS_STENCIL_FUNC_MASK_BITS			= 0xFFll << GLS_STENCIL_FUNC_MASK_SHIFT;
 
-#define GLS_STENCIL_MAKE_REF( x ) ( ( (uint64)(x) << GLS_STENCIL_FUNC_REF_SHIFT ) & GLS_STENCIL_FUNC_REF_BITS )
 #define GLS_STENCIL_MAKE_MASK( x ) ( ( (uint64)(x) << GLS_STENCIL_FUNC_MASK_SHIFT ) & GLS_STENCIL_FUNC_MASK_BITS )
 
 static const uint64 GLS_STENCIL_FUNC_ALWAYS				= 0ull << 36;

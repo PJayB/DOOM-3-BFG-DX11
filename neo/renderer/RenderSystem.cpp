@@ -303,6 +303,7 @@ void idRenderSystemLocal::SetState( const uint64 stateBits ) {
 	assert( ( stateBits & GLS_STENCIL_FUNC_BITS ) == 0 );
     SetBlendState( D3DDrv_GetBlendState( stateBits ) );
     SetDepthStencilState( D3DDrv_GetDepthState( stateBits ), 0 );
+    D3DDrv_SetRasterizerOptions( stateBits );
 }
 
 /*

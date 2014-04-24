@@ -12,7 +12,7 @@ public:
     }
 
 private:
-    template<class VertexType> class idVertexLayout 
+    template<class VertexType> struct idVertexLayout 
     {
         static ID3D11InputLayout* s_layout;
     };

@@ -144,10 +144,69 @@ public:
 
     inline bool IsConstantBufferDirty() const { return builtinCbuffer.dirty; }
     void    UpdateConstantBuffer( ID3D11DeviceContext* pContext );
+
+    ID3D11VertexShader* GetVertexShader( int vshader ) const { return vertexShaders[vshader].pShader; }
+    ID3D11PixelShader* GetPixelShader( int pshader ) const { return fragmentShaders[pshader].pShader; }
+
+    void GetBuiltInVertexShaderByteCode( int vshader, const void** ppBlob, uint* length ) const {
+        *ppBlob = vertexShaders[builtinShaders[vshader]].pByteCode;
+        *length = vertexShaders[builtinShaders[vshader]].ByteCodeSize;
+    }
     
-    /*
+    ID3D11VertexShader* GetBuiltInVertexShader( int vshader ) const { 
+        assert( vshader < MAX_BUILTINS );
+        return vertexShaders[builtinShaders[vshader]].pShader; 
+    }
+
+    ID3D11PixelShader* GetBuiltInPixelShader( int pshader ) const { 
+        assert( pshader < MAX_BUILTINS );
+        return fragmentShaders[builtinShaders[pshader]].pShader; 
+    }
+
+	enum {
+		BUILTIN_GUI,
+		BUILTIN_COLOR,
+		BUILTIN_SIMPLESHADE,
+		BUILTIN_TEXTURED,
+		BUILTIN_TEXTURE_VERTEXCOLOR,
+		BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED,
+		BUILTIN_TEXTURE_TEXGEN_VERTEXCOLOR,
+		BUILTIN_INTERACTION,
+		BUILTIN_INTERACTION_SKINNED,
+		BUILTIN_INTERACTION_AMBIENT,
+		BUILTIN_INTERACTION_AMBIENT_SKINNED,
+		BUILTIN_ENVIRONMENT,
+		BUILTIN_ENVIRONMENT_SKINNED,
+		BUILTIN_BUMPY_ENVIRONMENT,
+		BUILTIN_BUMPY_ENVIRONMENT_SKINNED,
+
+		BUILTIN_DEPTH,
+		BUILTIN_DEPTH_SKINNED,
+		BUILTIN_SHADOW,
+		BUILTIN_SHADOW_SKINNED,
+		BUILTIN_SHADOW_DEBUG,
+		BUILTIN_SHADOW_DEBUG_SKINNED,
+
+		BUILTIN_BLENDLIGHT,
+		BUILTIN_FOG,
+		BUILTIN_FOG_SKINNED,
+		BUILTIN_SKYBOX,
+		BUILTIN_WOBBLESKY,
+		BUILTIN_POSTPROCESS,
+		BUILTIN_STEREO_DEGHOST,
+		BUILTIN_STEREO_WARP,
+		BUILTIN_ZCULL_RECONSTRUCT,
+		BUILTIN_BINK,
+		BUILTIN_BINK_GUI,
+		BUILTIN_STEREO_INTERLACE,
+		BUILTIN_MOTION_BLUR,
+
+		MAX_BUILTINS
+	};
+
+	/*
     @pjb: todo
-	void	BindShader_GUI( ) { BindShader_Builtin( BUILTIN_GUI ); }
+    void	BindShader_GUI( ) { BindShader_Builtin( BUILTIN_GUI ); }
 	void	BindShader_Color( ) { BindShader_Builtin( BUILTIN_COLOR ); }
 	void	BindShader_Texture( ) { BindShader_Builtin( BUILTIN_TEXTURED ); }
 	void	BindShader_TextureVertexColor() { BindShader_Builtin( BUILTIN_TEXTURE_VERTEXCOLOR ); };
@@ -200,46 +259,6 @@ protected:
 
     int     LoadShaderBlob( const char* name, void** ppOut, shaderType_t shaderType ) const;
 
-	enum {
-		BUILTIN_GUI,
-		BUILTIN_COLOR,
-		BUILTIN_SIMPLESHADE,
-		BUILTIN_TEXTURED,
-		BUILTIN_TEXTURE_VERTEXCOLOR,
-		BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED,
-		BUILTIN_TEXTURE_TEXGEN_VERTEXCOLOR,
-		BUILTIN_INTERACTION,
-		BUILTIN_INTERACTION_SKINNED,
-		BUILTIN_INTERACTION_AMBIENT,
-		BUILTIN_INTERACTION_AMBIENT_SKINNED,
-		BUILTIN_ENVIRONMENT,
-		BUILTIN_ENVIRONMENT_SKINNED,
-		BUILTIN_BUMPY_ENVIRONMENT,
-		BUILTIN_BUMPY_ENVIRONMENT_SKINNED,
-
-		BUILTIN_DEPTH,
-		BUILTIN_DEPTH_SKINNED,
-		BUILTIN_SHADOW,
-		BUILTIN_SHADOW_SKINNED,
-		BUILTIN_SHADOW_DEBUG,
-		BUILTIN_SHADOW_DEBUG_SKINNED,
-
-		BUILTIN_BLENDLIGHT,
-		BUILTIN_FOG,
-		BUILTIN_FOG_SKINNED,
-		BUILTIN_SKYBOX,
-		BUILTIN_WOBBLESKY,
-		BUILTIN_POSTPROCESS,
-		BUILTIN_STEREO_DEGHOST,
-		BUILTIN_STEREO_WARP,
-		BUILTIN_ZCULL_RECONSTRUCT,
-		BUILTIN_BINK,
-		BUILTIN_BINK_GUI,
-		BUILTIN_STEREO_INTERLACE,
-		BUILTIN_MOTION_BLUR,
-
-		MAX_BUILTINS
-	};
 	int builtinShaders[MAX_BUILTINS];
 
 	struct vertexShader_t {
@@ -247,7 +266,7 @@ protected:
 		idStr		name;
 		ID3D11VertexShader* pShader;
         void*       pByteCode;
-        UINT        ByteCodeSize;
+        uint        ByteCodeSize;
 		bool		usesJoints;
 		bool		optionalSkinning;
 		idList<int>	uniforms;

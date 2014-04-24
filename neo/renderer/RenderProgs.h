@@ -123,13 +123,6 @@ enum renderParm_t {
 };
 
 
-struct glslUniformLocation_t {
-	int		parmIndex;
-	GLint	uniformIndex;
-};
-
-
-
 /*
 ================================================================================================
 idRenderProgManager
@@ -143,9 +136,15 @@ public:
 	void	Init();
 	void	Shutdown();
 
+	void	SetRenderParm( renderParm_t rp, const float * value );
+	void	SetRenderParms( renderParm_t rp, const float * values, int numValues );
+
 	int		FindVertexShader( const char * name );
 	int		FindFragmentShader( const char * name );
 
+    inline bool IsConstantBufferDirty() const { return builtinCbuffer.dirty; }
+    void    UpdateConstantBuffer( ID3D11DeviceContext* pContext );
+    
     /*
     @pjb: todo
 	void	BindShader_GUI( ) { BindShader_Builtin( BUILTIN_GUI ); }
@@ -263,10 +262,20 @@ protected:
 		idList<int>	uniforms;
 	};
 
+    struct cbufferInfo_t
+    {
+        bool            dirty;
+        size_t          size;
+        float*          pData;
+        ID3D11Buffer*   pBuffer;
+    };
+
 	int				currentVertexShader;
 	int				currentFragmentShader;
 	idList<vertexShader_t, TAG_RENDER> vertexShaders;
 	idList<fragmentShader_t, TAG_RENDER> fragmentShaders;
+
+    cbufferInfo_t builtinCbuffer;
 };
 
 extern idRenderProgManager renderProgManager;

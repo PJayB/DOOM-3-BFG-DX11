@@ -137,6 +137,15 @@ void idRenderProgManager::Init() {
 	vertexShaders[builtinShaders[BUILTIN_FOG_SKINNED]].usesJoints = true;
 
 	cmdSystem->AddCommand( "reloadShaders", R_ReloadShaders, CMD_FL_RENDERER, "reloads shaders" );
+
+    // Create the constant buffer
+    builtinCbuffer.dirty = true;
+    builtinCbuffer.size = sizeof(float) * 4 * RENDERPARM_TOTAL;
+    builtinCbuffer.pData = new float[builtinCbuffer.size / sizeof(float)];
+    builtinCbuffer.pBuffer = QD3D::CreateDynamicBuffer( 
+        D3DDrv_GetDevice(),
+        D3D11_BIND_CONSTANT_BUFFER,
+        builtinCbuffer.size );
 }
 
 /*
@@ -175,6 +184,9 @@ idRenderProgManager::Shutdown()
 */
 void idRenderProgManager::Shutdown() {
 	KillAllShaders();
+
+    SAFE_RELEASE( builtinCbuffer.pBuffer );
+    SAFE_DELETE_ARRAY( builtinCbuffer.pData );
 }
 
 /*
@@ -313,5 +325,46 @@ void idRenderProgManager::LoadFragmentShader( int index ) {
         &pshader->pShader );
     if ( FAILED( hr ) ) {
         common->FatalError( "Failed to create pixel shader '%s': %08X", pshader->name, hr );
+    }
+}
+
+/*
+================================================================================================
+idRenderProgManager::SetRenderParms
+================================================================================================
+*/
+void idRenderProgManager::SetRenderParms( renderParm_t rp, const float * value, int num ) {
+    size_t size = sizeof(float) * 4 * num;
+    assert( sizeof(float) * 4 * rp + size <= builtinCbuffer.size );
+    memcpy( builtinCbuffer.pData + 4 * rp, value, size );
+    builtinCbuffer.dirty = true;
+}
+
+/*
+================================================================================================
+idRenderProgManager::SetRenderParm
+================================================================================================
+*/
+void idRenderProgManager::SetRenderParm( renderParm_t rp, const float * value ) {
+    size_t size = sizeof(float) * 4;
+    assert( sizeof(float) * 4 * rp + size <= builtinCbuffer.size );
+    memcpy( builtinCbuffer.pData + 4 * rp, value, size );
+    builtinCbuffer.dirty = true;
+}
+
+/*
+================================================================================================
+idRenderProgManager::UpdateConstantBuffer
+================================================================================================
+*/
+void idRenderProgManager::UpdateConstantBuffer( ID3D11DeviceContext* pContext )
+{
+    if ( IsConstantBufferDirty() )
+    {
+        D3D11_MAPPED_SUBRESOURCE map;
+        pContext->Map( builtinCbuffer.pBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
+        memcpy( map.pData, builtinCbuffer.pData, builtinCbuffer.size );
+        pContext->Unmap( builtinCbuffer.pBuffer, 0 );
+        builtinCbuffer.dirty = false;
     }
 }

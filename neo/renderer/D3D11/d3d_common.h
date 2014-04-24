@@ -292,6 +292,15 @@ namespace QD3D
 		_In_ size_t size);
 
 	//----------------------------------------------------------------------------
+	// Creates a buffer for write access by the CPU.
+	//----------------------------------------------------------------------------
+	ID3D11Buffer* 
+	CreateDynamicBuffer(
+		_In_ QD3D11Device* device,
+		_In_ UINT bindFlags, 
+		_In_ size_t size);
+
+	//----------------------------------------------------------------------------
 	// Quick helper function for creating a CPU writable buffer of a given size 
 	// and type. This will be created with the DYNAMIC usage flags and writable
 	// by CPU.

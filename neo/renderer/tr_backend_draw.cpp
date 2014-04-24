@@ -105,13 +105,29 @@ void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye ) {
 		//
 		// set eye position in global space
 		//
-		// @pjb: todo: backEnd.viewDef->renderView.vieworg[0 to 2, 1];
-        // @pjb: Todo: r_lightScale.GetFloat()
+		float parm[4];
+		parm[0] = backEnd.viewDef->renderView.vieworg[0];
+		parm[1] = backEnd.viewDef->renderView.vieworg[1];
+		parm[2] = backEnd.viewDef->renderView.vieworg[2];
+		parm[3] = 1.0f;
+		renderProgManager.SetRenderParm( RENDERPARM_GLOBALEYEPOS, parm ); // rpGlobalEyePos
 
-        // Set Projection Matrix
+		// sets overbright to make world brighter
+		// This value is baked into the specularScale and diffuseScale values so
+		// the interaction programs don't need to perform the extra multiply,
+		// but any other renderprogs that want to obey the brightness value
+		// can reference this.
+		float overbright = r_lightScale.GetFloat() * 0.5f;
+		parm[0] = overbright;
+		parm[1] = overbright;
+		parm[2] = overbright;
+		parm[3] = overbright;
+		renderProgManager.SetRenderParm( RENDERPARM_OVERBRIGHT, parm );
+
+		// Set Projection Matrix
 		float projMatrixTranspose[16];
 		R_MatrixTranspose( backEnd.viewDef->projectionMatrix, projMatrixTranspose );
-		// @pjb: todo: SetVertexParms( RENDERPARM_PROJMATRIX_X, projMatrixTranspose, 4 );
+		renderProgManager.SetRenderParms( RENDERPARM_PROJMATRIX_X, projMatrixTranspose, 4 );
 	}	
 
     //

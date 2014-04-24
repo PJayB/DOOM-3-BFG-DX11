@@ -745,4 +745,22 @@ namespace QD3D
 
 		return buffer;
 	}
+
+    //----------------------------------------------------------------------------
+    // Helper function for creating an immutable buffer
+   	//----------------------------------------------------------------------------
+	ID3D11Buffer* CreateDynamicBuffer(QD3D11Device* device, UINT bindFlags, size_t size)
+	{
+		D3D11_BUFFER_DESC desc;
+		ZeroMemory(&desc, sizeof(desc));
+		desc.Usage = D3D11_USAGE_DYNAMIC;
+		desc.BindFlags = bindFlags;
+		desc.ByteWidth = (UINT)size;
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        
+		ID3D11Buffer* buffer = NULL;
+		device->CreateBuffer(&desc, NULL, &buffer);
+
+		return buffer;
+	}
 }

@@ -38,13 +38,375 @@ idCVar r_skipShaderPasses( "r_skipShaderPasses", "0", CVAR_RENDERER | CVAR_BOOL,
 backEndState_t	backEnd;
 
 /*
+================
+RB_SetMVP
+================
+*/
+void RB_SetMVP( const idRenderMatrix & mvp ) { 
+	renderProgManager.SetRenderParms( RENDERPARM_MVPMATRIX_X, mvp[0], 4 );
+}
+
+/*
+=========================================================================================
+
+DEPTH BUFFER RENDERING
+
+=========================================================================================
+*/
+
+/*
+=====================
+RB_FillDepthBufferFast
+
+Optimized fast path code.
+
+If there are subview surfaces, they must be guarded in the depth buffer to allow
+the mirror / subview to show through underneath the current view rendering.
+
+Surfaces with perforated shaders need the full shader setup done, but should be
+drawn after the opaque surfaces.
+
+The bulk of the surfaces should be simple opaque geometry that can be drawn very rapidly.
+
+If there are no subview surfaces, we could clear to black and use fast-Z rendering
+on the 360.
+=====================
+*/
+static void RB_FillDepthBufferFast( drawSurf_t **drawSurfs, int numDrawSurfs ) {
+    //
+    // @pjb: todo: Draw things
+    //
+}
+
+/*
+=============================================================================================
+
+NON-INTERACTION SHADER PASSES
+
+=============================================================================================
+*/
+
+/*
+=====================
+RB_DrawShaderPasses
+
+Draw non-light dependent passes
+
+If we are rendering Guis, the drawSurf_t::sort value is a depth offset that can
+be multiplied by guiEye for polarity and screenSeparation for scale.
+=====================
+*/
+static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, const int numDrawSurfs, 
+									const float guiStereoScreenOffset, const int stereoEye ) {
+	// only obey skipAmbient if we are rendering a view
+	if ( backEnd.viewDef->viewEntitys && r_skipAmbient.GetBool() ) {
+		return numDrawSurfs;
+	}
+
+	renderLog.OpenBlock( "RB_DrawShaderPasses" );
+
+	backEnd.currentSpace = (const viewEntity_t *)1;	// using NULL makes /analyze think surf->space needs to be checked...
+	float currentGuiStereoOffset = 0.0f;
+
+	int i = 0;
+	for ( ; i < numDrawSurfs; i++ ) {
+		const drawSurf_t * surf = drawSurfs[i];
+		const idMaterial * shader = surf->material;
+
+		if ( !shader->HasAmbient() ) {
+			continue;
+		}
+
+		if ( shader->IsPortalSky() ) {
+			continue;
+		}
+
+		// some deforms may disable themselves by setting numIndexes = 0
+		if ( surf->numIndexes == 0 ) {
+			continue;
+		}
+
+		if ( shader->SuppressInSubview() ) {
+			continue;
+		}
+
+		if ( backEnd.viewDef->isXraySubview && surf->space->entityDef ) {
+			if ( surf->space->entityDef->parms.xrayIndex != 2 ) {
+				continue;
+			}
+		}
+
+		// we need to draw the post process shaders after we have drawn the fog lights
+		if ( shader->GetSort() >= SS_POST_PROCESS && !backEnd.currentRenderCopied ) {
+			break;
+		}
+
+		renderLog.OpenBlock( shader->GetName() );
+
+		// change the matrix and other space related vars if needed
+		if ( surf->space != backEnd.currentSpace ) {
+			backEnd.currentSpace = surf->space;
+
+			const viewEntity_t *space = backEnd.currentSpace;
+
+			RB_SetMVP( space->mvp );
+
+			// set eye position in local space
+			idVec4 localViewOrigin( 1.0f );
+			R_GlobalPointToLocal( space->modelMatrix, backEnd.viewDef->renderView.vieworg, localViewOrigin.ToVec3() );
+			renderProgManager.SetRenderParm( RENDERPARM_LOCALVIEWORIGIN, localViewOrigin.ToFloatPtr() );
+
+			// set model Matrix
+			float modelMatrixTranspose[16];
+			R_MatrixTranspose( space->modelMatrix, modelMatrixTranspose );
+			renderProgManager.SetRenderParms( RENDERPARM_MODELMATRIX_X, modelMatrixTranspose, 4 );
+
+			// Set ModelView Matrix
+			float modelViewMatrixTranspose[16];
+			R_MatrixTranspose( space->modelViewMatrix, modelViewMatrixTranspose );
+			renderProgManager.SetRenderParms( RENDERPARM_MODELVIEWMATRIX_X, modelViewMatrixTranspose, 4 );
+		}
+
+		// change the scissor if needed
+		if ( !backEnd.currentScissor.Equals( surf->scissorRect ) && r_useScissor.GetBool() ) {
+			D3DDrv_SetScissor( backEnd.viewDef->viewport.x1 + surf->scissorRect.x1, 
+						       backEnd.viewDef->viewport.y1 + surf->scissorRect.y1,
+						       surf->scissorRect.x2 + 1 - surf->scissorRect.x1,
+						       surf->scissorRect.y2 + 1 - surf->scissorRect.y1 );
+			backEnd.currentScissor = surf->scissorRect;
+		}
+
+		// get the expressions for conditionals / color / texcoords
+		const float	*regs = surf->shaderRegisters;
+
+        /*
+        @pjb : todo
+		// set face culling appropriately
+		if ( surf->space->isGuiSurface ) {
+			GL_Cull( CT_TWO_SIDED );
+		} else {
+			GL_Cull( shader->GetCullType() );
+		}
+        */
+
+		uint64 surfGLState = surf->extraGLState;
+
+		// set polygon offset if necessary
+		if ( shader->TestMaterialFlag(MF_POLYGONOFFSET) ) {
+            // @pjb: Todo: polygon offset
+            assert(0);
+			// GL_PolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * shader->GetPolygonOffset() );
+			surfGLState = GLS_POLYGON_OFFSET;
+		}
+
+		for ( int stage = 0; stage < shader->GetNumStages(); stage++ ) {		
+			const shaderStage_t *pStage = shader->GetStage(stage);
+
+			// check the enable condition
+			if ( regs[ pStage->conditionRegister ] == 0 ) {
+				continue;
+			}
+
+			// skip the stages involved in lighting
+			if ( pStage->lighting != SL_AMBIENT ) {
+				continue;
+			}
+
+			uint64 stageGLState = surfGLState;
+			if ( ( surfGLState & GLS_OVERRIDE ) == 0 ) {
+				stageGLState |= pStage->drawStateBits;
+			}
+
+			// skip if the stage is ( GL_ZERO, GL_ONE ), which is used for some alpha masks
+			if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_ZERO | GLS_DSTBLEND_ONE ) ) {
+				continue;
+			}
+
+			// see if we are a new-style stage
+			newShaderStage_t *newStage = pStage->newStage;
+			if ( newStage != NULL ) {
+				//--------------------------
+				//
+				// new style stages
+				//
+				//--------------------------
+				if ( r_skipNewAmbient.GetBool() ) {
+					continue;
+				}
+				renderLog.OpenBlock( "New Shader Stage" );
+
+                /*
+                @pjb : todo
+
+				GL_State( stageGLState );
+			
+				renderProgManager.BindShader( newStage->vertexProgram, newStage->fragmentProgram );
+                */
+
+				for ( int j = 0; j < newStage->numVertexParms; j++ ) {
+					float parm[4];
+					parm[0] = regs[ newStage->vertexParms[j][0] ];
+					parm[1] = regs[ newStage->vertexParms[j][1] ];
+					parm[2] = regs[ newStage->vertexParms[j][2] ];
+					parm[3] = regs[ newStage->vertexParms[j][3] ];
+					renderProgManager.SetRenderParm( (renderParm_t)( RENDERPARM_USER + j ), parm );
+				}
+
+				// set rpEnableSkinning if the shader has optional support for skinning
+				if ( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning( newStage->vertexProgram ) ) {
+					const idVec4 skinningParm( 1.0f );
+					renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
+				}
+
+				// bind texture units
+				for ( int j = 0; j < newStage->numFragmentProgramImages; j++ ) {
+					idImage * image = newStage->fragmentProgramImages[j];
+					if ( image != NULL ) {
+                        /* @pjb: todo
+						GL_SelectTexture( j );
+						image->Bind(); 
+                        */
+					}
+				}
+
+                /* @pjb: todo
+				// draw it
+				RB_DrawElementsWithCounters( surf );
+                */
+
+				// unbind texture units
+				for ( int j = 0; j < newStage->numFragmentProgramImages; j++ ) {
+					idImage * image = newStage->fragmentProgramImages[j];
+					if ( image != NULL ) {
+                        /* @pjb: todo
+						GL_SelectTexture( j );
+						globalImages->BindNull();
+                        */
+					}
+				}
+
+				// clear rpEnableSkinning if it was set
+				if ( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning( newStage->vertexProgram ) ) {
+					const idVec4 skinningParm( 0.0f );
+					renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
+				}
+
+				renderLog.CloseBlock();
+				continue;
+			}
+
+			//--------------------------
+			//
+			// old style stages
+			//
+			//--------------------------
+
+			// set the color
+			float color[4];
+			color[0] = regs[ pStage->color.registers[0] ];
+			color[1] = regs[ pStage->color.registers[1] ];
+			color[2] = regs[ pStage->color.registers[2] ];
+			color[3] = regs[ pStage->color.registers[3] ];
+
+			// skip the entire stage if an add would be black
+			if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE ) 
+				&& color[0] <= 0 && color[1] <= 0 && color[2] <= 0 ) {
+				continue;
+			}
+
+			// skip the entire stage if a blend would be completely transparent
+			if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA )
+				&& color[3] <= 0 ) {
+				continue;
+			}
+
+			stageVertexColor_t svc = pStage->vertexColor;
+
+			renderLog.OpenBlock( "Old Shader Stage" );
+        /* @pjb: todo
+			GL_Color( color );
+
+			if ( surf->space->isGuiSurface ) {
+				// Force gui surfaces to always be SVC_MODULATE
+				svc = SVC_MODULATE;
+
+				// use special shaders for bink cinematics
+				if ( pStage->texture.cinematic ) {
+					if ( ( stageGLState & GLS_OVERRIDE ) != 0 ) {
+						// This is a hack... Only SWF Guis set GLS_OVERRIDE
+						// Old style guis do not, and we don't want them to use the new GUI renederProg
+						renderProgManager.BindShader_BinkGUI();
+					} else {
+						renderProgManager.BindShader_Bink();
+					}
+				} else {
+					if ( ( stageGLState & GLS_OVERRIDE ) != 0 ) {
+						// This is a hack... Only SWF Guis set GLS_OVERRIDE
+						// Old style guis do not, and we don't want them to use the new GUI renderProg
+						renderProgManager.BindShader_GUI();
+					} else {
+						if ( surf->jointCache ) {
+							renderProgManager.BindShader_TextureVertexColorSkinned();
+						} else {
+							renderProgManager.BindShader_TextureVertexColor();
+						}
+					}
+				}
+			} else if ( ( pStage->texture.texgen == TG_SCREEN ) || ( pStage->texture.texgen == TG_SCREEN2 ) ) {
+				renderProgManager.BindShader_TextureTexGenVertexColor();
+			} else if ( pStage->texture.cinematic ) {
+				renderProgManager.BindShader_Bink();
+			} else {
+				if ( surf->jointCache ) {
+					renderProgManager.BindShader_TextureVertexColorSkinned();
+				} else {
+					renderProgManager.BindShader_TextureVertexColor();
+				}
+			}
+		
+			RB_SetVertexColorParms( svc );
+
+			// bind the texture
+			RB_BindVariableStageImage( &pStage->texture, regs );
+
+			// set privatePolygonOffset if necessary
+			if ( pStage->privatePolygonOffset ) {
+				GL_PolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * pStage->privatePolygonOffset );
+				stageGLState |= GLS_POLYGON_OFFSET;
+			}
+
+			// set the state
+			GL_State( stageGLState );
+		
+			RB_PrepareStageTexturing( pStage, surf );
+
+			// draw it
+			RB_DrawElementsWithCounters( surf );
+
+			RB_FinishStageTexturing( pStage, surf );
+
+			// unset privatePolygonOffset if necessary
+			if ( pStage->privatePolygonOffset ) {
+				GL_PolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * shader->GetPolygonOffset() );
+			}
+            */
+			renderLog.CloseBlock();
+		}
+
+		renderLog.CloseBlock();
+	}
+
+	renderLog.CloseBlock();
+	return i;
+}
+
+/*
 =========================================================================================================
 
 BACKEND COMMANDS
 
 =========================================================================================================
 */
-
 /*
 ==================
 RB_DrawViewInternal
@@ -134,8 +496,27 @@ void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye ) {
     // @pjb: todo: Draw things
     //
 
+	// if we are just doing 2D rendering, no need to fill the depth buffer
+	if ( backEnd.viewDef->viewEntitys != NULL && numDrawSurfs > 0 ) {
+        RB_FillDepthBufferFast( drawSurfs, numDrawSurfs );
+    }
 
-
+	//-------------------------------------------------
+	// now draw any non-light dependent shading passes
+	//-------------------------------------------------
+	int processed = 0;
+	if ( !r_skipShaderPasses.GetBool() ) {
+		renderLog.OpenMainBlock( MRB_DRAW_SHADER_PASSES );
+		float guiScreenOffset;
+		if ( viewDef->viewEntitys != NULL ) {
+			// guiScreenOffset will be 0 in non-gui views
+			guiScreenOffset = 0.0f;
+		} else {
+			guiScreenOffset = stereoEye * viewDef->renderView.stereoScreenSeparation;
+		}
+		processed = RB_DrawShaderPasses( drawSurfs, numDrawSurfs, guiScreenOffset, stereoEye );
+		renderLog.CloseMainBlock();
+	}
 
 	renderLog.CloseBlock();
 }

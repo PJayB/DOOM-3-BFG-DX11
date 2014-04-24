@@ -205,7 +205,6 @@ int idRenderProgManager::FindVertexShader( const char * name ) {
 	shader.name = name;
 	int index = vertexShaders.Append( shader );
 	LoadVertexShader( index );
-	currentVertexShader = index;
 
 	// FIXME: we should really scan the program source code for using rpEnableSkinning but at this
 	// point we directly load a binary and the program source code is not available on the consoles
@@ -235,7 +234,6 @@ int idRenderProgManager::FindFragmentShader( const char * name ) {
 	shader.name = name;
 	int index = fragmentShaders.Append( shader );
 	LoadFragmentShader( index );
-	currentFragmentShader = index;
 	return index;
 }
 

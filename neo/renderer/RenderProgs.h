@@ -185,13 +185,10 @@ public:
 	void	BindShader_MotionBlur() { BindShader_Builtin( BUILTIN_MOTION_BLUR); }
     */
 
-    /*
-    @pjb: todo
 	// the joints buffer should only be bound for vertex programs that use joints
-	bool	ShaderUsesJoints() const { return vertexShaders[currentVertexShader].usesJoints; }
+	bool	ShaderUsesJoints( int vertexShader ) const { return vertexShaders[vertexShader].usesJoints; }
 	// the rpEnableSkinning render parm should only be set for vertex programs that use it
-	bool	ShaderHasOptionalSkinning() const { return vertexShaders[currentVertexShader].optionalSkinning; }
-    */
+	bool	ShaderHasOptionalSkinning( int vertexShader ) const { return vertexShaders[vertexShader].optionalSkinning; }
 
     // this should only be called via the reload shader console command
 	void	LoadAllShaders();
@@ -270,8 +267,6 @@ protected:
         ID3D11Buffer*   pBuffer;
     };
 
-	int				currentVertexShader;
-	int				currentFragmentShader;
 	idList<vertexShader_t, TAG_RENDER> vertexShaders;
 	idList<fragmentShader_t, TAG_RENDER> fragmentShaders;
 

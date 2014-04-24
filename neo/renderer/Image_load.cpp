@@ -725,6 +725,7 @@ void idImage::AllocImage() {
 	PurgeImage();
     
     int bytesPP = 4;
+    int minSize = 1;
 
 	switch ( opts.format ) {
 	case FMT_RGBA8:
@@ -780,6 +781,7 @@ void idImage::AllocImage() {
 		break;
 	case FMT_DXT5:
 		internalFormat = DXGI_FORMAT_BC3_UNORM;
+        minSize = 4;
 		break;
 	case FMT_DEPTH:
 		internalFormat = DXGI_FORMAT_D32_FLOAT;

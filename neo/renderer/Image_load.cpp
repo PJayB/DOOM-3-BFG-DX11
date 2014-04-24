@@ -723,8 +723,180 @@ This should not be done during normal game-play, if you can avoid it.
 */
 void idImage::AllocImage() {
 	PurgeImage();
+    
+    int bytesPP = 4;
 
-    // @pjb: todo
+	switch ( opts.format ) {
+	case FMT_RGBA8:
+        internalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+        bytesPP = 4;
+		break;
+	case FMT_XRGB8:
+        internalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+        bytesPP = 3;
+		break;
+	case FMT_RGB565:
+        internalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+        bytesPP = 2;
+		break;
+	case FMT_ALPHA:
+#if defined( USE_CORE_PROFILE )
+		internalFormat = DXGI_FORMAT_R8_UNORM;
+		bytesPP = 1;
+#else
+		internalFormat = GL_ALPHA8;
+		dataFormat = GL_ALPHA;
+#endif
+		break;
+	case FMT_L8A8:
+#if defined( USE_CORE_PROFILE )
+        internalFormat = DXGI_FORMAT_R8G8_UNORM;
+        bytesPP = 2;
+#else
+		internalFormat = GL_LUMINANCE8_ALPHA8;
+		dataFormat = GL_LUMINANCE_ALPHA;
+#endif
+		break;
+	case FMT_LUM8:
+#if defined( USE_CORE_PROFILE )
+        internalFormat = DXGI_FORMAT_R8_UNORM;
+        bytesPP = 1;
+#else
+		internalFormat = GL_LUMINANCE8;
+		dataFormat = GL_LUMINANCE;
+#endif
+		break;
+	case FMT_INT8:
+#if defined( USE_CORE_PROFILE )
+        internalFormat = DXGI_FORMAT_R8_UNORM;
+        bytesPP = 1;
+#else
+		internalFormat = GL_INTENSITY8;
+		dataFormat = GL_LUMINANCE;
+#endif
+		break;
+	case FMT_DXT1:
+        internalFormat = DXGI_FORMAT_BC1_UNORM;
+		break;
+	case FMT_DXT5:
+		internalFormat = DXGI_FORMAT_BC3_UNORM;
+		break;
+	case FMT_DEPTH:
+		internalFormat = DXGI_FORMAT_D32_FLOAT;
+        bytesPP = 1;
+		break;
+	case FMT_X16:
+		internalFormat = DXGI_FORMAT_R16_UNORM;
+		bytesPP = 2;
+		break;
+	case FMT_Y16_X16:
+        internalFormat = DXGI_FORMAT_R8G8_UNORM;
+		bytesPP = 2;
+		break;
+	default:
+		idLib::Error( "Unhandled image format %d in %s\n", opts.format, GetName() );
+	}
+
+	// if we don't have a rendering context, just return after we
+	// have filled in the parms.  We must have the values set, or
+	// an image match from a shader before OpenGL starts would miss
+	// the generated texture
+	if ( !R_IsInitialized() ) {
+		return;
+	}
+
+	//----------------------------------------------------
+	// allocate all the mip levels with NULL data
+	//----------------------------------------------------
+
+	D3D11_TEXTURE2D_DESC desc;
+    ZeroMemory( &desc, sizeof(desc) );
+
+    desc.Width = opts.width;
+    desc.Height = opts.height;
+    desc.MipLevels = opts.numLevels;
+    desc.Format = internalFormat;
+    desc.CPUAccessFlags = 0;
+    desc.SampleDesc.Count = 1;
+    desc.SampleDesc.Quality = 0;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags = 0;
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    ZeroMemory( &srvDesc, sizeof(srvDesc) );
+
+    srvDesc.Format = internalFormat;
+
+    if ( opts.textureType == TT_2D ) {
+		desc.ArraySize = 1;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = opts.numLevels;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+	} else if ( opts.textureType == TT_CUBIC ) {
+        desc.MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;
+		desc.ArraySize = 6;
+        desc.Height = desc.Width;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+        srvDesc.TextureCube.MipLevels = opts.numLevels;
+        srvDesc.TextureCube.MostDetailedMip = 0;
+	} else {
+		assert( !"opts.textureType" );
+		desc.ArraySize = 1;
+	}
+
+    D3D11_SUBRESOURCE_DATA* subres = (D3D11_SUBRESOURCE_DATA*) HeapAlloc( 
+        GetProcessHeap(), 0, 
+        sizeof( D3D11_SUBRESOURCE_DATA ) * opts.numLevels * desc.ArraySize );
+
+    // allocate some dummy data so D3D doesn't whinge
+    size_t dummyDataSize = opts.width * opts.height * bytesPP;
+    if ( IsCompressed() )
+        dummyDataSize = ( ((opts.width+3)/4) * ((opts.height+3)/4) * int64( 16 ) * BitsForFormat( opts.format ) ) / 8;
+    void* dummyData = HeapAlloc( GetProcessHeap(), 0, dummyDataSize );
+    memset( dummyData, 0, dummyDataSize );
+
+	for ( int side = 0; side < desc.ArraySize; side++ ) {
+		int w = opts.width;
+		int h = opts.height;
+		if ( opts.textureType == TT_CUBIC ) {
+			h = w;
+		}
+
+		for ( int level = 0; level < opts.numLevels; level++ ) {
+
+            D3D11_SUBRESOURCE_DATA* subresPtr = subres + side * opts.numLevels + level;
+            subresPtr->pSysMem = dummyData;
+
+			if ( IsCompressed() ) {
+				subresPtr->SysMemPitch = ( ((w+3)/4) * ((h+3)/4) * int64( 16 ) * BitsForFormat( opts.format ) ) / 8;
+            } else {
+                subresPtr->SysMemPitch = w * bytesPP;
+            }
+
+            subresPtr->SysMemSlicePitch = 0;
+            
+			w = Max( 1, w >> 1 );
+			h = Max( 1, h >> 1 );
+		}
+	}
+
+    // create image
+    QD3D11Device* pDevice = D3DDrv_GetDevice();
+
+    pDevice->CreateTexture2D( &desc, subres, &pTexture );
+    assert( pTexture );
+
+    HeapFree( GetProcessHeap(), 0, dummyData );
+    
+    // create SRV
+    pDevice->CreateShaderResourceView(
+        pTexture,
+        &srvDesc,
+        &pSRV );
+    assert( pSRV );
+
+    RegenerateSamplerState();
 }
 /*
 ========================
@@ -740,5 +912,153 @@ void idImage::SubImageUpload( int mipLevel, int x, int y, int z, int width, int 
 // 
 void idImage::RegenerateSamplerState()
 {
-    // @pjb: todo
+    QD3D11Device* pDevice = D3DDrv_GetDevice();
+
+    D3D11_SAMPLER_DESC sDesc;
+    ZeroMemory( &sDesc, sizeof(sDesc) );
+
+    // r_maxAnisotropicFiltering
+    // r_useTrilinearFiltering
+    // r_lodBias
+
+    /*
+    @pjb: todo
+
+
+	// ALPHA, LUMINANCE, LUMINANCE_ALPHA, and INTENSITY have been removed
+	// in OpenGL 3.2. In order to mimic those modes, we use the swizzle operators
+#if defined( USE_CORE_PROFILE )
+	if ( opts.colorFormat == CFM_GREEN_ALPHA ) {
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_ONE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_ONE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_ONE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_GREEN );
+	} else if ( opts.format == FMT_LUM8 ) {
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_RED );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_RED );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_RED );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_ONE );
+	} else if ( opts.format == FMT_L8A8 ) {
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_RED );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_RED );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_RED );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_GREEN );
+	} else if ( opts.format == FMT_ALPHA ) {
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_ONE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_ONE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_ONE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_RED );
+	} else if ( opts.format == FMT_INT8 ) {
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_RED );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_RED );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_RED );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_RED );
+	} else {
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_RED );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_GREEN );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_BLUE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_ALPHA );
+	}
+#else
+	if ( opts.colorFormat == CFM_GREEN_ALPHA ) {
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_ONE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_ONE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_ONE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_GREEN );
+	} else if ( opts.format == FMT_ALPHA ) {
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_ONE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_ONE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_ONE );
+		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_RED );
+	}
+#endif
+
+	switch( filter ) {
+		case TF_DEFAULT:
+			if ( r_useTrilinearFiltering.GetBool() ) {
+				qglTexParameterf( target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
+			} else {
+				qglTexParameterf( target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST );
+			}
+			qglTexParameterf( target, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+			break;
+		case TF_LINEAR:
+			qglTexParameterf( target, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+			qglTexParameterf( target, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+			break;
+		case TF_NEAREST:
+			qglTexParameterf( target, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+			qglTexParameterf( target, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+			break;
+		default:
+			common->FatalError( "%s: bad texture filter %d", GetName(), filter );
+	}
+
+	if ( glConfig.anisotropicFilterAvailable ) {
+		// only do aniso filtering on mip mapped images
+		if ( filter == TF_DEFAULT ) {
+			int aniso = r_maxAnisotropicFiltering.GetInteger();
+			if ( aniso > glConfig.maxTextureAnisotropy ) {
+				aniso = glConfig.maxTextureAnisotropy;
+			}
+			if ( aniso < 0 ) {
+				aniso = 0;
+			}
+			qglTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso );
+		} else {
+			qglTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, 1 );
+		}
+	}
+	if ( glConfig.textureLODBiasAvailable && ( usage != TD_FONT ) ) {
+		// use a blurring LOD bias in combination with high anisotropy to fix our aliasing grate textures...
+		qglTexParameterf(target, GL_TEXTURE_LOD_BIAS_EXT, r_lodBias.GetFloat() );
+	}
+
+	// set the wrap/clamp modes
+	switch( repeat ) {
+		case TR_REPEAT:
+			qglTexParameterf( target, GL_TEXTURE_WRAP_S, GL_REPEAT );
+			qglTexParameterf( target, GL_TEXTURE_WRAP_T, GL_REPEAT );
+			break;
+		case TR_CLAMP_TO_ZERO: {
+			float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+			qglTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, color );
+			qglTexParameterf( target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
+			qglTexParameterf( target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
+			}
+			break;
+		case TR_CLAMP_TO_ZERO_ALPHA: {
+			float color[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			qglTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, color );
+			qglTexParameterf( target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
+			qglTexParameterf( target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
+			}
+			break;
+		case TR_CLAMP:
+			qglTexParameterf( target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+			qglTexParameterf( target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+			break;
+		default:
+			common->FatalError( "%s: bad texture repeat %d", GetName(), repeat );
+	}
+    */
+
+#ifdef _ARM_
+    sDesc.MaxLOD = FLT_MAX;
+#else
+    sDesc.MaxLOD = opts.numLevels - 1;
+#endif
+
+    sDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+    sDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+    sDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+
+    if ( opts.numLevels > 0 && r_useTrilinearFiltering.GetBool() )
+        sDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    else
+        sDesc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+
+    // create sampler
+    pDevice->CreateSamplerState( &sDesc, &pSampler );
+    assert( pSampler );
 }

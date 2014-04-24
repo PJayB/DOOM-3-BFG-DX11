@@ -182,7 +182,7 @@ private:
     ID3D11Texture2D*    pTexture;
     ID3D11ShaderResourceView* pSRV;
     ID3D11SamplerState* pSampler;
-    DXGI_FORMAT         dxgiFormat;
+    DXGI_FORMAT         internalFormat;
     bool                dynamic;
 };
 
@@ -190,7 +190,7 @@ ID_INLINE idImage::idImage( const char * name ) : imgName( name ) {
 	pTexture = nullptr;
     pSRV = nullptr;
     pSampler = nullptr;
-	dxgiFormat = DXGI_FORMAT_UNKNOWN;
+	internalFormat = DXGI_FORMAT_UNKNOWN;
 	generatorFunction = NULL;
 	filter = TF_DEFAULT;
 	repeat = TR_REPEAT;

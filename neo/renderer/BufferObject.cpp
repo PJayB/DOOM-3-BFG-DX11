@@ -583,7 +583,7 @@ bool idJointBuffer::AllocBufferObject( const float * joints, int numAllocJoints 
 
 	const int numBytes = GetAllocedSize();
 
-    pBuffer = CreateDirect3DBuffer( nullptr, numBytes, D3D11_BIND_VERTEX_BUFFER );
+    pBuffer = CreateDirect3DBuffer( nullptr, numBytes, D3D11_BIND_CONSTANT_BUFFER );
 
 	if ( pBuffer == nullptr ) {
 		idLib::FatalError( "idJointBuffer::AllocBufferObject: failed" );

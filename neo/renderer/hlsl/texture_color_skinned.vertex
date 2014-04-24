@@ -28,7 +28,10 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "global.inc"
 
-uniform float4 matrices[408];
+cbuffer JointBuffer : register(cb1)
+{
+    float4 matrices[408];
+}
 
 struct VS_IN {
 	float4 position : POSITION;

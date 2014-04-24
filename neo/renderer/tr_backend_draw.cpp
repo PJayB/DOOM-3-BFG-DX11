@@ -39,11 +39,392 @@ backEndState_t	backEnd;
 
 /*
 ================
+RB_BindImages
+================
+*/
+void RB_BindImages( ID3D11DeviceContext1* pContext, idImage** pImages, int numImages )
+{
+    ID3D11ShaderResourceView* pSRVs[16];
+    ID3D11SamplerState* pSamplers[16];
+
+    assert( numImages < _countof( pSRVs ) );
+
+    for ( int i = 0; i < numImages; ++i )
+    {
+        pSRVs[i] = pImages[i]->GetSRV();
+        pSamplers[i] = pImages[i]->GetSampler();
+    }
+
+    pContext->PSSetShaderResources( 0, numImages, pSRVs );
+    pContext->PSSetSamplers( 0, numImages, pSamplers );
+}
+
+/*
+================
 RB_SetMVP
 ================
 */
 void RB_SetMVP( const idRenderMatrix & mvp ) { 
 	renderProgManager.SetRenderParms( RENDERPARM_MVPMATRIX_X, mvp[0], 4 );
+}
+
+/*
+================
+RB_SetVertexColorParms
+================
+*/
+static void RB_SetVertexColorParms( stageVertexColor_t svc ) {
+    static const float zero[4] = { 0, 0, 0, 0 };
+    static const float one[4] = { 1, 1, 1, 1 };
+    static const float negOne[4] = { -1, -1, -1, -1 };
+
+	switch ( svc ) {
+		case SVC_IGNORE:
+			renderProgManager.SetRenderParm( RENDERPARM_VERTEXCOLOR_MODULATE, zero );
+			renderProgManager.SetRenderParm( RENDERPARM_VERTEXCOLOR_ADD, one );
+			break;
+		case SVC_MODULATE:
+			renderProgManager.SetRenderParm( RENDERPARM_VERTEXCOLOR_MODULATE, one );
+			renderProgManager.SetRenderParm( RENDERPARM_VERTEXCOLOR_ADD, zero );
+			break;
+		case SVC_INVERSE_MODULATE:
+			renderProgManager.SetRenderParm( RENDERPARM_VERTEXCOLOR_MODULATE, negOne );
+			renderProgManager.SetRenderParm( RENDERPARM_VERTEXCOLOR_ADD, one );
+			break;
+	}
+}
+
+/*
+================
+RB_DrawElementsWithCounters
+================
+*/
+void RB_DrawElementsWithCounters( ID3D11DeviceContext1* pContext, const drawSurf_t *surf ) {
+	// get vertex buffer
+	const vertCacheHandle_t vbHandle = surf->ambientCache;
+	idVertexBuffer * vertexBuffer;
+	if ( vertexCache.CacheIsStatic( vbHandle ) ) {
+		vertexBuffer = &vertexCache.staticData.vertexBuffer;
+	} else {
+		const uint64 frameNum = (int)( vbHandle >> VERTCACHE_FRAME_SHIFT ) & VERTCACHE_FRAME_MASK;
+		if ( frameNum != ( ( vertexCache.currentFrame - 1 ) & VERTCACHE_FRAME_MASK ) ) {
+			idLib::Warning( "RB_DrawElementsWithCounters, vertexBuffer == NULL" );
+			return;
+		}
+		vertexBuffer = &vertexCache.frameData[vertexCache.drawListNum].vertexBuffer;
+	}
+	const int vertOffset = (int)( vbHandle >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK;
+
+	// get index buffer
+	const vertCacheHandle_t ibHandle = surf->indexCache;
+	idIndexBuffer * indexBuffer;
+	if ( vertexCache.CacheIsStatic( ibHandle ) ) {
+		indexBuffer = &vertexCache.staticData.indexBuffer;
+	} else {
+		const uint64 frameNum = (int)( ibHandle >> VERTCACHE_FRAME_SHIFT ) & VERTCACHE_FRAME_MASK;
+		if ( frameNum != ( ( vertexCache.currentFrame - 1 ) & VERTCACHE_FRAME_MASK ) ) {
+			idLib::Warning( "RB_DrawElementsWithCounters, indexBuffer == NULL" );
+			return;
+		}
+		indexBuffer = &vertexCache.frameData[vertexCache.drawListNum].indexBuffer;
+	}
+	const int indexOffset = (int)( ibHandle >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK;
+
+	RENDERLOG_PRINTF( "Binding Buffers: %p:%i %p:%i\n", vertexBuffer, vertOffset, indexBuffer, indexOffset );
+
+    /*
+    @pjb: todo
+	if ( surf->jointCache ) {
+		if ( !verify( renderProgManager.ShaderUsesJoints() ) ) {
+			return;
+		}
+	} else {
+		if ( !verify( !renderProgManager.ShaderUsesJoints() || renderProgManager.ShaderHasOptionalSkinning() ) ) {
+			return;
+		}
+	}
+    */
+    
+	if ( surf->jointCache ) {
+		idJointBuffer jointBuffer;
+		if ( !vertexCache.GetJointBuffer( surf->jointCache, &jointBuffer ) ) {
+			idLib::Warning( "RB_DrawElementsWithCounters, jointBuffer == NULL" );
+			return;
+		}
+		assert( ( jointBuffer.GetOffset() & ( glConfig.uniformBufferOffsetAlignment - 1 ) ) == 0 );
+
+        ID3D11Buffer* pJointBuffer = jointBuffer.GetBuffer();
+        pContext->VSSetConstantBuffers( 1, 1, &pJointBuffer );
+	}
+
+	renderProgManager.UpdateConstantBuffer( pContext );
+
+    ID3D11Buffer* pVertexBuffer = vertexBuffer->GetBuffer();
+    UINT vbOffset = 0;
+    UINT vbStride = sizeof( idDrawVert );
+
+    pContext->IASetInputLayout( idLayoutManager::GetLayout<idDrawVert>() );
+    pContext->IASetIndexBuffer( indexBuffer->GetBuffer(), DXGI_FORMAT_R16_UINT, 0 );
+    pContext->IASetVertexBuffers( 0, 1, &pVertexBuffer, &vbStride, &vbOffset );
+    pContext->IASetPrimitiveTopology( D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+    
+    pContext->DrawIndexed(
+		r_singleTriangle.GetBool() ? 3 : surf->numIndexes,
+        indexOffset,
+        vertOffset / sizeof ( idDrawVert ) );
+}
+
+/*
+======================
+RB_GetShaderTextureMatrix
+======================
+*/
+static void RB_GetShaderTextureMatrix( const float *shaderRegisters, const textureStage_t *texture, float matrix[16] ) {
+	matrix[0*4+0] = shaderRegisters[ texture->matrix[0][0] ];
+	matrix[1*4+0] = shaderRegisters[ texture->matrix[0][1] ];
+	matrix[2*4+0] = 0.0f;
+	matrix[3*4+0] = shaderRegisters[ texture->matrix[0][2] ];
+
+	matrix[0*4+1] = shaderRegisters[ texture->matrix[1][0] ];
+	matrix[1*4+1] = shaderRegisters[ texture->matrix[1][1] ];
+	matrix[2*4+1] = 0.0f;
+	matrix[3*4+1] = shaderRegisters[ texture->matrix[1][2] ];
+
+	// we attempt to keep scrolls from generating incredibly large texture values, but
+	// center rotations and center scales can still generate offsets that need to be > 1
+	if ( matrix[3*4+0] < -40.0f || matrix[12] > 40.0f ) {
+		matrix[3*4+0] -= (int)matrix[3*4+0];
+	}
+	if ( matrix[13] < -40.0f || matrix[13] > 40.0f ) {
+		matrix[13] -= (int)matrix[13];
+	}
+
+	matrix[0*4+2] = 0.0f;
+	matrix[1*4+2] = 0.0f;
+	matrix[2*4+2] = 1.0f;
+	matrix[3*4+2] = 0.0f;
+
+	matrix[0*4+3] = 0.0f;
+	matrix[1*4+3] = 0.0f;
+	matrix[2*4+3] = 0.0f;
+	matrix[3*4+3] = 1.0f;
+}
+
+/*
+======================
+RB_LoadShaderTextureMatrix
+======================
+*/
+static void RB_LoadShaderTextureMatrix( const float *shaderRegisters, const textureStage_t *texture ) {	
+	float texS[4] = { 1.0f, 0.0f, 0.0f, 0.0f };
+	float texT[4] = { 0.0f, 1.0f, 0.0f, 0.0f };
+
+	if ( texture->hasMatrix ) {
+		float matrix[16];
+		RB_GetShaderTextureMatrix( shaderRegisters, texture, matrix );
+		texS[0] = matrix[0*4+0];
+		texS[1] = matrix[1*4+0];
+		texS[2] = matrix[2*4+0];
+		texS[3] = matrix[3*4+0];
+	
+		texT[0] = matrix[0*4+1];
+		texT[1] = matrix[1*4+1];
+		texT[2] = matrix[2*4+1];
+		texT[3] = matrix[3*4+1];
+
+		RENDERLOG_PRINTF( "Setting Texture Matrix\n");
+		renderLog.Indent();
+		RENDERLOG_PRINTF( "Texture Matrix S : %4.3f, %4.3f, %4.3f, %4.3f\n", texS[0], texS[1], texS[2], texS[3] );
+		RENDERLOG_PRINTF( "Texture Matrix T : %4.3f, %4.3f, %4.3f, %4.3f\n", texT[0], texT[1], texT[2], texT[3] );
+		renderLog.Outdent();
+	} 
+
+	renderProgManager.SetRenderParm( RENDERPARM_TEXTUREMATRIX_S, texS );
+	renderProgManager.SetRenderParm( RENDERPARM_TEXTUREMATRIX_T, texT );
+}
+
+/*
+================
+RB_PrepareStageTexturing
+================
+*/
+static int RB_PrepareStageTexturing( 
+    const shaderStage_t *pStage, 
+    const drawSurf_t *surf, 
+    int *shaderToUse,
+    idImage* pImages[] ) {
+
+    int numImages = 1;
+
+	if ( pStage->texture.cinematic ) {
+		cinData_t cin;
+
+		if ( r_skipDynamicTextures.GetBool() ) {
+			pImages[0] = globalImages->defaultImage;
+		} else {
+		    // offset time by shaderParm[7] (FIXME: make the time offset a parameter of the shader?)
+		    // We make no attempt to optimize for multiple identical cinematics being in view, or
+		    // for cinematics going at a lower framerate than the renderer.
+		    cin = pStage->texture.cinematic->ImageForTime( backEnd.viewDef->renderView.time[0] + idMath::Ftoi( 1000.0f * backEnd.viewDef->renderView.shaderParms[11] ) );
+		    if ( cin.imageY != NULL ) {
+			    pImages[0] = cin.imageY;
+			    pImages[0] = cin.imageCr;
+			    pImages[0] = cin.imageCb;
+		    } else {
+			    pImages[0] = globalImages->blackImage;
+			    // because the shaders may have already been set - we need to make sure we are not using a bink shader which would 
+			    // display incorrectly.  We may want to get rid of RB_BindVariableStageImage and inline the code so that the
+			    // SWF GUI case is handled better, too
+			    *shaderToUse = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
+		    }
+        }
+	} else {
+		// FIXME: see why image is invalid
+		if ( pStage->texture.image != NULL ) {
+			pImages[0] = pStage->texture.image;
+		}
+	}
+
+    float useTexGenParm[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+	// set the texture matrix if needed
+	RB_LoadShaderTextureMatrix( surf->shaderRegisters, &pStage->texture );
+
+	// texgens
+	if ( pStage->texture.texgen == TG_REFLECT_CUBE ) {
+
+		// see if there is also a bump map specified
+		const shaderStage_t *bumpStage = surf->material->GetBumpStage();
+		if ( bumpStage != NULL ) {
+			// per-pixel reflection mapping with bump mapping
+            pImages[numImages++] = bumpStage->texture.image;
+
+			RENDERLOG_PRINTF( "TexGen: TG_REFLECT_CUBE: Bumpy Environment\n" );
+			if ( surf->jointCache ) {
+				*shaderToUse = idRenderProgManager::BUILTIN_BUMPY_ENVIRONMENT_SKINNED;
+			} else {
+				*shaderToUse = idRenderProgManager::BUILTIN_BUMPY_ENVIRONMENT;
+			}
+		} else {
+			RENDERLOG_PRINTF( "TexGen: TG_REFLECT_CUBE: Environment\n" );
+			if ( surf->jointCache ) {
+                *shaderToUse = idRenderProgManager::BUILTIN_ENVIRONMENT_SKINNED;
+			} else {
+                *shaderToUse = idRenderProgManager::BUILTIN_ENVIRONMENT;
+			}
+		}
+
+	} else if ( pStage->texture.texgen == TG_SKYBOX_CUBE ) {
+
+        *shaderToUse = idRenderProgManager::BUILTIN_SKYBOX;
+
+	} else if ( pStage->texture.texgen == TG_WOBBLESKY_CUBE ) {
+
+		const int * parms = surf->material->GetTexGenRegisters();
+
+		float wobbleDegrees = surf->shaderRegisters[ parms[0] ] * ( idMath::PI / 180.0f );
+		float wobbleSpeed = surf->shaderRegisters[ parms[1] ] * ( 2.0f * idMath::PI / 60.0f );
+		float rotateSpeed = surf->shaderRegisters[ parms[2] ] * ( 2.0f * idMath::PI / 60.0f );
+
+		idVec3 axis[3];
+		{
+			// very ad-hoc "wobble" transform
+			float s, c;
+			idMath::SinCos( wobbleSpeed * backEnd.viewDef->renderView.time[0] * 0.001f, s, c );
+
+			float ws, wc;
+			idMath::SinCos( wobbleDegrees, ws, wc );
+
+			axis[2][0] = ws * c;
+			axis[2][1] = ws * s;
+			axis[2][2] = wc;
+
+			axis[1][0] = -s * s * ws;
+			axis[1][2] = -s * ws * ws;
+			axis[1][1] = idMath::Sqrt( idMath::Fabs( 1.0f - ( axis[1][0] * axis[1][0] + axis[1][2] * axis[1][2] ) ) );
+
+			// make the second vector exactly perpendicular to the first
+			axis[1] -= ( axis[2] * axis[1] ) * axis[2];
+			axis[1].Normalize();
+
+			// construct the third with a cross
+			axis[0].Cross( axis[1], axis[2] );
+		}
+
+		// add the rotate
+		float rs, rc;
+		idMath::SinCos( rotateSpeed * backEnd.viewDef->renderView.time[0] * 0.001f, rs, rc );
+
+		float transform[12];
+		transform[0*4+0] = axis[0][0] * rc + axis[1][0] * rs;
+		transform[0*4+1] = axis[0][1] * rc + axis[1][1] * rs;
+		transform[0*4+2] = axis[0][2] * rc + axis[1][2] * rs;
+		transform[0*4+3] = 0.0f;
+
+		transform[1*4+0] = axis[1][0] * rc - axis[0][0] * rs;
+		transform[1*4+1] = axis[1][1] * rc - axis[0][1] * rs;
+		transform[1*4+2] = axis[1][2] * rc - axis[0][2] * rs;
+		transform[1*4+3] = 0.0f;
+
+		transform[2*4+0] = axis[2][0];
+		transform[2*4+1] = axis[2][1];
+		transform[2*4+2] = axis[2][2];
+		transform[2*4+3] = 0.0f;
+
+		renderProgManager.SetRenderParms( RENDERPARM_WOBBLESKY_X, transform, 3 );		
+        *shaderToUse = idRenderProgManager::BUILTIN_WOBBLESKY;
+
+	} else if ( ( pStage->texture.texgen == TG_SCREEN ) || ( pStage->texture.texgen == TG_SCREEN2 ) ) {
+
+		useTexGenParm[0] = 1.0f;
+		useTexGenParm[1] = 1.0f;
+		useTexGenParm[2] = 1.0f;
+		useTexGenParm[3] = 1.0f;
+
+		float mat[16];
+		R_MatrixMultiply( surf->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, mat );
+
+		RENDERLOG_PRINTF( "TexGen : %s\n", ( pStage->texture.texgen == TG_SCREEN ) ? "TG_SCREEN" : "TG_SCREEN2" );
+		renderLog.Indent();
+
+		float plane[4];
+		plane[0] = mat[0*4+0];
+		plane[1] = mat[1*4+0];
+		plane[2] = mat[2*4+0];
+		plane[3] = mat[3*4+0];
+		renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_S, plane );
+		RENDERLOG_PRINTF( "TEXGEN_S = %4.3f, %4.3f, %4.3f, %4.3f\n",  plane[0], plane[1], plane[2], plane[3] );
+
+		plane[0] = mat[0*4+1];
+		plane[1] = mat[1*4+1];
+		plane[2] = mat[2*4+1];
+		plane[3] = mat[3*4+1];
+		renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_T, plane );
+		RENDERLOG_PRINTF( "TEXGEN_T = %4.3f, %4.3f, %4.3f, %4.3f\n",  plane[0], plane[1], plane[2], plane[3] );
+
+		plane[0] = mat[0*4+3];
+		plane[1] = mat[1*4+3];
+		plane[2] = mat[2*4+3];
+		plane[3] = mat[3*4+3];
+		renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_Q, plane );	
+		RENDERLOG_PRINTF( "TEXGEN_Q = %4.3f, %4.3f, %4.3f, %4.3f\n",  plane[0], plane[1], plane[2], plane[3] );
+
+		renderLog.Outdent();
+
+	} else if ( pStage->texture.texgen == TG_DIFFUSE_CUBE ) {
+
+		// As far as I can tell, this is never used
+		idLib::Warning( "Using Diffuse Cube! Please contact Brian!" );
+
+	} else if ( pStage->texture.texgen == TG_GLASSWARP ) {
+
+		// As far as I can tell, this is never used
+		idLib::Warning( "Using GlassWarp! Please contact Brian!" );
+	}
+
+	renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_ENABLED, useTexGenParm );
+
+    return numImages;
 }
 
 /*
@@ -88,6 +469,171 @@ NON-INTERACTION SHADER PASSES
 
 /*
 =====================
+RB_DrawShaderPassStage_New
+
+new style stages
+=====================
+*/
+static void RB_DrawShaderPassStage_New( 
+    ID3D11DeviceContext1* pContext, 
+    const drawSurf_t* surf,
+    const newShaderStage_t *newStage, 
+    uint64 stageGLState ) {
+
+    // @pjb: is this a safe constant?
+    idImage* pImages[16];
+
+	// get the expressions for conditionals / color / texcoords
+	const float	*regs = surf->shaderRegisters;
+
+	renderLog.OpenBlock( "New Shader Stage" );
+
+    D3DDrv_SetBlendStateFromMask( pContext, stageGLState );
+    D3DDrv_SetDepthStateFromMask( pContext, stageGLState );
+
+	for ( int j = 0; j < newStage->numVertexParms; j++ ) {
+		float parm[4];
+		parm[0] = regs[ newStage->vertexParms[j][0] ];
+		parm[1] = regs[ newStage->vertexParms[j][1] ];
+		parm[2] = regs[ newStage->vertexParms[j][2] ];
+		parm[3] = regs[ newStage->vertexParms[j][3] ];
+		renderProgManager.SetRenderParm( (renderParm_t)( RENDERPARM_USER + j ), parm );
+	}
+
+	// set rpEnableSkinning if the shader has optional support for skinning
+	if ( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning( newStage->vertexProgram ) ) {
+		const idVec4 skinningParm( 1.0f );
+		renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
+	}
+
+    assert( newStage->numFragmentProgramImages < _countof( pImages ) );
+
+	// bind texture units
+	for ( int j = 0; j < newStage->numFragmentProgramImages; j++ ) {
+		idImage * image = newStage->fragmentProgramImages[j];
+		if ( image != NULL ) {
+            pImages[j] = image;
+		}
+	}
+                
+    ID3D11VertexShader* pVertexShader = renderProgManager.GetVertexShader( newStage->vertexProgram );
+    ID3D11PixelShader* pPixelShader = renderProgManager.GetPixelShader( newStage->fragmentProgram );
+
+    pContext->VSSetShader( pVertexShader, nullptr, 0 );
+    pContext->PSSetShader( pPixelShader, nullptr, 0 );
+    RB_BindImages( pContext, pImages, newStage->numFragmentProgramImages );
+
+	// draw it
+	RB_DrawElementsWithCounters( pContext, surf );
+                
+	// clear rpEnableSkinning if it was set
+	if ( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning( newStage->vertexProgram ) ) {
+		const idVec4 skinningParm( 0.0f );
+		renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
+	}
+
+	renderLog.CloseBlock();
+}
+
+/*
+=====================
+RB_DrawShaderPassStage_Old
+=====================
+*/
+static void RB_DrawShaderPassStage_Old( ID3D11DeviceContext1* pContext, const drawSurf_t *surf, const shaderStage_t *pStage, uint64 stageGLState ) {
+
+    // @pjb: is this a safe constant?
+    idImage* pImages[16];
+
+	// get the expressions for conditionals / color / texcoords
+	const float	*regs = surf->shaderRegisters;
+
+	// set the color
+	float color[4];
+	color[0] = regs[ pStage->color.registers[0] ];
+	color[1] = regs[ pStage->color.registers[1] ];
+	color[2] = regs[ pStage->color.registers[2] ];
+	color[3] = regs[ pStage->color.registers[3] ];
+
+	// skip the entire stage if an add would be black
+	if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE ) 
+		&& color[0] <= 0 && color[1] <= 0 && color[2] <= 0 ) {
+		return;
+	}
+
+	// skip the entire stage if a blend would be completely transparent
+	if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA )
+		&& color[3] <= 0 ) {
+		return;
+	}
+
+	stageVertexColor_t svc = pStage->vertexColor;
+
+	renderLog.OpenBlock( "Old Shader Stage" );
+
+    renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
+
+    int builtInShader = -1;
+
+	if ( surf->space->isGuiSurface ) {
+		// Force gui surfaces to always be SVC_MODULATE
+		svc = SVC_MODULATE;
+
+		// use special shaders for bink cinematics
+		if ( pStage->texture.cinematic ) {
+			if ( ( stageGLState & GLS_OVERRIDE ) != 0 ) {
+				// This is a hack... Only SWF Guis set GLS_OVERRIDE
+				// Old style guis do not, and we don't want them to use the new GUI renederProg
+				builtInShader = idRenderProgManager::BUILTIN_BINK_GUI;
+			} else {
+				builtInShader = idRenderProgManager::BUILTIN_BINK;
+			}
+		} else {
+			if ( ( stageGLState & GLS_OVERRIDE ) != 0 ) {
+				// This is a hack... Only SWF Guis set GLS_OVERRIDE
+				// Old style guis do not, and we don't want them to use the new GUI renderProg
+				builtInShader = idRenderProgManager::BUILTIN_GUI;
+			} else {
+				if ( surf->jointCache ) {
+					builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED;
+				} else {
+					builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
+				}
+			}
+		}
+	} else if ( ( pStage->texture.texgen == TG_SCREEN ) || ( pStage->texture.texgen == TG_SCREEN2 ) ) {
+		builtInShader = idRenderProgManager::BUILTIN_TEXTURE_TEXGEN_VERTEXCOLOR;
+	} else if ( pStage->texture.cinematic ) {
+		builtInShader = idRenderProgManager::BUILTIN_BINK;
+	} else {
+		if ( surf->jointCache ) {
+			builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED;
+		} else {
+			builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
+		}
+	}
+
+    RB_SetVertexColorParms( svc );
+
+	// set the state
+    D3DDrv_SetBlendStateFromMask( pContext, stageGLState );
+    D3DDrv_SetDepthStateFromMask( pContext, stageGLState );
+		
+    pImages[0] = nullptr;
+	int numImages = RB_PrepareStageTexturing( pStage, surf, &builtInShader, pImages );
+    RB_BindImages( pContext, pImages, numImages );
+		
+    pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( builtInShader ), nullptr, 0 );
+    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( builtInShader ), nullptr, 0 );
+
+	// draw it
+	RB_DrawElementsWithCounters( pContext, surf );
+
+	renderLog.CloseBlock();
+}
+
+/*
+=====================
 RB_DrawShaderPasses
 
 Draw non-light dependent passes
@@ -96,8 +642,7 @@ If we are rendering Guis, the drawSurf_t::sort value is a depth offset that can
 be multiplied by guiEye for polarity and screenSeparation for scale.
 =====================
 */
-static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, const int numDrawSurfs, 
-									const float guiStereoScreenOffset, const int stereoEye ) {
+static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, const int numDrawSurfs ) {
 	// only obey skipAmbient if we are rendering a view
 	if ( backEnd.viewDef->viewEntitys && r_skipAmbient.GetBool() ) {
 		return numDrawSurfs;
@@ -226,167 +771,17 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 
 			// see if we are a new-style stage
 			newShaderStage_t *newStage = pStage->newStage;
-			if ( newStage != NULL ) {
-				//--------------------------
-				//
-				// new style stages
-				//
-				//--------------------------
-				if ( r_skipNewAmbient.GetBool() ) {
-					continue;
-				}
-				renderLog.OpenBlock( "New Shader Stage" );
-
-                D3DDrv_SetBlendStateFromMask( pContext, stageGLState );
-                D3DDrv_SetDepthStateFromMask( pContext, stageGLState );
-
-				for ( int j = 0; j < newStage->numVertexParms; j++ ) {
-					float parm[4];
-					parm[0] = regs[ newStage->vertexParms[j][0] ];
-					parm[1] = regs[ newStage->vertexParms[j][1] ];
-					parm[2] = regs[ newStage->vertexParms[j][2] ];
-					parm[3] = regs[ newStage->vertexParms[j][3] ];
-					renderProgManager.SetRenderParm( (renderParm_t)( RENDERPARM_USER + j ), parm );
-				}
-
-				// set rpEnableSkinning if the shader has optional support for skinning
-				if ( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning( newStage->vertexProgram ) ) {
-					const idVec4 skinningParm( 1.0f );
-					renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
-				}
-
-                ID3D11ShaderResourceView* pTextures[16];
-                ID3D11SamplerState* pSamplers[16];
-                assert( newStage->numFragmentProgramImages < _countof( pTextures ) );
-
-				// bind texture units
-				for ( int j = 0; j < newStage->numFragmentProgramImages; j++ ) {
-					idImage * image = newStage->fragmentProgramImages[j];
-					if ( image != NULL ) {
-                        pTextures[j] = image->GetSRV();
-                        pSamplers[j] = image->GetSampler();
-					}
-				}
-                
-                ID3D11VertexShader* pVertexShader = renderProgManager.GetVertexShader( newStage->vertexProgram );
-                ID3D11PixelShader* pPixelShader = renderProgManager.GetPixelShader( newStage->fragmentProgram );
-
-                pContext->VSSetShader( pVertexShader, nullptr, 0 );
-                pContext->PSSetShader( pPixelShader, nullptr, 0 );
-                pContext->PSSetShaderResources( 0, newStage->numFragmentProgramImages, pTextures );
-                pContext->PSSetSamplers( 0, newStage->numFragmentProgramImages, pSamplers );
-
-                // Commit shader constants
-                renderProgManager.UpdateConstantBuffer( pContext );
-
-                /* @pjb: todo
-				// draw it
-				RB_DrawElementsWithCounters( surf );
-                */
-                
-				// clear rpEnableSkinning if it was set
-				if ( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning( newStage->vertexProgram ) ) {
-					const idVec4 skinningParm( 0.0f );
-					renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
-				}
-
-				renderLog.CloseBlock();
-				continue;
+			if ( newStage != NULL ) 
+            {
+	            if ( r_skipNewAmbient.GetBool() ) {
+		            continue;
+	            }
+                RB_DrawShaderPassStage_New( pContext, surf, newStage, stageGLState );
 			}
-
-			//--------------------------
-			//
-			// old style stages
-			//
-			//--------------------------
-
-			// set the color
-			float color[4];
-			color[0] = regs[ pStage->color.registers[0] ];
-			color[1] = regs[ pStage->color.registers[1] ];
-			color[2] = regs[ pStage->color.registers[2] ];
-			color[3] = regs[ pStage->color.registers[3] ];
-
-			// skip the entire stage if an add would be black
-			if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE ) 
-				&& color[0] <= 0 && color[1] <= 0 && color[2] <= 0 ) {
-				continue;
-			}
-
-			// skip the entire stage if a blend would be completely transparent
-			if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA )
-				&& color[3] <= 0 ) {
-				continue;
-			}
-
-			stageVertexColor_t svc = pStage->vertexColor;
-
-			renderLog.OpenBlock( "Old Shader Stage" );
-
-            renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
-
-            int builtInShader = -1;
-
-			if ( surf->space->isGuiSurface ) {
-				// Force gui surfaces to always be SVC_MODULATE
-				svc = SVC_MODULATE;
-
-				// use special shaders for bink cinematics
-				if ( pStage->texture.cinematic ) {
-					if ( ( stageGLState & GLS_OVERRIDE ) != 0 ) {
-						// This is a hack... Only SWF Guis set GLS_OVERRIDE
-						// Old style guis do not, and we don't want them to use the new GUI renederProg
-						builtInShader = idRenderProgManager::BUILTIN_BINK_GUI;
-					} else {
-						builtInShader = idRenderProgManager::BUILTIN_BINK;
-					}
-				} else {
-					if ( ( stageGLState & GLS_OVERRIDE ) != 0 ) {
-						// This is a hack... Only SWF Guis set GLS_OVERRIDE
-						// Old style guis do not, and we don't want them to use the new GUI renderProg
-						builtInShader = idRenderProgManager::BUILTIN_GUI;
-					} else {
-						if ( surf->jointCache ) {
-						    builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED;
-						} else {
-						    builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
-						}
-					}
-				}
-			} else if ( ( pStage->texture.texgen == TG_SCREEN ) || ( pStage->texture.texgen == TG_SCREEN2 ) ) {
-				builtInShader = idRenderProgManager::BUILTIN_TEXTURE_TEXGEN_VERTEXCOLOR;
-			} else if ( pStage->texture.cinematic ) {
-				builtInShader = idRenderProgManager::BUILTIN_BINK;
-			} else {
-				if ( surf->jointCache ) {
-					builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED;
-				} else {
-					builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
-				}
-			}
-		
-            pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( builtInShader ), nullptr, 0 );
-            pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( builtInShader ), nullptr, 0 );
-
-			/*
-            @pjb: Todo
-            RB_SetVertexColorParms( svc );
-
-			// bind the texture
-			RB_BindVariableStageImage( &pStage->texture, regs );
-
-			// set the state
-			GL_State( stageGLState );
-		
-			RB_PrepareStageTexturing( pStage, surf );
-
-			// draw it
-			RB_DrawElementsWithCounters( surf );
-
-			RB_FinishStageTexturing( pStage, surf );
-            */
-
-			renderLog.CloseBlock();
+            else 
+            {
+			    RB_DrawShaderPassStage_Old( pContext, surf, pStage, stageGLState );
+            }
 		}
 
 		renderLog.CloseBlock();
@@ -408,7 +803,7 @@ BACKEND COMMANDS
 RB_DrawViewInternal
 ==================
 */
-void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye ) {
+void RB_DrawViewInternal( const viewDef_t * viewDef ) {
 	renderLog.OpenBlock( "RB_DrawViewInternal" );
 
 	//-------------------------------------------------
@@ -498,14 +893,7 @@ void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye ) {
 	int processed = 0;
 	if ( !r_skipShaderPasses.GetBool() ) {
 		renderLog.OpenMainBlock( MRB_DRAW_SHADER_PASSES );
-		float guiScreenOffset;
-		if ( viewDef->viewEntitys != NULL ) {
-			// guiScreenOffset will be 0 in non-gui views
-			guiScreenOffset = 0.0f;
-		} else {
-			guiScreenOffset = stereoEye * viewDef->renderView.stereoScreenSeparation;
-		}
-		processed = RB_DrawShaderPasses( drawSurfs, numDrawSurfs, guiScreenOffset, stereoEye );
+		processed = RB_DrawShaderPasses( drawSurfs, numDrawSurfs );
 		renderLog.CloseMainBlock();
 	}
 
@@ -537,13 +925,9 @@ void RB_MotionBlur() {
 /*
 ==================
 RB_DrawView
-
-StereoEye will always be 0 in mono modes, or -1 / 1 in stereo modes.
-If the view is a GUI view that is repeated for both eyes, the viewDef.stereoEye value
-is 0, so the stereoEye parameter is not always the same as that.
 ==================
 */
-void RB_DrawView( const void *data, const int stereoEye ) {
+void RB_DrawView( const void *data ) {
 	const drawSurfsCommand_t * cmd = (const drawSurfsCommand_t *)data;
 
 	backEnd.viewDef = cmd->viewDef;
@@ -566,7 +950,7 @@ void RB_DrawView( const void *data, const int stereoEye ) {
 	backEnd.pc.c_surfaces += backEnd.viewDef->numDrawSurfs;
 
 	// render the scene
-	RB_DrawViewInternal( cmd->viewDef, stereoEye );
+	RB_DrawViewInternal( cmd->viewDef );
 
 	RB_MotionBlur();
 
@@ -650,7 +1034,7 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 			break;
 		case RC_DRAW_VIEW_3D:
 		case RC_DRAW_VIEW_GUI:
-			RB_DrawView( cmds, 0 );
+			RB_DrawView( cmds );
 			if ( ((const drawSurfsCommand_t *)cmds)->viewDef->viewEntitys ) {
 				c_draw3d++;
 			} else {

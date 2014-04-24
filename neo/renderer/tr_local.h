@@ -1260,9 +1260,9 @@ TR_BACKEND_DRAW
 ============================================================
 */
 
-void RB_DrawElementsWithCounters( const drawSurf_t *surf );
-void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye );
-void RB_DrawView( const void *data, const int stereoEye );
+void RB_DrawElementsWithCounters( ID3D11DeviceContext1* pContext, const drawSurf_t *surf );
+void RB_DrawViewInternal( const viewDef_t * viewDef );
+void RB_DrawView( const void *data );
 void RB_CopyRender( const void *data );
 void RB_PostProcess( const void *data );
 

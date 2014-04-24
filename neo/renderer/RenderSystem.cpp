@@ -607,11 +607,15 @@ void idRenderSystemLocal::SwapCommandBuffers_FinishRendering(
 
 	// After coming back from an autoswap, we won't have anything to render
 	if ( frameData->cmdHead->next != NULL ) {
+        int frequency = 0;
+	    if ( r_swapInterval.GetInteger() > 0 ) 
+        {
+	    	frequency = __min( glConfig.displayFrequency, 60 / r_swapInterval.GetInteger() );
+        }
+
 		// wait for our fence to hit, which means the swap has actually happened
 		// We must do this before clearing any resources the GPU may be using
-		// @pjb: todo 
-        // extern void GL_BlockingSwapBuffers();
-		// GL_BlockingSwapBuffers();
+        D3DDrv_EndFrame(frequency);
 	}
 
 	// read back the start and end timer queries from the previous frame

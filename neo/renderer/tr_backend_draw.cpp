@@ -107,6 +107,10 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 
 	backEnd.currentSpace = (const viewEntity_t *)1;	// using NULL makes /analyze think surf->space needs to be checked...
 
+    ID3D11DeviceContext1* pContext = D3DDrv_GetImmediateContext();
+
+    // @pjb: Todo: given we only ever use idDrawVert we could set that state up here once instead of for each draw call
+
 	int i = 0;
 	for ( ; i < numDrawSurfs; i++ ) {
 		const drawSurf_t * surf = drawSurfs[i];
@@ -195,6 +199,8 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
             rasterizerState = D3DDrv_GetRasterizerState( shader->GetCullType(), surfGLState );
         }
 
+        pContext->RSSetState( rasterizerState );
+
 		for ( int stage = 0; stage < shader->GetNumStages(); stage++ ) {		
 			const shaderStage_t *pStage = shader->GetStage(stage);
 
@@ -231,13 +237,8 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 				}
 				renderLog.OpenBlock( "New Shader Stage" );
 
-                /*
-                @pjb : todo
-
-				GL_State( stageGLState );
-			
-				renderProgManager.BindShader( newStage->vertexProgram, newStage->fragmentProgram );
-                */
+                D3DDrv_SetBlendStateFromMask( pContext, stageGLState );
+                D3DDrv_SetDepthStateFromMask( pContext, stageGLState );
 
 				for ( int j = 0; j < newStage->numVertexParms; j++ ) {
 					float parm[4];
@@ -254,33 +255,35 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 					renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
 				}
 
+                ID3D11ShaderResourceView* pTextures[16];
+                ID3D11SamplerState* pSamplers[16];
+                assert( newStage->numFragmentProgramImages < _countof( pTextures ) );
+
 				// bind texture units
 				for ( int j = 0; j < newStage->numFragmentProgramImages; j++ ) {
 					idImage * image = newStage->fragmentProgramImages[j];
 					if ( image != NULL ) {
-                        /* @pjb: todo
-						GL_SelectTexture( j );
-						image->Bind(); 
-                        */
+                        pTextures[j] = image->GetSRV();
+                        pSamplers[j] = image->GetSampler();
 					}
 				}
+                
+                ID3D11VertexShader* pVertexShader = renderProgManager.GetVertexShader( newStage->vertexProgram );
+                ID3D11PixelShader* pPixelShader = renderProgManager.GetPixelShader( newStage->fragmentProgram );
+
+                pContext->VSSetShader( pVertexShader, nullptr, 0 );
+                pContext->PSSetShader( pPixelShader, nullptr, 0 );
+                pContext->PSSetShaderResources( 0, newStage->numFragmentProgramImages, pTextures );
+                pContext->PSSetSamplers( 0, newStage->numFragmentProgramImages, pSamplers );
+
+                // Commit shader constants
+                renderProgManager.UpdateConstantBuffer( pContext );
 
                 /* @pjb: todo
 				// draw it
 				RB_DrawElementsWithCounters( surf );
                 */
-
-				// unbind texture units
-				for ( int j = 0; j < newStage->numFragmentProgramImages; j++ ) {
-					idImage * image = newStage->fragmentProgramImages[j];
-					if ( image != NULL ) {
-                        /* @pjb: todo
-						GL_SelectTexture( j );
-						globalImages->BindNull();
-                        */
-					}
-				}
-
+                
 				// clear rpEnableSkinning if it was set
 				if ( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning( newStage->vertexProgram ) ) {
 					const idVec4 skinningParm( 0.0f );
@@ -322,7 +325,7 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 
             renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
 
-        /* @pjb: todo
+            int builtInShader = -1;
 
 			if ( surf->space->isGuiSurface ) {
 				// Force gui surfaces to always be SVC_MODULATE
@@ -333,36 +336,41 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 					if ( ( stageGLState & GLS_OVERRIDE ) != 0 ) {
 						// This is a hack... Only SWF Guis set GLS_OVERRIDE
 						// Old style guis do not, and we don't want them to use the new GUI renederProg
-						renderProgManager.BindShader_BinkGUI();
+						builtInShader = idRenderProgManager::BUILTIN_BINK_GUI;
 					} else {
-						renderProgManager.BindShader_Bink();
+						builtInShader = idRenderProgManager::BUILTIN_BINK;
 					}
 				} else {
 					if ( ( stageGLState & GLS_OVERRIDE ) != 0 ) {
 						// This is a hack... Only SWF Guis set GLS_OVERRIDE
 						// Old style guis do not, and we don't want them to use the new GUI renderProg
-						renderProgManager.BindShader_GUI();
+						builtInShader = idRenderProgManager::BUILTIN_GUI;
 					} else {
 						if ( surf->jointCache ) {
-							renderProgManager.BindShader_TextureVertexColorSkinned();
+						    builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED;
 						} else {
-							renderProgManager.BindShader_TextureVertexColor();
+						    builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
 						}
 					}
 				}
 			} else if ( ( pStage->texture.texgen == TG_SCREEN ) || ( pStage->texture.texgen == TG_SCREEN2 ) ) {
-				renderProgManager.BindShader_TextureTexGenVertexColor();
+				builtInShader = idRenderProgManager::BUILTIN_TEXTURE_TEXGEN_VERTEXCOLOR;
 			} else if ( pStage->texture.cinematic ) {
-				renderProgManager.BindShader_Bink();
+				builtInShader = idRenderProgManager::BUILTIN_BINK;
 			} else {
 				if ( surf->jointCache ) {
-					renderProgManager.BindShader_TextureVertexColorSkinned();
+					builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED;
 				} else {
-					renderProgManager.BindShader_TextureVertexColor();
+					builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
 				}
 			}
 		
-			RB_SetVertexColorParms( svc );
+            pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( builtInShader ), nullptr, 0 );
+            pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( builtInShader ), nullptr, 0 );
+
+			/*
+            @pjb: Todo
+            RB_SetVertexColorParms( svc );
 
 			// bind the texture
 			RB_BindVariableStageImage( &pStage->texture, regs );
@@ -377,6 +385,7 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 
 			RB_FinishStageTexturing( pStage, surf );
             */
+
 			renderLog.CloseBlock();
 		}
 

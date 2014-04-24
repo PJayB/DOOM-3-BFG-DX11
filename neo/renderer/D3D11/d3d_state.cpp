@@ -66,6 +66,30 @@ void DestroyBuffers()
 }
 
 //----------------------------------------------------------------------------
+// Set state shortcuts
+//----------------------------------------------------------------------------
+void D3DDrv_SetBlendStateFromMask( ID3D11DeviceContext1* pContext, uint64 stateBits )
+{
+    FLOAT b[4] = { 0, 0, 0, 0 };
+    UINT mask = ~0U;
+    pContext->OMSetBlendState( 
+        D3DDrv_GetBlendState( stateBits ),
+        b, 
+        mask );
+}
+
+void D3DDrv_SetDepthStateFromMask( ID3D11DeviceContext1* pContext, uint64 stateBits )
+{
+    uint stencilRef = GLS_STENCIL_GET_REF( stateBits );
+    pContext->OMSetDepthStencilState( D3DDrv_GetDepthState( stateBits ), stencilRef );
+}
+
+void D3DDrv_SetRasterizerStateFromMask( ID3D11DeviceContext1* pContext, int cullMode, uint64 stateBits )
+{
+    pContext->RSSetState( D3DDrv_GetRasterizerState( cullMode, stateBits ) );
+}
+
+//----------------------------------------------------------------------------
 // Set the scissor rect
 //----------------------------------------------------------------------------
 void D3DDrv_SetScissor( int left, int top, int width, int height )

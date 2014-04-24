@@ -47,4 +47,12 @@ ID3D11RasterizerState* D3DDrv_CreateRasterizerState(
 
 HRESULT D3DDrv_LastError( void );
 
+//----------------------------------------------------------------------------
+// Set state shortcuts
+//----------------------------------------------------------------------------
+void D3DDrv_SetBlendStateFromMask( ID3D11DeviceContext1* pContext, uint64 stateBits );
+void D3DDrv_SetDepthStateFromMask( ID3D11DeviceContext1* pContext, uint64 stateBits );
+void D3DDrv_SetRasterizerStateFromMask( ID3D11DeviceContext1* pContext, int cullMode, uint64 stateBits );
+
+
 #endif

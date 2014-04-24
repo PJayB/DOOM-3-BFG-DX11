@@ -17,7 +17,6 @@ extern const float s_identityMatrix[16];
 // Globals
 //----------------------------------------------------------------------------
 d3dBackBufferState_t g_BufferState;
-d3dRunState_t g_RunState;
 d3dDrawState_t g_DrawState;
 
 //----------------------------------------------------------------------------
@@ -67,46 +66,6 @@ void DestroyBuffers()
 }
 
 //----------------------------------------------------------------------------
-// Set the culling mode depending on whether it's a mirror or not
-//----------------------------------------------------------------------------
-void CommitRasterizerState( int cullType, bool polyOffset, bool outline )
-{
-    polyOffset |= g_RunState.polyOffsetEnabled;
-    outline |= g_RunState.lineMode;
-
-    int maskBits = 
-        ( ( outline & 1 ) << 5 ) |
-        ( ( polyOffset & 1 ) << 4 ) |
-        ( cullType & 3 );
-
-	if ( g_RunState.cullMode == maskBits ) {
-		return;
-	}
-
-	g_RunState.cullMode = maskBits;
-
-    // Resolve which direction we're culling in
-    D3D11_CULL_MODE cullMode = D3D11_CULL_NONE;
-	if ( cullType != CT_TWO_SIDED ) 
-    {
-		if ( cullType == CT_BACK_SIDED )
-		{
-			cullMode = D3D11_CULL_BACK;
-		}
-		else
-		{
-			cullMode = D3D11_CULL_FRONT;
-		}
-	}
-
-    int rasterFlags = 0;
-    if ( polyOffset ) { rasterFlags |= RASTERIZERSTATE_FLAG_POLY_OFFSET; }
-    if ( outline ) { rasterFlags |= RASTERIZERSTATE_FLAG_POLY_OUTLINE; }
-
-    g_pImmediateContext->RSSetState( GetRasterizerState( cullMode, rasterFlags ) );
-}
-
-//----------------------------------------------------------------------------
 // Set the scissor rect
 //----------------------------------------------------------------------------
 void D3DDrv_SetScissor( int left, int top, int width, int height )
@@ -128,14 +87,6 @@ void D3DDrv_SetViewport( int left, int top, int width, int height )
     viewport.MinDepth = 0;
     viewport.MaxDepth = 1;
     g_pImmediateContext->RSSetViewports( 1, &viewport );
-}
-
-//----------------------------------------------------------------------------
-// Set the default state
-//----------------------------------------------------------------------------
-void D3DDrv_SetDefaultState()
-{
-    CommitRasterizerState( CT_FRONT_SIDED, false, false );
 }
 
 //----------------------------------------------------------------------------
@@ -164,26 +115,28 @@ ID3D11BlendState* D3DDrv_GetBlendState( uint64 stateBits )
 //----------------------------------------------------------------------------
 // Set the rasterizer mode based on the mask, but defer until later
 //----------------------------------------------------------------------------
-void D3DDrv_SetRasterizerOptions( uint64 stateBits )
+ID3D11RasterizerState* D3DDrv_GetRasterizerState( int cullType, uint64 stateBits )
 {
-	//
-	// fill/line mode
-	//
-	if ( stateBits & GLS_POLYMODE_LINE ) 
+    bool outline = ( stateBits & GLS_POLYMODE_LINE ) != 0;
+    bool polyOffset = ( stateBits & GLS_POLYGON_OFFSET ) != 0;
+
+    // Resolve which direction we're culling in
+    D3D11_CULL_MODE cullMode = D3D11_CULL_NONE;
+	if ( cullType != CT_TWO_SIDED ) 
     {
-		g_RunState.lineMode = ( stateBits & GLS_POLYMODE_LINE ) != 0;
+		if ( cullType == CT_BACK_SIDED )
+			cullMode = D3D11_CULL_BACK;
+		else if ( cullType == CT_FRONT_SIDED )
+			cullMode = D3D11_CULL_FRONT;
+        else
+            assert(0);
 	}
 
-	//
-	// polygon offset
-	//
-    bool shouldEnable = ( stateBits & GLS_POLYGON_OFFSET ) != 0;
-    bool alreadyEnabled = ( stateBits & GLS_POLYGON_OFFSET ) != 0;
-	if ( shouldEnable != alreadyEnabled ) {
-		g_RunState.polyOffsetEnabled = shouldEnable;
-	    g_RunState.polyOffset[0] = backEnd.glState.polyOfsScale;
-        g_RunState.polyOffset[1] = backEnd.glState.polyOfsBias;
-	}
+    int rasterFlags = 0;
+    if ( polyOffset ) { rasterFlags |= RASTERIZERSTATE_FLAG_POLY_OFFSET; }
+    if ( outline ) { rasterFlags |= RASTERIZERSTATE_FLAG_POLY_OUTLINE; }
+
+    return GetRasterizerState( cullMode, rasterFlags );
 }
 
 //----------------------------------------------------------------------------
@@ -199,6 +152,50 @@ ID3D11DepthStencilState* D3DDrv_CreateDepthStencilState( uint64 stateBits )
     ID3D11DepthStencilState* pDSS = nullptr;
     g_pDevice->CreateDepthStencilState( &dsd, &pDSS );
     return pDSS;
+}
+
+//----------------------------------------------------------------------------
+// Create a depth stencil with stencil parameters
+//----------------------------------------------------------------------------
+ID3D11RasterizerState* D3DDrv_CreateRasterizerState( int cullType, uint64 stateBits, float polyOffsetBias, float polyOffsetSlopeBias )
+{
+    D3D11_RASTERIZER_DESC rd;
+    ZeroMemory( &rd, sizeof( rd ) );
+
+    rd.FrontCounterClockwise = TRUE;
+    rd.DepthClipEnable = TRUE;
+    rd.DepthBiasClamp = 0;
+
+    switch (cullType)
+    {
+    case CT_BACK_SIDED:
+        rd.CullMode = D3D11_CULL_FRONT;
+        break;
+    case CT_FRONT_SIDED:
+        rd.CullMode = D3D11_CULL_BACK;
+        break;
+    case CT_TWO_SIDED:
+        rd.CullMode = D3D11_CULL_NONE;
+        break;
+    default:
+        assert(0);
+        return nullptr;
+    }
+
+    if ( stateBits & GLS_POLYMODE_LINE ) 
+    {
+        rd.FillMode = D3D11_FILL_WIREFRAME;
+    }
+
+    if ( stateBits & GLS_POLYGON_OFFSET )
+    {
+        rd.DepthBias = r_offsetFactor.GetFloat() + polyOffsetBias;
+        rd.SlopeScaledDepthBias = r_offsetUnits.GetFloat() + polyOffsetSlopeBias;
+    }
+
+    ID3D11RasterizerState* pRS = nullptr;
+    g_pDevice->CreateRasterizerState( &rd, &pRS );
+    return pRS;
 }
 
 //----------------------------------------------------------------------------
@@ -585,13 +582,7 @@ void DestroyBlendStates( d3dBlendStates_t* bs )
 void InitDrawState()
 {
     // Don't memset g_BufferState here.
-    memset( &g_RunState, 0, sizeof( g_RunState ) );
     memset( &g_DrawState, 0, sizeof( g_DrawState ) );
-
-    // Set up default state
-    g_RunState.vsDirtyConstants = true;
-    g_RunState.psDirtyConstants = true;
-    g_RunState.cullMode = -1;
     
     // Create D3D objects
     DestroyBuffers();
@@ -604,7 +595,6 @@ void InitDrawState()
     // Set up some default state
     g_pImmediateContext->OMSetRenderTargets( 1, &g_BufferState.backBufferView, g_BufferState.depthBufferView );
     D3DDrv_SetViewport( 0, 0, g_BufferState.backBufferDesc.Width, g_BufferState.backBufferDesc.Height );
-    D3DDrv_SetDefaultState();
 
     // Clear the targets
     FLOAT clearCol[4] = { 0, 0, 0, 0 };
@@ -626,7 +616,6 @@ void DestroyDrawState()
     DestroyBlendStates( &g_DrawState.blendStates );
     DestroyBuffers();
 
-    memset( &g_RunState, 0, sizeof( g_RunState ) );
     memset( &g_DrawState, 0, sizeof( g_DrawState ) );
 }
 

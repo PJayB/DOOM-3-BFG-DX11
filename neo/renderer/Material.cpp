@@ -129,6 +129,8 @@ void idMaterial::CommonInit() {
 	decalInfo.end[1] = 0;
 	decalInfo.end[2] = 0;
 	decalInfo.end[3] = 0;
+
+    rasterizerState = nullptr;
 }
 
 
@@ -155,11 +157,25 @@ idMaterial::~idMaterial() {
 
 /*
 ===============
+idMaterial::CleanupRasterizerStates
+===============
+*/
+void idMaterial::CleanupRasterizerStates() {
+	SAFE_RELEASE( rasterizerState );
+    for ( int i = 0; stages && i < GetNumStages(); ++i ) {
+        SAFE_RELEASE( stages[i].rasterizerState );
+    }
+}
+
+/*
+===============
 idMaterial::FreeData
 ===============
 */
 void idMaterial::FreeData() {
 	int i;
+
+    CleanupRasterizerStates();
 
 	if ( stages ) {
 		// delete any idCinematic textures
@@ -774,6 +790,7 @@ void idMaterial::ClearStage( shaderStage_t *ss ) {
 	ss->color.registers[1] =
 	ss->color.registers[2] =
 	ss->color.registers[3] = GetExpressionConstant( 1 );
+    ss->rasterizerState = nullptr;
 }
 
 /*
@@ -2196,6 +2213,8 @@ bool idMaterial::Parse( const char *text, const int textLength, bool allowBinary
 	idToken	token;
 	mtrParsingData_t parsingData;
 
+    CleanupRasterizerStates();
+
 	src.LoadMemory( text, textLength, GetFileName(), GetLineNum() );
 	src.SetFlags( DECL_LEXER_FLAGS );
 	src.SkipUntilString( "{" );
@@ -2388,11 +2407,32 @@ bool idMaterial::Parse( const char *text, const int textLength, bool allowBinary
 	pd = NULL;	// the pointer will be invalid after exiting this function
 
 	// finish things up
-	if ( TestMaterialFlag( MF_DEFAULTED ) ) {
+    bool ok = !TestMaterialFlag( MF_DEFAULTED );
+	if ( !ok ) {
 		MakeDefault();
-		return false;
 	}
-	return true;
+
+    // Create the rasterizer state for this shader and it's stages (if necessary)
+    if ( TestMaterialFlag(MF_POLYGONOFFSET) ) {
+        rasterizerState = D3DDrv_CreateRasterizerState(
+            cullType,
+            GLS_POLYGON_OFFSET,
+            0,
+            GetPolygonOffset() );
+
+		for ( int stage = 0; stage < GetNumStages(); stage++ ) {		
+			shaderStage_t *pStage = &stages[stage];
+			if ( pStage->privatePolygonOffset != 0 ) {
+                pStage->rasterizerState = D3DDrv_CreateRasterizerState(
+                    cullType,
+                    GLS_POLYGON_OFFSET,
+                    0,
+                    pStage->privatePolygonOffset );
+            }
+        }
+    }
+
+	return ok;
 }
 
 /*

@@ -82,22 +82,11 @@ struct d3dDrawState_t
     ID3D11Query* frameQuery;
 };
 
-// @pjb: stores the run-time game state. The game is set up like a state machine so we'll be doing the same.
-struct d3dRunState_t {
-    float polyOffset[2];
-    int cullMode; // CT_ flag
-    bool lineMode;
-    bool polyOffsetEnabled;
-    bool vsDirtyConstants;
-    bool psDirtyConstants;
-};
-
 //----------------------------------------------------------------------------
 // Imports from d3d_device.cpp
 //----------------------------------------------------------------------------
 extern HRESULT g_hrLastError;
 extern d3dBackBufferState_t g_BufferState;
-extern d3dRunState_t g_RunState;
 extern d3dDrawState_t g_DrawState;
 
 //----------------------------------------------------------------------------
@@ -113,9 +102,6 @@ extern IDXGISwapChain1* g_pSwapChain;
 
 void InitDrawState();
 void DestroyDrawState();
-
-// cullmode = CT_ flags
-void CommitRasterizerState( int cullMode, bool polyOffset, bool outline );
 
 ID3D11RasterizerState* GetRasterizerState( D3D11_CULL_MODE cullmode, uint64 mask );
 ID3D11DepthStencilState* GetDepthState( uint64 mask ); // DEPTHSTATE_FLAG_ enum

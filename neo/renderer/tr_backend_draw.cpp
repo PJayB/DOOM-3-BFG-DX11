@@ -183,6 +183,7 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
         @pjb : todo
 		// set face culling appropriately
 		if ( surf->space->isGuiSurface ) {
+            assert( !shader->TestMaterialFlag(MF_POLYGONOFFSET) );
 			GL_Cull( CT_TWO_SIDED );
 		} else {
 			GL_Cull( shader->GetCullType() );
@@ -373,6 +374,7 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 
 			// set privatePolygonOffset if necessary
 			if ( pStage->privatePolygonOffset ) {
+                assert( ( stageGLState & GLS_POLYMODE_LINE ) == 0 );
 				GL_PolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * pStage->privatePolygonOffset );
 				stageGLState |= GLS_POLYGON_OFFSET;
 			}
@@ -455,9 +457,6 @@ void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye ) {
 	backEnd.currentScissor = viewDef->scissor;
 
 	backEnd.glState.faceCulling = -1;		// force face culling to set next time
-
-	// ensures that depth writes are enabled for the depth clear
-    D3DDrv_SetDefaultState();
 
 	// Clear the depth buffer and clear the stencil to 128 for stencil shadows as well as gui masking
 	D3DDrv_Clear( CLEAR_DEPTH | CLEAR_STENCIL, nullptr, STENCIL_SHADOW_TEST_VALUE, 1 );

@@ -207,6 +207,8 @@ typedef struct {
 											// if the surface is alpha tested
 	float				privatePolygonOffset;	// a per-stage polygon offset
 
+    ID3D11RasterizerState* rasterizerState;
+
 	newShaderStage_t	*newStage;			// vertex / fragment program based stage
 } shaderStage_t;
 
@@ -333,6 +335,10 @@ typedef enum {
 } surfaceFlags_t;
 
 class idSoundEmitter;
+
+struct materialRenderStateBundle_t {
+    ID3D11BlendState* blendState;
+};
 
 class idMaterial : public idDecl {
 public:
@@ -597,6 +603,8 @@ public:
 	bool				IsPortalSky() const						{ return portalSky; };
 	void				AddReference();
 
+    ID3D11RasterizerState* GetRasterizerState() const           { return rasterizerState; }
+
 private:
 	// parse the entire material
 	void				CommonInit();
@@ -628,9 +636,10 @@ private:
 	void				AddImplicitStages( const textureRepeat_t trpDefault = TR_REPEAT );
 	void				CheckForConstantRegisters();
 	void				SetFastPathImages();
+    void                CleanupRasterizerStates();
 
 private:
-	idStr				desc;				// description
+    idStr				desc;				// description
 	idStr				renderBump;			// renderbump command options, without the "renderbump" at the start
 
 	idImage	*			lightFalloffImage;	// only for light shaders
@@ -698,6 +707,8 @@ private:
 	idStr				editorImageName;
 	mutable idImage *	editorImage;		// image used for non-shaded preview
 	float				editorAlpha;
+
+    ID3D11RasterizerState* rasterizerState;
 
 	bool				suppressInSubview;
 	bool				portalSky;

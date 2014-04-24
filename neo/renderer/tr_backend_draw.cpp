@@ -106,7 +106,6 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 	renderLog.OpenBlock( "RB_DrawShaderPasses" );
 
 	backEnd.currentSpace = (const viewEntity_t *)1;	// using NULL makes /analyze think surf->space needs to be checked...
-	float currentGuiStereoOffset = 0.0f;
 
 	int i = 0;
 	for ( ; i < numDrawSurfs; i++ ) {
@@ -455,8 +454,6 @@ void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye ) {
 				viewDef->scissor.x2 + 1 - viewDef->scissor.x1,
 				viewDef->scissor.y2 + 1 - viewDef->scissor.y1 );
 	backEnd.currentScissor = viewDef->scissor;
-
-	backEnd.glState.faceCulling = -1;		// force face culling to set next time
 
 	// Clear the depth buffer and clear the stencil to 128 for stencil shadows as well as gui masking
 	D3DDrv_Clear( CLEAR_DEPTH | CLEAR_STENCIL, nullptr, STENCIL_SHADOW_TEST_VALUE, 1 );

@@ -593,39 +593,6 @@ struct performanceCounters_t {
 	int		frontEndMicroSec;	// sum of time in all RE_RenderScene's in a frame
 };
 
-
-struct tmu_t {
-	unsigned int	current2DMap;
-	unsigned int	currentCubeMap;
-};
-
-
-const int MAX_MULTITEXTURE_UNITS =	8;
-
-enum vertexLayoutType_t {
-	LAYOUT_UNKNOWN = 0,
-	LAYOUT_DRAW_VERT,
-	LAYOUT_DRAW_SHADOW_VERT,
-	LAYOUT_DRAW_SHADOW_VERT_SKINNED
-};
-
-struct glstate_t {
-	tmu_t				tmu[MAX_MULTITEXTURE_UNITS];
-
-	int					currenttmu;
-
-	int					faceCulling;
-
-	vertexLayoutType_t	vertexLayout;
-	unsigned int		currentVertexBuffer;
-	unsigned int		currentIndexBuffer;
-
-	float				polyOfsScale;
-	float				polyOfsBias;
-
-	uint64				glStateBits;
-};
-
 struct backEndCounters_t {
 	int		c_surfaces;
 	int		c_shaders;
@@ -652,7 +619,6 @@ struct backEndState_t {
 
 	const viewEntity_t *currentSpace;			// for detecting when a matrix must change
 	idScreenRect		currentScissor;			// for scissor clipping, local inside renderView viewport
-	glstate_t			glState;				// for OpenGL state deltas
 
 	bool				currentRenderCopied;	// true if any material has already referenced _currentRender
 

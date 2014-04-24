@@ -564,6 +564,9 @@
     <ClInclude Include="sys\win32\win_d3d.h">
       <Filter>Sys\Win32</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\LayoutManager.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -1156,6 +1159,9 @@
     </ClCompile>
     <ClCompile Include="sys\win32\win_d3d.cpp">
       <Filter>Sys\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\LayoutManager.cpp">
+      <Filter>Renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

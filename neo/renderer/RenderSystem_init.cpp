@@ -358,6 +358,9 @@ void R_InitDirect3D() {
 	// allocate the vertex array range or vertex objects
 	vertexCache.Init();
 
+    // Initialize the vertex layout objects
+    idLayoutManager::Init();
+
 	// allocate the frame data, which may be more if smp is enabled
 	R_InitFrameData();
 }
@@ -1583,6 +1586,10 @@ idRenderSystemLocal::ShutdownOpenGL
 ========================
 */
 void idRenderSystemLocal::ShutdownOpenGL() {
+
+    idLayoutManager::Shutdown();
+    D3DDrv_Shutdown();
+
 	// free the context and close the window
 	R_ShutdownFrameData();
     D3DWnd_Shutdown();

@@ -219,6 +219,7 @@
     <ClInclude Include="renderer\jobs\staticshadowvolume\StaticShadowVolume_local.h" />
     <ClInclude Include="renderer\jobs\dynamicshadowvolume\DynamicShadowVolume.h" />
     <ClInclude Include="renderer\jobs\dynamicshadowvolume\DynamicShadowVolume_local.h" />
+    <ClInclude Include="renderer\LayoutManager.h" />
     <ClInclude Include="renderer\Material.h" />
     <ClInclude Include="renderer\Model.h" />
     <ClInclude Include="renderer\Model_ase.h" />
@@ -429,6 +430,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Retail|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="renderer\LayoutManager.cpp" />
     <ClCompile Include="renderer\Material.cpp" />
     <ClCompile Include="renderer\Model.cpp" />
     <ClCompile Include="renderer\Model_ase.cpp" />

@@ -367,13 +367,6 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 			// bind the texture
 			RB_BindVariableStageImage( &pStage->texture, regs );
 
-			// set privatePolygonOffset if necessary
-			if ( pStage->privatePolygonOffset ) {
-                assert( ( stageGLState & GLS_POLYMODE_LINE ) == 0 );
-				GL_PolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * pStage->privatePolygonOffset );
-				stageGLState |= GLS_POLYGON_OFFSET;
-			}
-
 			// set the state
 			GL_State( stageGLState );
 		
@@ -383,11 +376,6 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 			RB_DrawElementsWithCounters( surf );
 
 			RB_FinishStageTexturing( pStage, surf );
-
-			// unset privatePolygonOffset if necessary
-			if ( pStage->privatePolygonOffset ) {
-				GL_PolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * shader->GetPolygonOffset() );
-			}
             */
 			renderLog.CloseBlock();
 		}

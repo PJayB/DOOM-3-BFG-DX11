@@ -253,12 +253,6 @@ public:
 	// reloads all apropriate images after a vid_restart
 	void				ReloadImages( bool all );
 
-	// unbind all textures from all texture units
-	void				UnbindAll();
-
-	// disable the active texture unit
-	void				BindNull();
-
 	// Called only by renderSystem::BeginLevelLoad
 	void				BeginLevelLoad();
 

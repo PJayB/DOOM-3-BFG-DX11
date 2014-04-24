@@ -638,24 +638,6 @@ void R_CombineCubeImages_f( const idCmdArgs &args ) {
 
 /*
 ===============
-UnbindAll
-===============
-*/
-void idImageManager::UnbindAll() {
-}
-
-/*
-===============
-BindNull
-===============
-*/
-void idImageManager::BindNull() {
-	RENDERLOG_PRINTF( "BindNull()\n" );
-
-}
-
-/*
-===============
 Init
 ===============
 */

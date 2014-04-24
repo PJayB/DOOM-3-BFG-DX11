@@ -77,12 +77,6 @@ void idAutoRender::StartBackgroundAutoSwaps( autoRenderIconType_t iconType ) {
 	const bool captureToImage = true;
 	common->UpdateScreen( captureToImage );
 
-	// unbind all texture units so we don't run into a race condition where the device is owned
-	// by the autorender thread but an image is trying to be unset from the main thread because
-	// it is getting purged before our our first frame has been rendered.
-	globalImages->UnbindAll();
-
-
 	StartThread("BackgroundAutoSwaps", CORE_0B, THREAD_NORMAL, AUTO_RENDER_STACK_SIZE );
 }
 

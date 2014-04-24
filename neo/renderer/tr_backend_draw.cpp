@@ -323,8 +323,10 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 			stageVertexColor_t svc = pStage->vertexColor;
 
 			renderLog.OpenBlock( "Old Shader Stage" );
+
+            renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
+
         /* @pjb: todo
-			GL_Color( color );
 
 			if ( surf->space->isGuiSurface ) {
 				// Force gui surfaces to always be SVC_MODULATE
@@ -384,11 +386,6 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 			RB_DrawElementsWithCounters( surf );
 
 			RB_FinishStageTexturing( pStage, surf );
-
-			// unset privatePolygonOffset if necessary
-			if ( pStage->privatePolygonOffset ) {
-				GL_PolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * shader->GetPolygonOffset() );
-			}
             */
 			renderLog.CloseBlock();
 		}

@@ -186,6 +186,10 @@ ID3D11RasterizerState* D3DDrv_CreateRasterizerState( int cullType, uint64 stateB
     {
         rd.FillMode = D3D11_FILL_WIREFRAME;
     }
+    else
+    {
+        rd.FillMode = D3D11_FILL_SOLID;
+    }
 
     if ( stateBits & GLS_POLYGON_OFFSET )
     {

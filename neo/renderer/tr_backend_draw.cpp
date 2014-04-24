@@ -178,26 +178,22 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 		// get the expressions for conditionals / color / texcoords
 		const float	*regs = surf->shaderRegisters;
 
-        /*
-        @pjb : todo
 		// set face culling appropriately
-		if ( surf->space->isGuiSurface ) {
+        ID3D11RasterizerState* rasterizerState = nullptr;
+        if ( surf->space->isGuiSurface ) {
             assert( !shader->TestMaterialFlag(MF_POLYGONOFFSET) );
-			GL_Cull( CT_TWO_SIDED );
-		} else {
-			GL_Cull( shader->GetCullType() );
-		}
-        */
+            // @pjb: todo: line mode
+            rasterizerState = D3DDrv_GetRasterizerState( CT_TWO_SIDED, 0 );
+        } else {
+            rasterizerState = shader->GetRasterizerState(); 
+        }
 
 		uint64 surfGLState = surf->extraGLState;
 
-		// set polygon offset if necessary
-		if ( shader->TestMaterialFlag(MF_POLYGONOFFSET) ) {
-            // @pjb: Todo: polygon offset
-            assert(0);
-			// GL_PolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * shader->GetPolygonOffset() );
-			surfGLState = GLS_POLYGON_OFFSET;
-		}
+        // if the shader doesn't have it's own rasterizer state, get one
+        if ( rasterizerState == nullptr ) {
+            rasterizerState = D3DDrv_GetRasterizerState( shader->GetCullType(), surfGLState );
+        }
 
 		for ( int stage = 0; stage < shader->GetNumStages(); stage++ ) {		
 			const shaderStage_t *pStage = shader->GetStage(stage);

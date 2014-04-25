@@ -163,7 +163,7 @@ public:
         return fragmentShaders[builtinShaders[pshader]].pShader; 
     }
 
-	enum {
+	enum BUILTIN_SHADER {
 		BUILTIN_GUI,
 		BUILTIN_COLOR,
 		BUILTIN_SIMPLESHADE,

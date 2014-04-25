@@ -604,9 +604,9 @@ void idRenderSystemLocal::SwapCommandBuffers_FinishRendering(
 		return;
 	}
 
-
 	// After coming back from an autoswap, we won't have anything to render
 	if ( frameData->cmdHead->next != NULL ) {
+        // @pjb: todo: this code confuses me. Why are we ending the frame and *then* unlocking the buffers?
         int frequency = 0;
 	    if ( r_swapInterval.GetInteger() > 0 ) 
         {

@@ -573,7 +573,7 @@ static void RB_DrawShaderPassStage_Old( ID3D11DeviceContext1* pContext, const dr
 
     renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
 
-    idRenderProgManager::BUILTIN_SHADER builtInShader = -1;
+    idRenderProgManager::BUILTIN_SHADER builtInShader = idRenderProgManager::MAX_BUILTINS;
 
 	if ( surf->space->isGuiSurface ) {
 		// Force gui surfaces to always be SVC_MODULATE

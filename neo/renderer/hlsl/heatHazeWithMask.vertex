@@ -44,7 +44,6 @@ struct VS_IN {
 
 struct VS_OUT {
 	float4 position		: SV_POSITION;
-    float4 posPS        : POSITION;
 	float4 texcoord0	: TEXCOORD0;
 	float4 texcoord1	: TEXCOORD1;
 	float4 texcoord2	: TEXCOORD2;
@@ -82,6 +81,4 @@ void main( VS_IN vertex, out VS_OUT result ) {
 
 	const float4 deformMagnitude = rpUser1;
 	result.texcoord2 = x * deformMagnitude;
-
-    result.posPS = result.position;
 }

@@ -29,6 +29,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "global.inc"
 
 struct PS_IN {
+	float4 position		: VPOS;
 	float4 texcoord0	: TEXCOORD0;
 };
 
@@ -50,7 +51,7 @@ void main( PS_IN fragment, out PS_OUT result ) {
 
 	float3 pos;
 	pos.z = 1.0 / interpolatedZOverW;
-	pos.xy = pos.z * ( 2.0 * screenPosToTexcoord( fragment.texcoord0.xy, positionToViewTexture ) - 1.0 );
+	pos.xy = pos.z * ( 2.0 * screenPosToTexcoord( fragment.position.xy, positionToViewTexture ) - 1.0 );
 
 	float3 normal = normalize( cross( ddy( pos ), ddx( pos ) ) );
 

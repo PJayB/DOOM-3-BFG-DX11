@@ -766,6 +766,24 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
     </FxCompile>
+    <FxCompile Include="renderer\hlsl\stereoDeGhost.vertex">
+      <FileType>Document</FileType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Retail|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\stereoInterlace.vertex">
+      <FileType>Document</FileType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Retail|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\stereoWarp.vertex">
+      <FileType>Document</FileType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Retail|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+    </FxCompile>
     <FxCompile Include="renderer\hlsl\texture.vertex">
       <FileType>Document</FileType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Retail|Win32'">Vertex</ShaderType>
@@ -1010,6 +1028,24 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\skybox.pixel">
+      <FileType>Document</FileType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Retail|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\stereoDeGhost.pixel">
+      <FileType>Document</FileType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Retail|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\stereoInterlace.pixel">
+      <FileType>Document</FileType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Retail|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\stereoWarp.pixel">
       <FileType>Document</FileType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Retail|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>

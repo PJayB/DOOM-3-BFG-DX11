@@ -38,6 +38,21 @@ QD3D11Device* InitDevice()
 
     common->Printf( "... feature level %d\n", g_BufferState.featureLevel );
 
+    ID3D11Debug *d3dDebug = nullptr;
+    if (SUCCEEDED(g_pDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&d3dDebug)))
+    {
+        ID3D11InfoQueue *d3dInfoQueue = nullptr;
+        if (SUCCEEDED(d3dDebug->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&d3dInfoQueue)))
+        {
+#ifdef _DEBUG
+            d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+            d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
+#endif
+            d3dInfoQueue->Release();
+        }
+        d3dDebug->Release();
+    }
+
     g_pDevice->AddRef();
     return g_pDevice;
 }

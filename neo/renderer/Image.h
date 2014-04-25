@@ -81,7 +81,7 @@ public:
 	void		SetSamplerState( textureFilter_t tf, textureRepeat_t tr );
 
     // Regenerate sampler state (used if aniso cvar has been touched)
-    void        RegenerateSamplerState();
+    HRESULT     RegenerateSamplerState();
 
 	// used by callback functions to specify the actual data
 	// data goes from the bottom to the top line of the image, as OpenGL expects it

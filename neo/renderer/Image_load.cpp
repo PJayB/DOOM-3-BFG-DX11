@@ -708,7 +708,9 @@ idImage::PurgeImage
 ========================
 */
 void idImage::PurgeImage() {
-	// @pjb: Todo
+	SAFE_RELEASE( pTexture );
+	SAFE_RELEASE( pSRV );
+	SAFE_RELEASE( pSampler );
 }
 
 DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt, int& bytesPP ) const
@@ -870,17 +872,25 @@ void idImage::AllocImage() {
     // create image
     QD3D11Device* pDevice = D3DDrv_GetDevice();
 
-    pDevice->CreateTexture2D( &desc, NULL, &pTexture );
-    assert( pTexture );
-    
-    // create SRV
-    pDevice->CreateShaderResourceView(
-        pTexture,
-        &srvDesc,
-        &pSRV );
-    assert( pSRV );
+    HRESULT hr = pDevice->CreateTexture2D( &desc, NULL, &pTexture );
+    if ( SUCCEEDED( hr ) )
+    {
+        // create SRV
+        hr = pDevice->CreateShaderResourceView(
+            pTexture,
+            &srvDesc,
+            &pSRV );
+        if ( SUCCEEDED( hr ) )
+        {
+            hr = RegenerateSamplerState();
+        }
+    }
 
-    RegenerateSamplerState();
+    if ( FAILED( hr ) )
+    {
+        PurgeImage();
+        common->Warning( "Failed to allocate image '%s': %08X", GetName(), hr );
+    }
 }
 /*
 ========================
@@ -894,7 +904,7 @@ void idImage::SubImageUpload( int mipLevel, int x, int y, int z, int width, int 
 //
 //
 // 
-void idImage::RegenerateSamplerState()
+HRESULT idImage::RegenerateSamplerState()
 {
     QD3D11Device* pDevice = D3DDrv_GetDevice();
 
@@ -1043,6 +1053,5 @@ void idImage::RegenerateSamplerState()
         sDesc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
 
     // create sampler
-    pDevice->CreateSamplerState( &sDesc, &pSampler );
-    assert( pSampler );
+    return pDevice->CreateSamplerState( &sDesc, &pSampler );
 }

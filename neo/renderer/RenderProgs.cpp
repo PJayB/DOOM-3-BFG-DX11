@@ -387,6 +387,9 @@ void idRenderProgManager::InitConstantBuffer( cbufferInfo_t* cbuffer, size_t siz
     cbuffer->dirty = true;
     cbuffer->size = sizeof(float) * 4 * RENDERPARM_TOTAL;
     cbuffer->pData = new float[cbuffer->size / sizeof(float)];
+
+    memset( cbuffer->pData, 0, cbuffer->size );
+
     cbuffer->pBuffer = QD3D::CreateDynamicBuffer( 
         D3DDrv_GetDevice(),
         D3D11_BIND_CONSTANT_BUFFER,

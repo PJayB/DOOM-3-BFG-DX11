@@ -26,7 +26,7 @@ QD3D11Device* InitDevice()
     g_BufferState.featureLevel = D3D_FEATURE_LEVEL_11_1; 
 #endif
 	HRESULT hr = QD3D::CreateDefaultDevice(
-		D3D_DRIVER_TYPE_HARDWARE, 
+		D3D_DRIVER_TYPE_WARP, 
 		&g_pDevice, 
 		&g_pImmediateContext, 
 		&g_BufferState.featureLevel);

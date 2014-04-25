@@ -152,6 +152,11 @@ bool D3DWnd_Init( glimpParms_t parms )
         return false;
     }
 
+    ::ShowWindow( win32.hWnd, SW_SHOW );
+    ::UpdateWindow( win32.hWnd );
+	::SetForegroundWindow( win32.hWnd );
+	::SetFocus( win32.hWnd );
+
 	QD3D11Device* device = InitDevice();
     IDXGISwapChain1* swapChain = CreateSwapChain( device, &parms );
     if ( !swapChain )
@@ -174,11 +179,6 @@ bool D3DWnd_Init( glimpParms_t parms )
 
     D3DDrv_Init();
 
-    ::ShowWindow( win32.hWnd, SW_SHOW );
-    ::UpdateWindow( win32.hWnd );
-	::SetForegroundWindow( win32.hWnd );
-	::SetFocus( win32.hWnd );
-
     return true;
 }
 
@@ -187,8 +187,10 @@ bool D3DWnd_Init( glimpParms_t parms )
 //----------------------------------------------------------------------------
 bool D3DWnd_SetScreenParms( glimpParms_t parms ) 
 {
+    D3DDrv_Shutdown();
     DestroyBuffers();
     DestroySwapChain();
+    DestroyDevice();
 
 	int x, y, w, h;
 	if ( !GLW_GetWindowDimensions( parms, x, y, w, h ) ) {
@@ -214,7 +216,8 @@ bool D3DWnd_SetScreenParms( glimpParms_t parms )
         x, y, w, h, 
         SWP_SHOWWINDOW );
 
-    IDXGISwapChain1* swapChain = CreateSwapChain( GetDevice(), &parms );
+    QD3D11Device* device = InitDevice();
+    IDXGISwapChain1* swapChain = CreateSwapChain( device, &parms );
     if ( !swapChain )
     {
         return false;
@@ -229,7 +232,9 @@ bool D3DWnd_SetScreenParms( glimpParms_t parms )
 	glConfig.nativeScreenWidth = parms.width;
 	glConfig.nativeScreenHeight = parms.height;
 
-	return true;
+    D3DDrv_Init();
+
+    return true;
 }
 
 //----------------------------------------------------------------------------

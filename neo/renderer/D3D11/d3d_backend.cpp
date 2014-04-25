@@ -40,7 +40,6 @@ QD3D11Device* D3DDrv_GetDevice()
 
 ID3D11DeviceContext1* D3DDrv_GetImmediateContext()
 {
-    // @pjb: todo: assert( !idLib::IsMainThread() );
     return g_pImmediateContext;
 }
 
@@ -126,7 +125,7 @@ void D3DDrv_EndFrame( int frequency )
 
 	if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
 	{
-		// Someone kicked the cord out or something. REBOOT TEH VIDYOS!
+        // Someone kicked the cord out or something. REBOOT TEH VIDYOS!
         cmdSystem->ExecuteCommandText("vid_restart");
 	}
 }

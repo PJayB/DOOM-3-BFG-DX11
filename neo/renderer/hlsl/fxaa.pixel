@@ -50,7 +50,7 @@ uniform float4 rpUser5 : register( c133 );
 uniform float4 rpUser6 : register( c134 );
 
 struct PS_IN {
-	float4 position : VPOS;
+	float4 position : SV_Position;
 	float2 texcoord0 : TEXCOORD0;
 };
 

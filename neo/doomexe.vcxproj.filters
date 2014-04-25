@@ -1283,15 +1283,6 @@
     <FxCompile Include="renderer\hlsl\skybox.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\stereoDeGhost.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\stereoInterlace.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\stereoWarp.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\texture.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
@@ -1383,15 +1374,6 @@
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\skybox.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\stereoDeGhost.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\stereoInterlace.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\stereoWarp.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\texture.pixel">

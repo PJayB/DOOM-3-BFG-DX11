@@ -29,7 +29,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "global.inc"
 
 struct PS_IN {
-	float4 position		: VPOS;
+	float4 position		: SV_Position;
 	float4 texcoord0	: TEXCOORD0;
 };
 

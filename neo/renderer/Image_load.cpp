@@ -711,23 +711,10 @@ void idImage::PurgeImage() {
 	// @pjb: Todo
 }
 
-/*
-========================
-idImage::AllocImage
-
-Every image will pass through this function. Allocates all the necessary MipMap levels for the 
-Image, but doesn't put anything in them.
-
-This should not be done during normal game-play, if you can avoid it.
-========================
-*/
-void idImage::AllocImage() {
-	PurgeImage();
-    
-    int bytesPP = 4;
-    int minSize = 1;
-
-	switch ( opts.format ) {
+DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt, int& bytesPP ) const
+{
+    DXGI_FORMAT internalFormat = DXGI_FORMAT_UNKNOWN;
+	switch ( fmt ) {
 	case FMT_RGBA8:
         internalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         bytesPP = 4;
@@ -781,7 +768,6 @@ void idImage::AllocImage() {
 		break;
 	case FMT_DXT5:
 		internalFormat = DXGI_FORMAT_BC3_UNORM;
-        minSize = 4;
 		break;
 	case FMT_DEPTH:
 		internalFormat = DXGI_FORMAT_D32_FLOAT;
@@ -796,8 +782,40 @@ void idImage::AllocImage() {
 		bytesPP = 2;
 		break;
 	default:
-		idLib::Error( "Unhandled image format %d in %s\n", opts.format, GetName() );
+		idLib::Error( "Unhandled image format %d in %s\n", fmt, GetName() );
 	}
+    return internalFormat;
+}
+
+/*
+========================
+idImage::AllocImage
+
+Every image will pass through this function. Allocates all the necessary MipMap levels for the 
+Image, but doesn't put anything in them.
+
+This should not be done during normal game-play, if you can avoid it.
+========================
+*/
+void idImage::AllocImage() {
+	PurgeImage();
+    
+    int minSize = 1;
+    if ( IsCompressed() ) {
+        // Force RGBA if the image is too small
+        if ( opts.width < 4 || opts.height < 4 ) { 
+            opts.format = FMT_RGBA8;
+        } else {
+            minSize = 4;
+        }
+    }
+
+    // Pad?
+    opts.width = minSize * ( ( opts.width + minSize - 1 ) / minSize );
+    opts.height = minSize * ( ( opts.height + minSize - 1 ) / minSize );
+
+    int bytesPP = 4;
+    internalFormat = GetDxgiFormat( opts.format, bytesPP );
 
 	// if we don't have a rendering context, just return after we
 	// have filled in the parms.  We must have the values set, or
@@ -810,6 +828,8 @@ void idImage::AllocImage() {
 	//----------------------------------------------------
 	// allocate all the mip levels with NULL data
 	//----------------------------------------------------
+
+    assert( opts.width >= minSize && opts.height >= minSize );
 
 	D3D11_TEXTURE2D_DESC desc;
     ZeroMemory( &desc, sizeof(desc) );
@@ -847,49 +867,11 @@ void idImage::AllocImage() {
 		desc.ArraySize = 1;
 	}
 
-    D3D11_SUBRESOURCE_DATA* subres = (D3D11_SUBRESOURCE_DATA*) HeapAlloc( 
-        GetProcessHeap(), 0, 
-        sizeof( D3D11_SUBRESOURCE_DATA ) * opts.numLevels * desc.ArraySize );
-
-    // allocate some dummy data so D3D doesn't whinge
-    size_t dummyDataSize = opts.width * opts.height * bytesPP;
-    if ( IsCompressed() )
-        dummyDataSize = ( ((opts.width+3)/4) * ((opts.height+3)/4) * int64( 16 ) * BitsForFormat( opts.format ) ) / 8;
-    void* dummyData = HeapAlloc( GetProcessHeap(), 0, dummyDataSize );
-    memset( dummyData, 0, dummyDataSize );
-
-	for ( int side = 0; side < desc.ArraySize; side++ ) {
-		int w = opts.width;
-		int h = opts.height;
-		if ( opts.textureType == TT_CUBIC ) {
-			h = w;
-		}
-
-		for ( int level = 0; level < opts.numLevels; level++ ) {
-
-            D3D11_SUBRESOURCE_DATA* subresPtr = subres + side * opts.numLevels + level;
-            subresPtr->pSysMem = dummyData;
-
-			if ( IsCompressed() ) {
-				subresPtr->SysMemPitch = ( ((w+3)/4) * ((h+3)/4) * int64( 16 ) * BitsForFormat( opts.format ) ) / 8;
-            } else {
-                subresPtr->SysMemPitch = w * bytesPP;
-            }
-
-            subresPtr->SysMemSlicePitch = 0;
-            
-			w = Max( 1, w >> 1 );
-			h = Max( 1, h >> 1 );
-		}
-	}
-
     // create image
     QD3D11Device* pDevice = D3DDrv_GetDevice();
 
-    pDevice->CreateTexture2D( &desc, subres, &pTexture );
+    pDevice->CreateTexture2D( &desc, NULL, &pTexture );
     assert( pTexture );
-
-    HeapFree( GetProcessHeap(), 0, dummyData );
     
     // create SRV
     pDevice->CreateShaderResourceView(

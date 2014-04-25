@@ -160,7 +160,7 @@ static void R_FlatNormalImage( idImage *image ) {
 	byte	data[DEFAULT_SIZE][DEFAULT_SIZE][4];
 
 	// flat normal map for default bunp mapping
-	for ( int i = 0 ; i < 4 ; i++ ) {
+	for ( int i = 0 ; i < 16 ; i++ ) {
 		data[0][i][0] = 128;
 		data[0][i][1] = 128;
 		data[0][i][2] = 255;

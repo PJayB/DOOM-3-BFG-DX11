@@ -26,7 +26,7 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
-cbuffer BuiltinConstants : register(c0)
+cbuffer BuiltinConstants : register(b0)
 {
     float4 rpScreenCorrectionFactor	;
     float4 rpWindowCoord			;
@@ -99,7 +99,7 @@ cbuffer BuiltinConstants : register(c0)
     float4 rpAlphaTest				;
 };
 
-cbuffer UserConstants : register(c1)
+cbuffer UserConstants : register(b1)
 {
     float4 rpUser0;
     float4 rpUser1;
@@ -111,7 +111,7 @@ cbuffer UserConstants : register(c1)
     float4 rpUser7;
 };
 
-cbuffer JointBuffer : register(c2)
+cbuffer JointBuffer : register(b2)
 {
     float4 matrices[408];
 };

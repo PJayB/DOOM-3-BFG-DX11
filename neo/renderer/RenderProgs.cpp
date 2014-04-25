@@ -328,7 +328,7 @@ idRenderProgManager::SetRenderParms
 */
 void idRenderProgManager::SetRenderParms( renderParm_t parm, const float * value, int num ) {
     int i = parm;
-    size_t size = sizeof(float) * 4;
+    size_t size = sizeof(float) * 4 * num;
     cbufferInfo_t* cbuffer;
     if ( i >= RENDERPARM_USER ) {
         cbuffer = &userCbuffer;

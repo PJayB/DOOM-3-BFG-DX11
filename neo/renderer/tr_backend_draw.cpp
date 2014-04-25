@@ -180,7 +180,7 @@ void RB_DrawElementsWithCounters( ID3D11DeviceContext1* pContext, const drawSurf
     
     pContext->DrawIndexed(
 		r_singleTriangle.GetBool() ? 3 : surf->numIndexes,
-        indexOffset,
+        indexOffset / sizeof( triIndex_t ),
         vertOffset / sizeof ( idDrawVert ) );
 }
 

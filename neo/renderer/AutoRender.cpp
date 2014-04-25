@@ -113,6 +113,8 @@ void idAutoRender::RenderFrame() {
 		loadingIconPosY = 0.73f;
 	}
 
+    ID3D11DeviceContext1* pContext = D3DDrv_GetImmediateContext();
+
     /*
     @pjb: todo: reset state, set cull to CT_TWO_SIDED
     */
@@ -126,14 +128,14 @@ void idAutoRender::RenderFrame() {
 	if ( stereoRender ) {
 		for ( int viewNum = 0 ; viewNum < 2; viewNum++ ) {
             int y = viewNum * ( height + guardBand );
-		    D3DDrv_SetViewport( 0, y, width, height );
-            D3DDrv_SetScissor( 0, y, width, height );
+		    D3DDrv_SetViewport( pContext, 0, y, width, height );
+            D3DDrv_SetScissor( pContext, 0, y, width, height );
 			RenderBackground();
 			RenderLoadingIcon( loadingIconPosX, loadingIconPosY, loadingIconScale, loadingIconSpeed );
 		}
 	} else {
-		D3DDrv_SetViewport( 0, 0, width, height );
-        D3DDrv_SetScissor( 0, 0, width, height );
+		D3DDrv_SetViewport( pContext, 0, 0, width, height );
+        D3DDrv_SetScissor( pContext, 0, 0, width, height );
 		RenderBackground();
 		RenderLoadingIcon( loadingIconPosX, loadingIconPosY, loadingIconScale, loadingIconSpeed );
 	}

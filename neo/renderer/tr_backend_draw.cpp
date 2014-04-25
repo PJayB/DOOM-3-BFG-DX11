@@ -445,6 +445,186 @@ DEPTH BUFFER RENDERING
 =========================================================================================
 */
 
+
+/*
+==================
+RB_FillDepthBufferGeneric
+==================
+*/
+static void RB_FillDepthBufferGeneric( ID3D11DeviceContext1* pContext, const drawSurf_t * const * drawSurfs, int numDrawSurfs ) {
+
+    idImage* pImages[16];
+
+	for ( int i = 0; i < numDrawSurfs; i++ ) {
+		const drawSurf_t * drawSurf = drawSurfs[i];
+		const idMaterial * shader = drawSurf->material;
+
+		// translucent surfaces don't put anything in the depth buffer and don't
+		// test against it, which makes them fail the mirror clip plane operation
+		if ( shader->Coverage() == MC_TRANSLUCENT ) {
+			continue;
+		}
+
+		// get the expressions for conditionals / color / texcoords
+		const float * regs = drawSurf->shaderRegisters;
+
+		// if all stages of a material have been conditioned off, don't do anything
+		int stage = 0;
+		for ( ; stage < shader->GetNumStages(); stage++ ) {		
+			const shaderStage_t * pStage = shader->GetStage( stage );
+			// check the stage enable condition
+			if ( regs[ pStage->conditionRegister ] != 0 ) {
+				break;
+			}
+		}
+		if ( stage == shader->GetNumStages() ) {
+			continue;
+		}
+
+		// change the matrix if needed
+		if ( drawSurf->space != backEnd.currentSpace ) {
+			RB_SetMVP( drawSurf->space->mvp );
+
+			backEnd.currentSpace = drawSurf->space;
+		}
+
+		uint64 surfGLState = 0;
+
+		// set polygon offset if necessary
+        ID3D11RasterizerState* rasterizerState = 
+		    ( shader->GetRasterizerState() ) ?
+			shader->GetRasterizerState() :
+		    D3DDrv_GetRasterizerState( shader->GetCullType(), surfGLState );
+        
+		// subviews will just down-modulate the color buffer
+		float color[4];
+		if ( shader->GetSort() == SS_SUBVIEW ) {
+			surfGLState |= GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS;
+			color[0] = 1.0f;
+			color[1] = 1.0f;
+			color[2] = 1.0f;
+			color[3] = 1.0f;
+		} else {
+			// others just draw black
+			color[0] = 0.0f;
+			color[1] = 0.0f;
+			color[2] = 0.0f;
+			color[3] = 1.0f;
+		}
+
+		renderLog.OpenBlock( shader->GetName() );
+
+		bool drawSolid = false;
+		if ( shader->Coverage() == MC_OPAQUE ) {
+			drawSolid = true;
+		} else if ( shader->Coverage() == MC_PERFORATED ) {
+			// we may have multiple alpha tested stages
+			// if the only alpha tested stages are condition register omitted,
+			// draw a normal opaque surface
+			bool didDraw = false;
+
+			// perforated surfaces may have multiple alpha tested stages
+			for ( stage = 0; stage < shader->GetNumStages(); stage++ ) {		
+				const shaderStage_t *pStage = shader->GetStage(stage);
+
+				if ( !pStage->hasAlphaTest ) {
+					continue;
+				}
+
+				// check the stage enable condition
+				if ( regs[ pStage->conditionRegister ] == 0 ) {
+					continue;
+				}
+
+				// if we at least tried to draw an alpha tested stage,
+				// we won't draw the opaque surface
+				didDraw = true;
+
+				// set the alpha modulate
+				color[3] = regs[ pStage->color.registers[3] ];
+
+				// skip the entire stage if alpha would be black
+				if ( color[3] <= 0.0f ) {
+					continue;
+				}
+
+				uint64 stageGLState = surfGLState;
+
+                renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
+
+				idVec4 alphaTestValue( regs[ pStage->alphaTestRegister ] );
+				renderProgManager.SetRenderParm( RENDERPARM_ALPHA_TEST, alphaTestValue.ToFloatPtr() );
+
+                idRenderProgManager::BUILTIN_SHADER shaderToUse = 
+				    ( drawSurf->jointCache ) ?
+                    idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED :
+                    idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
+
+				RB_SetVertexColorParms( SVC_IGNORE );
+
+				// bind the textures
+                pImages[0] = pStage->texture.image;
+                int numImages = RB_PrepareStageTexturing( pStage, drawSurf, &shaderToUse, pImages );
+                RB_BindImages( pContext, pImages, numImages );
+
+                // bind the shaders
+                pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( shaderToUse ), nullptr, 0 );
+                pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( shaderToUse ), nullptr, 0 );
+
+				// must render with less-equal for Z-Cull to work properly
+                D3DDrv_SetDepthStateFromMask( pContext, ( stageGLState & ~GLS_DEPTHFUNC_BITS ) | GLS_DEPTHFUNC_LESS );
+                D3DDrv_SetBlendStateFromMask( pContext, stageGLState );
+
+				// set privatePolygonOffset if necessary
+				if ( pStage->rasterizerState ) {
+					pContext->RSSetState( pStage->rasterizerState );
+				} else {
+                    pContext->RSSetState( rasterizerState ); 
+                }
+
+				// draw it
+				RB_DrawElementsWithCounters( pContext, drawSurf );
+			}
+
+			if ( !didDraw ) {
+				drawSolid = true;
+			}
+		}
+
+		// draw the entire surface solid
+		if ( drawSolid ) {
+
+            idRenderProgManager::BUILTIN_SHADER shaderToUse;
+			if ( shader->GetSort() == SS_SUBVIEW ) {
+				shaderToUse = idRenderProgManager::BUILTIN_COLOR;
+                renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
+			} else {
+				if ( drawSurf->jointCache ) {
+					shaderToUse = idRenderProgManager::BUILTIN_DEPTH_SKINNED;
+				} else {
+					shaderToUse = idRenderProgManager::BUILTIN_DEPTH;
+				}
+				surfGLState |= GLS_ALPHAMASK;
+			}
+
+            D3DDrv_SetDepthStateFromMask( pContext, ( surfGLState & ~GLS_DEPTHFUNC_BITS ) | GLS_DEPTHFUNC_LESS );
+            D3DDrv_SetBlendStateFromMask( pContext, surfGLState );
+            pContext->RSSetState( rasterizerState ); 
+
+            // bind the shaders
+            pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( shaderToUse ), nullptr, 0 );
+            pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( shaderToUse ), nullptr, 0 );
+
+			// draw it
+			RB_DrawElementsWithCounters( pContext, drawSurf );
+		}
+
+		renderLog.CloseBlock();
+	}
+
+    renderProgManager.SetRenderParm( RENDERPARM_ALPHA_TEST, vec4_zero.ToFloatPtr() );
+}
+
 /*
 =====================
 RB_FillDepthBufferFast
@@ -463,10 +643,80 @@ If there are no subview surfaces, we could clear to black and use fast-Z renderi
 on the 360.
 =====================
 */
-static void RB_FillDepthBufferFast( drawSurf_t **drawSurfs, int numDrawSurfs ) {
-    //
-    // @pjb: todo: Draw things
-    //
+static void RB_FillDepthBufferFast( ID3D11DeviceContext1* pContext, drawSurf_t **drawSurfs, int numDrawSurfs ) {
+	renderLog.OpenMainBlock( MRB_FILL_DEPTH_BUFFER );
+	renderLog.OpenBlock( "RB_FillDepthBufferFast" );
+
+	// force MVP change on first surface
+	backEnd.currentSpace = NULL;
+
+	int	surfNum;
+	for ( surfNum = 0; surfNum < numDrawSurfs; surfNum++ ) {
+		if ( drawSurfs[surfNum]->material->GetSort() != SS_SUBVIEW ) {
+			break;
+		}
+		RB_FillDepthBufferGeneric( pContext, &drawSurfs[surfNum], 1 );
+	}
+
+	const drawSurf_t ** perforatedSurfaces = (const drawSurf_t ** )_alloca( numDrawSurfs * sizeof( drawSurf_t * ) );
+	int numPerforatedSurfaces = 0;
+
+	// draw all the opaque surfaces and build up a list of perforated surfaces that
+	// we will defer drawing until all opaque surfaces are done
+
+	// must render with less-equal for Z-Cull to work properly
+    D3DDrv_SetDepthStateFromMask( pContext, GLS_DEPTHFUNC_LESS );
+    D3DDrv_SetRasterizerStateFromMask( pContext, CT_FRONT_SIDED, GLS_DEFAULT );
+    D3DDrv_SetBlendStateFromMask( pContext, GLS_DEFAULT );
+
+	// continue checking past the subview surfaces
+	for ( ; surfNum < numDrawSurfs; surfNum++ ) {
+		const drawSurf_t * surf = drawSurfs[ surfNum ];
+		const idMaterial * shader = surf->material;
+
+		// translucent surfaces don't put anything in the depth buffer
+		if ( shader->Coverage() == MC_TRANSLUCENT ) {
+			continue;
+		}
+		if ( shader->Coverage() == MC_PERFORATED ) {
+			// save for later drawing
+			perforatedSurfaces[ numPerforatedSurfaces ] = surf;
+			numPerforatedSurfaces++;
+			continue;
+		}
+
+		// set polygon offset?
+
+		// set mvp matrix
+		if ( surf->space != backEnd.currentSpace ) {
+			RB_SetMVP( surf->space->mvp );
+			backEnd.currentSpace = surf->space;
+		}
+
+		renderLog.OpenBlock( shader->GetName() );
+
+        idRenderProgManager::BUILTIN_SHADER shaderToUse =
+		    ( surf->jointCache ) ?
+			idRenderProgManager::BUILTIN_DEPTH_SKINNED :
+    		idRenderProgManager::BUILTIN_DEPTH;
+
+        // bind the shaders
+        pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( shaderToUse ), nullptr, 0 );
+        pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( shaderToUse ), nullptr, 0 );
+
+		// draw it solid
+		RB_DrawElementsWithCounters( pContext, surf );
+
+		renderLog.CloseBlock();
+	}
+
+	// draw all perforated surfaces with the general code path
+	if ( numPerforatedSurfaces > 0 ) {
+		RB_FillDepthBufferGeneric( pContext, perforatedSurfaces, numPerforatedSurfaces );
+	}
+
+	renderLog.CloseBlock();
+	renderLog.CloseMainBlock();
 }
 
 /*
@@ -652,7 +902,7 @@ If we are rendering Guis, the drawSurf_t::sort value is a depth offset that can
 be multiplied by guiEye for polarity and screenSeparation for scale.
 =====================
 */
-static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, const int numDrawSurfs ) {
+static int RB_DrawShaderPasses( ID3D11DeviceContext1* pContext, const drawSurf_t * const * const drawSurfs, const int numDrawSurfs ) {
 	// only obey skipAmbient if we are rendering a view
 	if ( backEnd.viewDef->viewEntitys && r_skipAmbient.GetBool() ) {
 		return numDrawSurfs;
@@ -661,8 +911,6 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 	renderLog.OpenBlock( "RB_DrawShaderPasses" );
 
 	backEnd.currentSpace = (const viewEntity_t *)1;	// using NULL makes /analyze think surf->space needs to be checked...
-
-    ID3D11DeviceContext1* pContext = D3DDrv_GetImmediateContext();
 
     // @pjb: Todo: given we only ever use idDrawVert we could set that state up here once instead of for each draw call
 
@@ -727,7 +975,8 @@ static int RB_DrawShaderPasses( const drawSurf_t * const * const drawSurfs, cons
 
 		// change the scissor if needed
 		if ( !backEnd.currentScissor.Equals( surf->scissorRect ) && r_useScissor.GetBool() ) {
-			D3DDrv_SetScissor( backEnd.viewDef->viewport.x1 + surf->scissorRect.x1, 
+			D3DDrv_SetScissor( pContext,
+                               backEnd.viewDef->viewport.x1 + surf->scissorRect.x1, 
 						       backEnd.viewDef->viewport.y1 + surf->scissorRect.y1,
 						       surf->scissorRect.x2 + 1 - surf->scissorRect.x1,
 						       surf->scissorRect.y2 + 1 - surf->scissorRect.y1 );
@@ -831,6 +1080,8 @@ void RB_DrawViewInternal( const viewDef_t * viewDef ) {
 		}
 	}
 
+    ID3D11DeviceContext1* pContext = D3DDrv_GetImmediateContext();
+
 	//-------------------------------------------------
 	// RB_BeginDrawingView
 	//
@@ -841,20 +1092,24 @@ void RB_DrawViewInternal( const viewDef_t * viewDef ) {
 	//-------------------------------------------------
 
 	// set the window clipping
-	D3DDrv_SetViewport( viewDef->viewport.x1,
+	D3DDrv_SetViewport( 
+        pContext,
+        viewDef->viewport.x1,
 		viewDef->viewport.y1,
 		viewDef->viewport.x2 + 1 - viewDef->viewport.x1,
 		viewDef->viewport.y2 + 1 - viewDef->viewport.y1 );
 
 	// the scissor may be smaller than the viewport for subviews
-	D3DDrv_SetScissor( backEnd.viewDef->viewport.x1 + viewDef->scissor.x1,
-				backEnd.viewDef->viewport.y1 + viewDef->scissor.y1,
-				viewDef->scissor.x2 + 1 - viewDef->scissor.x1,
-				viewDef->scissor.y2 + 1 - viewDef->scissor.y1 );
+	D3DDrv_SetScissor( 
+        pContext,
+        backEnd.viewDef->viewport.x1 + viewDef->scissor.x1,
+		backEnd.viewDef->viewport.y1 + viewDef->scissor.y1,
+		viewDef->scissor.x2 + 1 - viewDef->scissor.x1,
+		viewDef->scissor.y2 + 1 - viewDef->scissor.y1 );
 	backEnd.currentScissor = viewDef->scissor;
 
 	// Clear the depth buffer and clear the stencil to 128 for stencil shadows as well as gui masking
-	D3DDrv_Clear( CLEAR_DEPTH | CLEAR_STENCIL, nullptr, STENCIL_SHADOW_TEST_VALUE, 1 );
+	D3DDrv_Clear( pContext, CLEAR_DEPTH | CLEAR_STENCIL, nullptr, STENCIL_SHADOW_TEST_VALUE, 1 );
     
 	//------------------------------------
 	// sets variables that can be used by all programs
@@ -894,7 +1149,7 @@ void RB_DrawViewInternal( const viewDef_t * viewDef ) {
 
 	// if we are just doing 2D rendering, no need to fill the depth buffer
 	if ( backEnd.viewDef->viewEntitys != NULL && numDrawSurfs > 0 ) {
-        RB_FillDepthBufferFast( drawSurfs, numDrawSurfs );
+        RB_FillDepthBufferFast( pContext, drawSurfs, numDrawSurfs );
     }
 
 	//-------------------------------------------------
@@ -903,7 +1158,7 @@ void RB_DrawViewInternal( const viewDef_t * viewDef ) {
 	int processed = 0;
 	if ( !r_skipShaderPasses.GetBool() ) {
 		renderLog.OpenMainBlock( MRB_DRAW_SHADER_PASSES );
-		processed = RB_DrawShaderPasses( drawSurfs, numDrawSurfs );
+		processed = RB_DrawShaderPasses( pContext, drawSurfs, numDrawSurfs );
 		renderLog.CloseMainBlock();
 	}
 
@@ -991,7 +1246,7 @@ void RB_CopyRender( const void *data ) {
 	}
 
 	if ( cmd->clearColorAfterCopy ) {
-		D3DDrv_Clear( CLEAR_COLOR, nullptr, STENCIL_SHADOW_TEST_VALUE, 0 );
+		D3DDrv_Clear( D3DDrv_GetImmediateContext(), CLEAR_COLOR, nullptr, STENCIL_SHADOW_TEST_VALUE, 0 );
 	}
 }
 
@@ -1067,7 +1322,7 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 		}
 	}
 
-	D3DDrv_Flush();
+	D3DDrv_Flush( D3DDrv_GetImmediateContext() );
 
 	// stop rendering on this thread
 	uint64 backEndFinishTime = Sys_Microseconds();

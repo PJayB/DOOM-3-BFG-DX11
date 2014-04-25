@@ -50,14 +50,14 @@ ID3D11DeviceContext1* D3DDrv_GetImmediateContext()
 //----------------------------------------------------------------------------
 // Clear the back buffers
 //----------------------------------------------------------------------------
-void D3DDrv_Clear( unsigned long bits, const float* clearCol, unsigned long stencil, float depth )
+void D3DDrv_Clear( ID3D11DeviceContext1* pContext, unsigned long bits, const float* clearCol, unsigned long stencil, float depth )
 {
     if ( bits & CLEAR_COLOR )
     {
         static float defaultCol[] = { 0, 0, 0, 0 };
         if ( !clearCol ) { clearCol = defaultCol; }
 
-        g_pImmediateContext->ClearRenderTargetView( g_BufferState.backBufferView, clearCol );
+        pContext->ClearRenderTargetView( g_BufferState.backBufferView, clearCol );
     }
 
     if ( bits & ( CLEAR_DEPTH | CLEAR_STENCIL ) )
@@ -65,23 +65,23 @@ void D3DDrv_Clear( unsigned long bits, const float* clearCol, unsigned long sten
         DWORD clearBits = 0;
         if ( bits & CLEAR_DEPTH ) { clearBits |= D3D11_CLEAR_DEPTH; }
         if ( bits & CLEAR_STENCIL ) { clearBits |= D3D11_CLEAR_STENCIL; }
-        g_pImmediateContext->ClearDepthStencilView( g_BufferState.depthBufferView, clearBits, depth, (UINT8) stencil );
+        pContext->ClearDepthStencilView( g_BufferState.depthBufferView, clearBits, depth, (UINT8) stencil );
     }
 }
 
 //----------------------------------------------------------------------------
 // Flush the command buffer
 //----------------------------------------------------------------------------
-void D3DDrv_Flush()
+void D3DDrv_Flush( ID3D11DeviceContext1* pContext )
 {
-    g_pImmediateContext->End( g_DrawState.frameQuery );
+    pContext->End( g_DrawState.frameQuery );
 
     BOOL finished = FALSE;
     HRESULT hr;
     do
     {
         YieldProcessor();
-        hr = g_pImmediateContext->GetData( g_DrawState.frameQuery, &finished, sizeof(finished), 0 );
+        hr = pContext->GetData( g_DrawState.frameQuery, &finished, sizeof(finished), 0 );
     }
     while ( ( hr == S_OK || hr == S_FALSE ) && finished == FALSE );
 

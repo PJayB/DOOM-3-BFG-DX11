@@ -92,16 +92,16 @@ void D3DDrv_SetRasterizerStateFromMask( ID3D11DeviceContext1* pContext, int cull
 //----------------------------------------------------------------------------
 // Set the scissor rect
 //----------------------------------------------------------------------------
-void D3DDrv_SetScissor( int left, int top, int width, int height )
+void D3DDrv_SetScissor( ID3D11DeviceContext1* pContext, int left, int top, int width, int height )
 {
     RECT r = { left, top, left + width, top + height };
-    g_pImmediateContext->RSSetScissorRects( 1, &r );
+    pContext->RSSetScissorRects( 1, &r );
 }
 
 //----------------------------------------------------------------------------
 // Set the viewport
 //----------------------------------------------------------------------------
-void D3DDrv_SetViewport( int left, int top, int width, int height )
+void D3DDrv_SetViewport( ID3D11DeviceContext1* pContext, int left, int top, int width, int height )
 {
     D3D11_VIEWPORT viewport;
     viewport.TopLeftX = __max( 0, left );
@@ -110,7 +110,7 @@ void D3DDrv_SetViewport( int left, int top, int width, int height )
     viewport.Height = __min( (int)g_BufferState.backBufferDesc.Height - viewport.TopLeftY, height );
     viewport.MinDepth = 0;
     viewport.MaxDepth = 1;
-    g_pImmediateContext->RSSetViewports( 1, &viewport );
+    pContext->RSSetViewports( 1, &viewport );
 }
 
 //----------------------------------------------------------------------------
@@ -622,7 +622,7 @@ void InitDrawState()
 
     // Set up some default state
     g_pImmediateContext->OMSetRenderTargets( 1, &g_BufferState.backBufferView, g_BufferState.depthBufferView );
-    D3DDrv_SetViewport( 0, 0, g_BufferState.backBufferDesc.Width, g_BufferState.backBufferDesc.Height );
+    D3DDrv_SetViewport( g_pImmediateContext, 0, 0, g_BufferState.backBufferDesc.Width, g_BufferState.backBufferDesc.Height );
 
     // Clear the targets
     FLOAT clearCol[4] = { 0, 0, 0, 0 };

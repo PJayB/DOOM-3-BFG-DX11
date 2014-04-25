@@ -20,11 +20,12 @@ void D3DDrv_Shutdown( void );
 QD3D11Device* D3DDrv_GetDevice();
 ID3D11DeviceContext1* D3DDrv_GetImmediateContext();
 
-void D3DDrv_Flush();
-void D3DDrv_Clear( unsigned long bits, const float* clearCol, unsigned long stencil, float depth );
 HRESULT D3DDrv_EndFrame( int frequency );
-void D3DDrv_SetScissor( int left, int top, int width, int height );
-void D3DDrv_SetViewport( int left, int top, int width, int height );
+
+void D3DDrv_Flush( ID3D11DeviceContext1* pContext );
+void D3DDrv_Clear( ID3D11DeviceContext1* pContext, unsigned long bits, const float* clearCol, unsigned long stencil, float depth );
+void D3DDrv_SetScissor( ID3D11DeviceContext1* pContext, int left, int top, int width, int height );
+void D3DDrv_SetViewport( ID3D11DeviceContext1* pContext, int left, int top, int width, int height );
 
 // This only handles depth, no stencil. You'll have to make your own if you want to 
 // handle stencil.

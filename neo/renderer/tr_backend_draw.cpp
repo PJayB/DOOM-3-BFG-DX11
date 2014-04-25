@@ -919,9 +919,10 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext1* pContext, const drawSurf_t
 		const drawSurf_t * surf = drawSurfs[i];
 		const idMaterial * shader = surf->material;
 
-		if ( !shader->HasAmbient() ) {
-			continue;
-		}
+        // @pjb: todo: restore
+//		if ( !shader->HasAmbient() ) {
+//			continue;
+//		}
 
 		if ( shader->IsPortalSky() ) {
 			continue;
@@ -932,15 +933,16 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext1* pContext, const drawSurf_t
 			continue;
 		}
 
-		if ( shader->SuppressInSubview() ) {
-			continue;
-		}
-
-		if ( backEnd.viewDef->isXraySubview && surf->space->entityDef ) {
-			if ( surf->space->entityDef->parms.xrayIndex != 2 ) {
-				continue;
-			}
-		}
+        // @pjb: todo: restore
+//		if ( shader->SuppressInSubview() ) {
+//			continue;
+//		}
+//
+//		if ( backEnd.viewDef->isXraySubview && surf->space->entityDef ) {
+//			if ( surf->space->entityDef->parms.xrayIndex != 2 ) {
+//				continue;
+//			}
+//		}
 
 		// we need to draw the post process shaders after we have drawn the fog lights
 		if ( shader->GetSort() >= SS_POST_PROCESS && !backEnd.currentRenderCopied ) {
@@ -1014,9 +1016,10 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext1* pContext, const drawSurf_t
 			}
 
 			// skip the stages involved in lighting
-			if ( pStage->lighting != SL_AMBIENT ) {
-				continue;
-			}
+            // @pjb: todo: restore
+//			if ( pStage->lighting != SL_AMBIENT ) {
+//				continue;
+//			}
 
 			uint64 stageGLState = surfGLState;
 			if ( ( surfGLState & GLS_OVERRIDE ) == 0 ) {
@@ -1143,11 +1146,10 @@ void RB_DrawViewInternal( const viewDef_t * viewDef ) {
 		renderProgManager.SetRenderParms( RENDERPARM_PROJMATRIX_X, projMatrixTranspose, 4 );
 	}	
 
-    //
-    // @pjb: todo: Draw things
-    //
-
+	//-------------------------------------------------
+	// draw the depth pass
 	// if we are just doing 2D rendering, no need to fill the depth buffer
+	//-------------------------------------------------
 	if ( backEnd.viewDef->viewEntitys != NULL && numDrawSurfs > 0 ) {
         RB_FillDepthBufferFast( pContext, drawSurfs, numDrawSurfs );
     }
@@ -1218,11 +1220,6 @@ void RB_DrawView( const void *data ) {
 	RB_DrawViewInternal( cmd->viewDef );
 
 	RB_MotionBlur();
-
-	// restore the context for 2D drawing if we were stubbing it out
-	if ( r_skipRenderContext.GetBool() && backEnd.viewDef->viewEntitys ) {
-		// @pjb: todo: Reset all state
-	}
 }
 
 /*

@@ -604,6 +604,8 @@ void idRenderSystemLocal::SwapCommandBuffers_FinishRendering(
 		return;
 	}
 
+    vertexCache.EndBackEnd();
+
 	// After coming back from an autoswap, we won't have anything to render
 	if ( frameData->cmdHead->next != NULL ) {
         // @pjb: todo: this code confuses me. Why are we ending the frame and *then* unlocking the buffers?

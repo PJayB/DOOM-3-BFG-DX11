@@ -147,6 +147,7 @@ public:
 	bool			GetJointBuffer( vertCacheHandle_t handle, idJointBuffer * jb );
 
 	void			BeginBackEnd();
+    void            EndBackEnd();
 
 public:
 	int				currentFrame;	// for determining the active buffers

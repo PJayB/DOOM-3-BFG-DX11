@@ -299,15 +299,6 @@ void idVertexCache::BeginBackEnd() {
 			mostUsedIndex / 1024,
 			mostUsedJoint / 1024 );
 	}
-
-	// unmap the current frame so the GPU can read it
-	const int startUnmap = Sys_Milliseconds();
-	UnmapGeoBufferSet( frameData[listNum] );
-	UnmapGeoBufferSet( staticData );
-	const int endUnmap = Sys_Milliseconds();
-	if ( endUnmap - startUnmap > 1 ) {
-		idLib::PrintfIf( r_showVertexCacheTimings.GetBool(), "idVertexCache::unmap took %i msec\n", endUnmap - startUnmap );
-	}
 	drawListNum = listNum;
 
 	// prepare the next frame for writing to by the CPU
@@ -324,3 +315,19 @@ void idVertexCache::BeginBackEnd() {
 	ClearGeoBufferSet( frameData[listNum] );
 }
 
+/*
+==============
+idVertexCache::EndBackEnd
+==============
+*/
+void idVertexCache::EndBackEnd() {
+
+	// unmap the current frame so the GPU can read it
+	const int startUnmap = Sys_Milliseconds();
+	UnmapGeoBufferSet( frameData[listNum] );
+	UnmapGeoBufferSet( staticData );
+	const int endUnmap = Sys_Milliseconds();
+	if ( endUnmap - startUnmap > 1 ) {
+		idLib::PrintfIf( r_showVertexCacheTimings.GetBool(), "idVertexCache::unmap took %i msec\n", endUnmap - startUnmap );
+	}
+}

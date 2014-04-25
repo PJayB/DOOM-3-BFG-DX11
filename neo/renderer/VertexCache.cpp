@@ -74,14 +74,17 @@ UnmapGeoBufferSet
 static void UnmapGeoBufferSet( geoBufferSet_t &gbs ) {
 	if ( gbs.mappedVertexBase != NULL ) {
 		gbs.vertexBuffer.UnmapBuffer();
+		gbs.vertexBuffer.SwitchWorkingSet();
 		gbs.mappedVertexBase = NULL;
 	}
 	if ( gbs.mappedIndexBase != NULL ) {
 		gbs.indexBuffer.UnmapBuffer();
+		gbs.indexBuffer.SwitchWorkingSet();
 		gbs.mappedIndexBase = NULL;
 	}
 	if ( gbs.mappedJointBase != NULL ) {
 		gbs.jointBuffer.UnmapBuffer();
+		gbs.jointBuffer.SwitchWorkingSet();
 		gbs.mappedJointBase = NULL;
 	}
 }

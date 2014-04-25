@@ -119,13 +119,13 @@ ID3D11Buffer *CreateDirect3DBuffer( const void* data, UINT numBytes, UINT bindFl
 	desc.BindFlags = bindFlags;
 	desc.ByteWidth = (UINT)numBytes;
 
-    if (data) {
-	    desc.Usage = D3D11_USAGE_IMMUTABLE;
-        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    } else {
+    //if (data) {
+	//    desc.Usage = D3D11_USAGE_IMMUTABLE;
+    //    desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    //} else {
         desc.Usage = D3D11_USAGE_DYNAMIC;
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    }
+    //}
 
 	D3D11_SUBRESOURCE_DATA srd;
 	ZeroMemory(&srd, sizeof(srd));
@@ -135,6 +135,55 @@ ID3D11Buffer *CreateDirect3DBuffer( const void* data, UINT numBytes, UINT bindFl
 	D3DDrv_GetDevice()->CreateBuffer(&desc, data ? &srd : nullptr, &buffer);
 
     return buffer;
+}
+
+/*
+================================================================================================
+
+	idDoubleBuffer_t
+
+================================================================================================
+*/
+idDoubleBuffer_t::idDoubleBuffer_t() 
+    : m_mapBuffer( nullptr )
+    , m_drawBuffer( nullptr )
+{
+}
+
+idDoubleBuffer_t::idDoubleBuffer_t( const idDoubleBuffer_t& other ) 
+    : m_mapBuffer( other.m_mapBuffer )
+    , m_drawBuffer( other.m_drawBuffer )
+{
+    if ( m_mapBuffer ) { m_mapBuffer->AddRef(); }
+    if ( m_drawBuffer ) { m_drawBuffer->AddRef(); }
+}
+
+idDoubleBuffer_t& idDoubleBuffer_t::operator = ( const idDoubleBuffer_t& other ) 
+{
+    m_mapBuffer = other.m_mapBuffer;
+    m_drawBuffer = other.m_drawBuffer;
+    if ( m_mapBuffer ) { m_mapBuffer->AddRef(); }
+    if ( m_drawBuffer ) { m_drawBuffer->AddRef(); }
+    return *this;
+}
+
+bool idDoubleBuffer_t::Init( const void* data, size_t size, uint bindFlags ) {
+    m_mapBuffer = CreateDirect3DBuffer( data, size, bindFlags ); 
+    m_drawBuffer = CreateDirect3DBuffer( data, size, bindFlags ); 
+    return m_mapBuffer != nullptr && m_drawBuffer != nullptr;
+}
+
+void idDoubleBuffer_t::Destroy()
+{
+    SAFE_RELEASE( m_mapBuffer );
+    SAFE_RELEASE( m_drawBuffer );
+}
+
+void idDoubleBuffer_t::SwapBuffers()
+{
+    ID3D11Buffer* ptr = m_drawBuffer;
+    m_drawBuffer = m_mapBuffer;
+    m_mapBuffer = ptr;
 }
 
 /*
@@ -152,8 +201,7 @@ idVertexBuffer::idVertexBuffer
 */
 idVertexBuffer::idVertexBuffer() {
 	size = 0;
-	offsetInOtherBuffer = OWNS_BUFFER_FLAG;
-	pBuffer = NULL;
+	offsetInOtherBuffer = 0;
 	SetUnmapped();
 }
 
@@ -172,7 +220,7 @@ idVertexBuffer::AllocBufferObject
 ========================
 */
 bool idVertexBuffer::AllocBufferObject( const void * data, int allocSize ) {
-	assert( pBuffer == NULL );
+	assert( !buffers.Allocated() );
 	assert_16_byte_aligned( data );
 
 	if ( allocSize <= 0 ) {
@@ -183,9 +231,7 @@ bool idVertexBuffer::AllocBufferObject( const void * data, int allocSize ) {
 
 	int numBytes = GetAllocedSize();
 
-    pBuffer = CreateDirect3DBuffer( data, numBytes, D3D11_BIND_VERTEX_BUFFER );
-
-	if ( pBuffer == nullptr ) {
+	if ( !buffers.Init( data, numBytes, D3D11_BIND_VERTEX_BUFFER ) ) {
 		idLib::FatalError( "idVertexBuffer::AllocBufferObject: failed" );
 	}
 
@@ -202,21 +248,11 @@ void idVertexBuffer::FreeBufferObject() {
 		UnmapBuffer();
 	}
 
-	// if this is a sub-allocation inside a larger buffer, don't actually free anything.
-	if ( OwnsBuffer() == false ) {
-		ClearWithoutFreeing();
-		return;
-	}
-
-	if ( pBuffer == NULL ) {
-		return;
-	}
-
 	if ( r_showBuffers.GetBool() ) {
-		idLib::Printf( "vertex buffer free %p, api %p (%i bytes)\n", this, pBuffer, GetSize() );
+		idLib::Printf( "vertex buffer free %p, api %p (%i bytes)\n", this, &buffers, GetSize() );
 	}
 
-    SAFE_RELEASE( pBuffer );
+    buffers.Destroy();
 
 	ClearWithoutFreeing();
 }
@@ -234,9 +270,8 @@ void idVertexBuffer::Reference( const idVertexBuffer & other ) {
 
 	FreeBufferObject();
 	size = other.GetSize();						// this strips the MAPPED_FLAG
-	offsetInOtherBuffer = other.GetOffset();	// this strips the OWNS_BUFFER_FLAG
-	pBuffer = other.pBuffer;
-	assert( OwnsBuffer() == false );
+	offsetInOtherBuffer = other.GetOffset();
+	buffers = other.buffers;
 }
 
 /*
@@ -255,8 +290,7 @@ void idVertexBuffer::Reference( const idVertexBuffer & other, int refOffset, int
 	FreeBufferObject();
 	size = refSize;
 	offsetInOtherBuffer = other.GetOffset() + refOffset;
-	pBuffer = other.pBuffer;
-	assert( OwnsBuffer() == false );
+	buffers = other.buffers;
 }
 
 /*
@@ -264,8 +298,9 @@ void idVertexBuffer::Reference( const idVertexBuffer & other, int refOffset, int
 idVertexBuffer::Update
 ========================
 */
+/*
 void idVertexBuffer::Update( const void * data, int updateSize ) const {
-	assert( pBuffer != NULL );
+	assert( buffers.Allocated() );
 	assert( IsMapped() == false );
 	assert_16_byte_aligned( data );
 	assert( ( GetOffset() & 15 ) == 0 );
@@ -278,13 +313,8 @@ void idVertexBuffer::Update( const void * data, int updateSize ) const {
 
     assert( GetOffset() == 0 );
 	D3DDrv_GetImmediateContext()->UpdateSubresource1( pBuffer, 0, nullptr, data, numBytes, 0, D3D11_COPY_DISCARD );
-
-/*
-	void * buffer = MapBuffer( BM_WRITE );
-	CopyBuffer( (byte *)buffer + GetOffset(), (byte *)data, numBytes );
-	UnmapBuffer();
-*/
 }
+*/
 
 /*
 ========================
@@ -292,14 +322,14 @@ idVertexBuffer::MapBuffer
 ========================
 */
 void * idVertexBuffer::MapBuffer( bufferMapType_t mapType ) const {
-	assert( pBuffer != NULL );
+	assert( buffers.Allocated() );
 	assert( IsMapped() == false );
     assert( mapType != BM_READ );
 
     D3D11_MAPPED_SUBRESOURCE map;
 
     auto pIC = D3DDrv_GetImmediateContext();
-    pIC->Map( pBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
+    pIC->Map( buffers.GetCurrentMapBuffer(), 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
 
 	SetMapped();
 
@@ -316,10 +346,10 @@ idVertexBuffer::UnmapBuffer
 ========================
 */
 void idVertexBuffer::UnmapBuffer() const {
-	assert( pBuffer != NULL );
+	assert( buffers.Allocated() );
 	assert( IsMapped() );
 
-    D3DDrv_GetImmediateContext()->Unmap( pBuffer, 0 );
+    D3DDrv_GetImmediateContext()->Unmap( buffers.GetCurrentMapBuffer(), 0 );
 	SetUnmapped();
 }
 
@@ -330,8 +360,7 @@ idVertexBuffer::ClearWithoutFreeing
 */
 void idVertexBuffer::ClearWithoutFreeing() {
 	size = 0;
-	offsetInOtherBuffer = OWNS_BUFFER_FLAG;
-	pBuffer = NULL;
+	offsetInOtherBuffer = 0;
 }
 
 /*
@@ -349,8 +378,7 @@ idIndexBuffer::idIndexBuffer
 */
 idIndexBuffer::idIndexBuffer() {
 	size = 0;
-	offsetInOtherBuffer = OWNS_BUFFER_FLAG;
-	pBuffer = NULL;
+	offsetInOtherBuffer = 0;
 	SetUnmapped();
 }
 
@@ -369,7 +397,7 @@ idIndexBuffer::AllocBufferObject
 ========================
 */
 bool idIndexBuffer::AllocBufferObject( const void * data, int allocSize ) {
-	assert( pBuffer == NULL );
+	assert( !buffers.Allocated() );
 	assert_16_byte_aligned( data );
 
 	if ( allocSize <= 0 ) {
@@ -380,9 +408,7 @@ bool idIndexBuffer::AllocBufferObject( const void * data, int allocSize ) {
 
 	int numBytes = GetAllocedSize();
 
-    pBuffer = CreateDirect3DBuffer( data, numBytes, D3D11_BIND_INDEX_BUFFER );
-
-	if ( pBuffer == NULL ) {
+	if ( !buffers.Init( data, numBytes, D3D11_BIND_INDEX_BUFFER ) ) {
 		idLib::FatalError( "idIndexBuffer::AllocBufferObject: failed" );
 	}
 
@@ -403,21 +429,11 @@ void idIndexBuffer::FreeBufferObject() {
 		UnmapBuffer();
 	}
 
-	// if this is a sub-allocation inside a larger buffer, don't actually free anything.
-	if ( OwnsBuffer() == false ) {
-		ClearWithoutFreeing();
-		return;
-	}
-
-	if ( pBuffer == NULL ) {
-		return;
-	}
-
 	if ( r_showBuffers.GetBool() ) {
 		idLib::Printf( "index buffer free %p, api %p (%i bytes)\n", this, GetBuffer(), GetSize() );
 	}
 
-    SAFE_RELEASE( pBuffer );
+    buffers.Destroy();
 
 	ClearWithoutFreeing();
 }
@@ -435,9 +451,8 @@ void idIndexBuffer::Reference( const idIndexBuffer & other ) {
 
 	FreeBufferObject();
 	size = other.GetSize();						// this strips the MAPPED_FLAG
-	offsetInOtherBuffer = other.GetOffset();	// this strips the OWNS_BUFFER_FLAG
-	pBuffer = other.pBuffer;
-	assert( OwnsBuffer() == false );
+	offsetInOtherBuffer = other.GetOffset();
+	buffers = other.buffers;
 }
 
 /*
@@ -456,8 +471,7 @@ void idIndexBuffer::Reference( const idIndexBuffer & other, int refOffset, int r
 	FreeBufferObject();
 	size = refSize;
 	offsetInOtherBuffer = other.GetOffset() + refOffset;
-	pBuffer = other.pBuffer;
-	assert( OwnsBuffer() == false );
+	buffers = other.buffers;
 }
 
 /*
@@ -465,9 +479,10 @@ void idIndexBuffer::Reference( const idIndexBuffer & other, int refOffset, int r
 idIndexBuffer::Update
 ========================
 */
+/*
 void idIndexBuffer::Update( const void * data, int updateSize ) const {
 
-	assert( pBuffer != NULL );
+	assert( buffers.Allocated() );
 	assert( IsMapped() == false );
 	assert_16_byte_aligned( data );
 	assert( ( GetOffset() & 15 ) == 0 );
@@ -480,13 +495,8 @@ void idIndexBuffer::Update( const void * data, int updateSize ) const {
 
     assert( GetOffset() == 0 );
     D3DDrv_GetImmediateContext()->UpdateSubresource1( pBuffer, 0, NULL, data, numBytes, 0, D3D11_COPY_DISCARD );
-
-/*
-	void * buffer = MapBuffer( BM_WRITE );
-	CopyBuffer( (byte *)buffer + GetOffset(), (byte *)data, numBytes );
-	UnmapBuffer();
-*/
 }
+*/
 
 /*
 ========================
@@ -495,14 +505,14 @@ idIndexBuffer::MapBuffer
 */
 void * idIndexBuffer::MapBuffer( bufferMapType_t mapType ) const {
 
-	assert( pBuffer != NULL );
+	assert( buffers.Allocated() );
 	assert( IsMapped() == false );
     assert( mapType != BM_READ );
 
     D3D11_MAPPED_SUBRESOURCE map;
 
     auto pIC = D3DDrv_GetImmediateContext();
-    pIC->Map( pBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
+    pIC->Map( buffers.GetCurrentMapBuffer(), 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
 
 	SetMapped();
 
@@ -519,10 +529,10 @@ idIndexBuffer::UnmapBuffer
 ========================
 */
 void idIndexBuffer::UnmapBuffer() const {
-	assert( pBuffer != NULL );
+	assert( buffers.Allocated() );
 	assert( IsMapped() );
 
-	D3DDrv_GetImmediateContext()->Unmap( pBuffer, 0 );
+	D3DDrv_GetImmediateContext()->Unmap( buffers.GetCurrentMapBuffer(), 0 );
 	SetUnmapped();
 }
 
@@ -533,8 +543,7 @@ idIndexBuffer::ClearWithoutFreeing
 */
 void idIndexBuffer::ClearWithoutFreeing() {
 	size = 0;
-	offsetInOtherBuffer = OWNS_BUFFER_FLAG;
-	pBuffer = NULL;
+	offsetInOtherBuffer = 0;
 }
 
 /*
@@ -552,8 +561,7 @@ idJointBuffer::idJointBuffer
 */
 idJointBuffer::idJointBuffer() {
 	numJoints = 0;
-	offsetInOtherBuffer = OWNS_BUFFER_FLAG;
-	pBuffer = NULL;
+	offsetInOtherBuffer = 0;
 	SetUnmapped();
 }
 
@@ -572,7 +580,7 @@ idJointBuffer::AllocBufferObject
 ========================
 */
 bool idJointBuffer::AllocBufferObject( const float * joints, int numAllocJoints ) {
-	assert( pBuffer == NULL );
+	assert( !buffers.Allocated() );
 	assert_16_byte_aligned( joints );
 
 	if ( numAllocJoints <= 0 ) {
@@ -583,19 +591,12 @@ bool idJointBuffer::AllocBufferObject( const float * joints, int numAllocJoints 
 
 	const int numBytes = GetAllocedSize();
 
-    pBuffer = CreateDirect3DBuffer( nullptr, numBytes, D3D11_BIND_CONSTANT_BUFFER );
-
-	if ( pBuffer == nullptr ) {
+	if ( !buffers.Init( joints, numBytes, D3D11_BIND_CONSTANT_BUFFER ) ) {
 		idLib::FatalError( "idJointBuffer::AllocBufferObject: failed" );
 	}
 
 	if ( r_showBuffers.GetBool() ) {
 		idLib::Printf( "joint buffer alloc %p, api %p (%i joints)\n", this, GetBuffer(), GetNumJoints() );
-	}
-
-	// copy the data
-	if ( joints != NULL ) {
-		Update( joints, numAllocJoints );
 	}
 
 	return true;
@@ -611,21 +612,11 @@ void idJointBuffer::FreeBufferObject() {
 		UnmapBuffer();
 	}
 
-	// if this is a sub-allocation inside a larger buffer, don't actually free anything.
-	if ( OwnsBuffer() == false ) {
-		ClearWithoutFreeing();
-		return;
-	}
-
-	if ( pBuffer == NULL ) {
-		return;
-	}
-
 	if ( r_showBuffers.GetBool() ) {
 		idLib::Printf( "joint buffer free %p, api %p (%i joints)\n", this, GetBuffer(), GetNumJoints() );
 	}
 
-	SAFE_RELEASE( pBuffer );
+	buffers.Destroy();
 
 	ClearWithoutFreeing();
 }
@@ -643,9 +634,8 @@ void idJointBuffer::Reference( const idJointBuffer & other ) {
 
 	FreeBufferObject();
 	numJoints = other.GetNumJoints();			// this strips the MAPPED_FLAG
-	offsetInOtherBuffer = other.GetOffset();	// this strips the OWNS_BUFFER_FLAG
-	pBuffer = other.pBuffer;
-	assert( OwnsBuffer() == false );
+	offsetInOtherBuffer = other.GetOffset();
+	buffers = other.buffers;
 }
 
 /*
@@ -665,8 +655,7 @@ void idJointBuffer::Reference( const idJointBuffer & other, int jointRefOffset, 
 	FreeBufferObject();
 	numJoints = numRefJoints;
 	offsetInOtherBuffer = other.GetOffset() + jointRefOffset;
-	pBuffer = other.pBuffer;
-	assert( OwnsBuffer() == false );
+	buffers = other.buffers;
 }
 
 /*
@@ -674,8 +663,9 @@ void idJointBuffer::Reference( const idJointBuffer & other, int jointRefOffset, 
 idJointBuffer::Update
 ========================
 */
+/*
 void idJointBuffer::Update( const float * joints, int numUpdateJoints ) const {
-	assert( pBuffer != NULL );
+	assert( buffers.Allocated() );
 	assert( IsMapped() == false );
 	assert_16_byte_aligned( joints );
 	assert( ( GetOffset() & 15 ) == 0 );
@@ -689,6 +679,7 @@ void idJointBuffer::Update( const float * joints, int numUpdateJoints ) const {
     assert( GetOffset() == 0 );
     D3DDrv_GetImmediateContext()->UpdateSubresource1( pBuffer, 0, NULL, joints, numBytes, 0, D3D11_COPY_DISCARD );
 }
+*/
 
 /*
 ========================
@@ -703,7 +694,7 @@ float * idJointBuffer::MapBuffer( bufferMapType_t mapType ) const {
     D3D11_MAPPED_SUBRESOURCE map;
 
     auto pIC = D3DDrv_GetImmediateContext();
-    pIC->Map( pBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
+    pIC->Map( buffers.GetCurrentMapBuffer(), 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
 
 	SetMapped();
 
@@ -721,10 +712,10 @@ idJointBuffer::UnmapBuffer
 ========================
 */
 void idJointBuffer::UnmapBuffer() const {
-	assert( pBuffer != NULL );
+	assert( buffers.Allocated() );
 	assert( IsMapped() );
 
-	D3DDrv_GetImmediateContext()->Unmap( pBuffer, 0 );
+	D3DDrv_GetImmediateContext()->Unmap( buffers.GetCurrentMapBuffer(), 0 );
 	SetUnmapped();
 }
 
@@ -735,8 +726,7 @@ idJointBuffer::ClearWithoutFreeing
 */
 void idJointBuffer::ClearWithoutFreeing() {
 	numJoints = 0;
-	offsetInOtherBuffer = OWNS_BUFFER_FLAG;
-	pBuffer = NULL;
+	offsetInOtherBuffer = 0;
 }
 
 /*
@@ -745,10 +735,7 @@ idJointBuffer::Swap
 ========================
 */
 void idJointBuffer::Swap( idJointBuffer & other ) {
-	// Make sure the ownership of the buffer is not transferred to an unintended place.
-	assert( other.OwnsBuffer() == OwnsBuffer() );
-
 	SwapValues( other.numJoints, numJoints );
 	SwapValues( other.offsetInOtherBuffer, offsetInOtherBuffer );
-	SwapValues( other.pBuffer, pBuffer );
+	SwapValues( other.buffers, buffers );
 }

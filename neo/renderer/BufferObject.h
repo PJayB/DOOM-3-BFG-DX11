@@ -43,6 +43,22 @@ enum bufferMapType_t {
 	BM_WRITE			// map for writing
 };
 
+class idDoubleBuffer_t {
+private:
+    ID3D11Buffer* m_mapBuffer;
+    ID3D11Buffer* m_drawBuffer;
+public:
+    idDoubleBuffer_t();
+    idDoubleBuffer_t( const idDoubleBuffer_t& );
+    bool Init( const void* data, size_t size, uint bindFlags );
+    void Destroy();
+    bool Allocated() const { return m_mapBuffer != nullptr && m_drawBuffer != nullptr; }
+    ID3D11Buffer* GetCurrentMapBuffer() const { return m_mapBuffer; }
+    ID3D11Buffer* GetCurrentDrawBuffer() const { return m_drawBuffer; }
+    void SwapBuffers();
+    idDoubleBuffer_t& operator = ( const idDoubleBuffer_t& );
+};
+
 /*
 ================================================
 idVertexBuffer
@@ -70,25 +86,25 @@ public:
 	void				UnmapBuffer() const;
 	bool				IsMapped() const { return ( size & MAPPED_FLAG ) != 0; }
 
+    void                SwitchWorkingSet() { buffers.SwapBuffers(); }
+
 	int					GetSize() const { return ( size & ~MAPPED_FLAG ); }
 	int					GetAllocedSize() const { return ( ( size & ~MAPPED_FLAG ) + 15 ) & ~15; }
-	ID3D11Buffer*		GetBuffer() const { return pBuffer; }
-	int					GetOffset() const { return ( offsetInOtherBuffer & ~OWNS_BUFFER_FLAG ); }
+	ID3D11Buffer*		GetBuffer() const { return buffers.GetCurrentDrawBuffer(); }
+	int					GetOffset() const { return offsetInOtherBuffer; }
 
 private:
 	int					size;					// size in bytes
 	int					offsetInOtherBuffer;	// offset in bytes
-	ID3D11Buffer*		pBuffer;
+	idDoubleBuffer_t    buffers;
 
 	// sizeof() confuses typeinfo...
 	static const int	MAPPED_FLAG			= 1 << ( 4 /* sizeof( int ) */ * 8 - 1 );
-	static const int	OWNS_BUFFER_FLAG	= 1 << ( 4 /* sizeof( int ) */ * 8 - 1 );
 
 private:
 	void				ClearWithoutFreeing();
 	void				SetMapped() const { const_cast< int & >( size ) |= MAPPED_FLAG; }
 	void				SetUnmapped() const { const_cast< int & >( size ) &= ~MAPPED_FLAG; }
-	bool				OwnsBuffer() const { return ( ( offsetInOtherBuffer & OWNS_BUFFER_FLAG ) != 0 ); }
 
 	DISALLOW_COPY_AND_ASSIGN( idVertexBuffer );
 };
@@ -115,6 +131,8 @@ public:
 	// Copies data to the buffer. 'size' may be less than the originally allocated size.
 	void				Update( const void * data, int updateSize ) const;
 
+    void                SwitchWorkingSet() { buffers.SwapBuffers(); }
+
 	void *				MapBuffer( bufferMapType_t mapType ) const;
 	triIndex_t *		MapIndexBuffer( bufferMapType_t mapType ) const { return static_cast< triIndex_t * >( MapBuffer( mapType ) ); }
 	void				UnmapBuffer() const;
@@ -122,23 +140,21 @@ public:
 
 	int					GetSize() const { return ( size & ~MAPPED_FLAG ); }
 	int					GetAllocedSize() const { return ( ( size & ~MAPPED_FLAG ) + 15 ) & ~15; }
-	ID3D11Buffer*		GetBuffer() const { return pBuffer; }
-	int					GetOffset() const { return ( offsetInOtherBuffer & ~OWNS_BUFFER_FLAG ); }
+	ID3D11Buffer*		GetBuffer() const { return buffers.GetCurrentDrawBuffer(); }
+	int					GetOffset() const { return offsetInOtherBuffer; }
 
 private:
 	int					size;					// size in bytes
 	int					offsetInOtherBuffer;	// offset in bytes
-	ID3D11Buffer*		pBuffer;
+	idDoubleBuffer_t    buffers;
 
 	// sizeof() confuses typeinfo...
 	static const int	MAPPED_FLAG			= 1 << ( 4 /* sizeof( int ) */ * 8 - 1 );
-	static const int	OWNS_BUFFER_FLAG	= 1 << ( 4 /* sizeof( int ) */ * 8 - 1 );
 
 private:
 	void				ClearWithoutFreeing();
 	void				SetMapped() const { const_cast< int & >( size ) |= MAPPED_FLAG; }
 	void				SetUnmapped() const { const_cast< int & >( size ) &= ~MAPPED_FLAG; }
-	bool				OwnsBuffer() const { return ( ( offsetInOtherBuffer & OWNS_BUFFER_FLAG ) != 0 ); }
 
 	DISALLOW_COPY_AND_ASSIGN( idIndexBuffer );
 };
@@ -169,31 +185,31 @@ public:
 	// Copies data to the buffer. 'numJoints' may be less than the originally allocated size.
 	void				Update( const float * joints, int numUpdateJoints ) const;
 
+    void                SwitchWorkingSet() { buffers.SwapBuffers(); }
+
 	float *				MapBuffer( bufferMapType_t mapType ) const;
 	void				UnmapBuffer() const;
 	bool				IsMapped() const { return ( numJoints & MAPPED_FLAG ) != 0; }
 
 	int					GetNumJoints() const { return ( numJoints & ~MAPPED_FLAG ); }
 	int					GetAllocedSize() const { return ( numJoints & ~MAPPED_FLAG ) * 3 * 4 * sizeof( float ); }
-	ID3D11Buffer*		GetBuffer() const { return pBuffer; }
-	int					GetOffset() const { return ( offsetInOtherBuffer & ~OWNS_BUFFER_FLAG ); }
+	ID3D11Buffer*		GetBuffer() const { return buffers.GetCurrentDrawBuffer(); }
+	int					GetOffset() const { return offsetInOtherBuffer; }
 
 	void				Swap( idJointBuffer & other );
 
 private:
 	int					numJoints;
 	int					offsetInOtherBuffer;	// offset in bytes
-	ID3D11Buffer*		pBuffer;
+	idDoubleBuffer_t    buffers;
 
 	// sizeof() confuses typeinfo...
 	static const int	MAPPED_FLAG			= 1 << ( 4 /* sizeof( int ) */ * 8 - 1 );
-	static const int	OWNS_BUFFER_FLAG	= 1 << ( 4 /* sizeof( int ) */ * 8 - 1 );
 
 private:
 	void				ClearWithoutFreeing();
 	void				SetMapped() const { const_cast< int & >( numJoints ) |= MAPPED_FLAG; }
 	void				SetUnmapped() const { const_cast< int & >( numJoints ) &= ~MAPPED_FLAG; }
-	bool				OwnsBuffer() const { return ( ( offsetInOtherBuffer & OWNS_BUFFER_FLAG ) != 0 ); }
 
 	DISALLOW_COPY_AND_ASSIGN( idJointBuffer );
 };

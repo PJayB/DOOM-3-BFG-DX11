@@ -252,7 +252,7 @@ void idGuiModel::EmitFullScreen() {
 
 	viewDef->projectionMatrix[3*4+0] = -1.0f;
 	viewDef->projectionMatrix[3*4+1] = 1.0f;
-	viewDef->projectionMatrix[3*4+2] = -1.0f;
+	viewDef->projectionMatrix[3*4+2] = 1.0f;
 	viewDef->projectionMatrix[3*4+3] = 1.0f;
 
 	// make a tech5 renderMatrix for faster culling

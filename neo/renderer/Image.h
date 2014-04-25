@@ -158,7 +158,7 @@ private:
 	void				AllocImage();
 	void				DeriveOpts();
 
-    DXGI_FORMAT         GetDxgiFormat( textureFormat_t fmt, int& bytesPP ) const;
+    DXGI_FORMAT         GetDxgiFormat( textureFormat_t fmt ) const;
 
 	// parameters that define this image
 	idStr				imgName;				// game path, including extension (except for cube maps), may be an image program

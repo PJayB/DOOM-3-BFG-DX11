@@ -713,26 +713,22 @@ void idImage::PurgeImage() {
 	SAFE_RELEASE( pSampler );
 }
 
-DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt, int& bytesPP ) const
+DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt) const
 {
     DXGI_FORMAT internalFormat = DXGI_FORMAT_UNKNOWN;
 	switch ( fmt ) {
 	case FMT_RGBA8:
         internalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-        bytesPP = 4;
 		break;
 	case FMT_XRGB8:
         internalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-        bytesPP = 3;
 		break;
 	case FMT_RGB565:
         internalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-        bytesPP = 2;
 		break;
 	case FMT_ALPHA:
 #if defined( USE_CORE_PROFILE )
 		internalFormat = DXGI_FORMAT_R8_UNORM;
-		bytesPP = 1;
 #else
 		internalFormat = GL_ALPHA8;
 		dataFormat = GL_ALPHA;
@@ -741,7 +737,6 @@ DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt, int& bytesPP ) const
 	case FMT_L8A8:
 #if defined( USE_CORE_PROFILE )
         internalFormat = DXGI_FORMAT_R8G8_UNORM;
-        bytesPP = 2;
 #else
 		internalFormat = GL_LUMINANCE8_ALPHA8;
 		dataFormat = GL_LUMINANCE_ALPHA;
@@ -750,7 +745,6 @@ DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt, int& bytesPP ) const
 	case FMT_LUM8:
 #if defined( USE_CORE_PROFILE )
         internalFormat = DXGI_FORMAT_R8_UNORM;
-        bytesPP = 1;
 #else
 		internalFormat = GL_LUMINANCE8;
 		dataFormat = GL_LUMINANCE;
@@ -759,7 +753,6 @@ DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt, int& bytesPP ) const
 	case FMT_INT8:
 #if defined( USE_CORE_PROFILE )
         internalFormat = DXGI_FORMAT_R8_UNORM;
-        bytesPP = 1;
 #else
 		internalFormat = GL_INTENSITY8;
 		dataFormat = GL_LUMINANCE;
@@ -773,15 +766,12 @@ DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt, int& bytesPP ) const
 		break;
 	case FMT_DEPTH:
 		internalFormat = DXGI_FORMAT_D32_FLOAT;
-        bytesPP = 1;
 		break;
 	case FMT_X16:
 		internalFormat = DXGI_FORMAT_R16_UNORM;
-		bytesPP = 2;
 		break;
 	case FMT_Y16_X16:
         internalFormat = DXGI_FORMAT_R8G8_UNORM;
-		bytesPP = 2;
 		break;
 	default:
 		idLib::Error( "Unhandled image format %d in %s\n", fmt, GetName() );
@@ -812,12 +802,7 @@ void idImage::AllocImage() {
         }
     }
 
-    // Pad?
-    opts.width = minSize * ( ( opts.width + minSize - 1 ) / minSize );
-    opts.height = minSize * ( ( opts.height + minSize - 1 ) / minSize );
-
-    int bytesPP = 4;
-    internalFormat = GetDxgiFormat( opts.format, bytesPP );
+    internalFormat = GetDxgiFormat( opts.format );
 
 	// if we don't have a rendering context, just return after we
 	// have filled in the parms.  We must have the values set, or
@@ -830,6 +815,12 @@ void idImage::AllocImage() {
 	//----------------------------------------------------
 	// allocate all the mip levels with NULL data
 	//----------------------------------------------------
+
+    if ( opts.width % minSize != 0 && opts.height % minSize != 0 ) {
+        common->Warning( "Image '%s' has bad size: %dx%d (needs to be a multiple of %dx%d)", 
+            GetName(), opts.width, opts.height, minSize, minSize );
+        return;
+    }
 
     assert( opts.width >= minSize && opts.height >= minSize );
 
@@ -898,7 +889,30 @@ idImage::SubImageUpload
 ========================
 */
 void idImage::SubImageUpload( int mipLevel, int x, int y, int z, int width, int height, const void * pic, int pixelPitch ) const {
-    // @pjb: todo:
+    ID3D11DeviceContext1* pContext = D3DDrv_GetImmediateContext();
+
+    if ( pTexture == nullptr )
+        return;
+
+    int index = z * opts.numLevels + mipLevel;
+
+    //assert(x == 0 && y == 0); // @pjb: todo
+    //
+    //D3D11_MAPPED_SUBRESOURCE map;
+    //if ( FAILED( pContext->Map( pTexture, index, D3D11_MAP_WRITE_DISCARD, 0, &map ) ) ) {
+    //    return;
+    //}
+    //
+    //memcpy( map.pData, pic, StorageSize() );
+    //pContext->Unmap( pTexture, index );
+
+    if ( !pixelPitch ) {
+        pixelPitch = width * BitsForFormat( opts.format ) / 8;
+    }
+
+    D3D11_BOX box = { x, y, 0, x + width, y + height, 1 };
+
+    pContext->UpdateSubresource( pTexture, index, &box, pic, pixelPitch, pixelPitch * height ); 
 }
 
 //

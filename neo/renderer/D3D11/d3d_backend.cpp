@@ -35,11 +35,14 @@ HRESULT D3DDrv_LastError( void )
 
 QD3D11Device* D3DDrv_GetDevice()
 {
+    assert(idLib::IsMainThread());
     return g_pDevice;
 }
 
 ID3D11DeviceContext1* D3DDrv_GetImmediateContext()
 {
+    assert(idLib::IsMainThread());
+    assert(g_pImmediateContext);
     return g_pImmediateContext;
 }
 
@@ -88,7 +91,7 @@ void D3DDrv_Flush()
 //----------------------------------------------------------------------------
 // Present the frame
 //----------------------------------------------------------------------------
-void D3DDrv_EndFrame( int frequency )
+HRESULT D3DDrv_EndFrame( int frequency )
 {
     //int frequency = 0;
 	//if ( r_swapInterval->integer > 0 ) 
@@ -110,6 +113,9 @@ void D3DDrv_EndFrame( int frequency )
     default: hr = g_pSwapChain->Present1( 0, 0, &parameters ); break; 
     }
 
+    if ( FAILED( hr ) )
+        return hr;
+
 #ifdef WIN8
 	// Discard the contents of the render target.
 	// This is a valid operation only when the existing contents will be entirely
@@ -123,11 +129,7 @@ void D3DDrv_EndFrame( int frequency )
     g_pImmediateContext->OMSetRenderTargets( 1, &g_BufferState.backBufferView, g_BufferState.depthBufferView );
 #endif
 
-	if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
-	{
-        // Someone kicked the cord out or something. REBOOT TEH VIDYOS!
-        cmdSystem->ExecuteCommandText("vid_restart");
-	}
+    return S_OK;
 }
 
 

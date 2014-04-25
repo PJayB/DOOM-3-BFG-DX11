@@ -6,6 +6,7 @@
 #include "win_local.h"
 #include "rc/doom_resource.h"
 #include "../../renderer/tr_local.h"
+#include "win_d3d.h"
 
 #define	WINDOW_CLASS_NAME	"Doom 3: BFG Edition (Direct3D)"
 
@@ -187,10 +188,7 @@ bool D3DWnd_Init( glimpParms_t parms )
 //----------------------------------------------------------------------------
 bool D3DWnd_SetScreenParms( glimpParms_t parms ) 
 {
-    D3DDrv_Shutdown();
-    DestroyBuffers();
-    DestroySwapChain();
-    DestroyDevice();
+    D3DWnd_LostDevice();
 
 	int x, y, w, h;
 	if ( !GLW_GetWindowDimensions( parms, x, y, w, h ) ) {
@@ -240,17 +238,33 @@ bool D3DWnd_SetScreenParms( glimpParms_t parms )
 //----------------------------------------------------------------------------
 // Cleans up and stops D3D, and closes the window.
 //----------------------------------------------------------------------------
-void D3DWnd_Shutdown( void )
+void D3DWnd_Shutdown()
 {
-    D3DDrv_Shutdown();
-
-    DestroyDevice();
-    DestroySwapChain();
+    D3DWnd_LostDevice();
 
     ::UnregisterClass( WINDOW_CLASS_NAME, win32.hInstance );
     ::DestroyWindow( win32.hWnd );
 
     win32.hWnd = NULL;
+}
+
+//----------------------------------------------------------------------------
+// Suspends the device
+//----------------------------------------------------------------------------
+void D3DWnd_LostDevice()
+{
+    D3DDrv_Shutdown();
+    DestroyBuffers();
+    DestroyDevice();
+    DestroySwapChain();
+}
+
+//----------------------------------------------------------------------------
+// Returns true if the window is ready
+//----------------------------------------------------------------------------
+bool D3DWnd_Ready()
+{
+    return D3DDrv_GetDevice() != nullptr;
 }
 
 //----------------------------------------------------------------------------

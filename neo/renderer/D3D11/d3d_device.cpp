@@ -48,6 +48,19 @@ QD3D11Device* InitDevice()
             d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
             d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
 #endif
+
+            D3D11_MESSAGE_SEVERITY severities[] = 
+            {
+                D3D11_MESSAGE_SEVERITY_INFO,
+                D3D11_MESSAGE_SEVERITY_MESSAGE
+            };
+
+            D3D11_INFO_QUEUE_FILTER filter;
+            ZeroMemory( &filter, sizeof(filter) );
+            filter.AllowList.NumSeverities = _countof( severities );
+            filter.AllowList.pSeverityList = severities;
+            d3dInfoQueue->AddStorageFilterEntries( &filter );
+
             d3dInfoQueue->Release();
         }
         d3dDebug->Release();

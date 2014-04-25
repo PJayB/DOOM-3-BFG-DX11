@@ -704,7 +704,8 @@ public:
 	virtual void			UnCrop();
 	virtual bool			UploadImage( const char *imageName, const byte *data, int width, int height );
 
-	
+private:
+    void                    SwapBuffers();
 
 public:
 	// internal functions

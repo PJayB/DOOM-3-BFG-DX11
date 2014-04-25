@@ -73,17 +73,23 @@ UnmapGeoBufferSet
 */
 static void UnmapGeoBufferSet( geoBufferSet_t &gbs ) {
 	if ( gbs.mappedVertexBase != NULL ) {
-		gbs.vertexBuffer.UnmapBuffer();
+        if ( gbs.vertexBuffer.IsMapped() ) {
+		    gbs.vertexBuffer.UnmapBuffer();
+        }
 		gbs.vertexBuffer.SwitchWorkingSet();
 		gbs.mappedVertexBase = NULL;
 	}
 	if ( gbs.mappedIndexBase != NULL ) {
-		gbs.indexBuffer.UnmapBuffer();
+        if ( gbs.indexBuffer.IsMapped() ) {
+		    gbs.indexBuffer.UnmapBuffer();
+        }
 		gbs.indexBuffer.SwitchWorkingSet();
 		gbs.mappedIndexBase = NULL;
 	}
 	if ( gbs.mappedJointBase != NULL ) {
-		gbs.jointBuffer.UnmapBuffer();
+        if ( gbs.jointBuffer.IsMapped() ) {
+		    gbs.jointBuffer.UnmapBuffer();
+        }
 		gbs.jointBuffer.SwitchWorkingSet();
 		gbs.mappedJointBase = NULL;
 	}
@@ -135,6 +141,9 @@ void idVertexCache::Shutdown() {
 		frameData[i].indexBuffer.FreeBufferObject();
 		frameData[i].jointBuffer.FreeBufferObject();
 	}
+    staticData.vertexBuffer.FreeBufferObject();
+    staticData.indexBuffer.FreeBufferObject();
+    staticData.jointBuffer.FreeBufferObject();
 }
 
 /*

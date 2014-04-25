@@ -584,6 +584,32 @@ const emptyCommand_t * idRenderSystemLocal::SwapCommandBuffers(
 	return SwapCommandBuffers_FinishCommandBuffers();
 }
 
+void idRenderSystemLocal::SwapBuffers()
+{
+    // @pjb: todo: this code confuses me. Why are we ending the frame and *then* unlocking the buffers?
+    int frequency = 0;
+	if ( r_swapInterval.GetInteger() > 0 ) 
+    {
+	    frequency = __min( glConfig.displayFrequency, 60 / r_swapInterval.GetInteger() );
+    }
+
+	// wait for our fence to hit, which means the swap has actually happened
+	// We must do this before clearing any resources the GPU may be using
+    HRESULT hr = D3DDrv_EndFrame(frequency);
+    if ( FAILED( hr ) ) 
+    {
+        if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+	    {
+            extern void R_HandleLostDevice();
+            R_HandleLostDevice();       
+	    }
+        else
+        {
+            common->FatalError( "D3D present failed %08X", hr );
+        }
+    }
+}
+
 /*
 =====================
 idRenderSystemLocal::SwapCommandBuffers_FinishRendering
@@ -606,16 +632,7 @@ void idRenderSystemLocal::SwapCommandBuffers_FinishRendering(
 
 	// After coming back from an autoswap, we won't have anything to render
 	if ( frameData->cmdHead->next != NULL ) {
-        // @pjb: todo: this code confuses me. Why are we ending the frame and *then* unlocking the buffers?
-        int frequency = 0;
-	    if ( r_swapInterval.GetInteger() > 0 ) 
-        {
-	    	frequency = __min( glConfig.displayFrequency, 60 / r_swapInterval.GetInteger() );
-        }
-
-		// wait for our fence to hit, which means the swap has actually happened
-		// We must do this before clearing any resources the GPU may be using
-        D3DDrv_EndFrame(frequency);
+        SwapBuffers();
 	}
 
 	// read back the start and end timer queries from the previous frame

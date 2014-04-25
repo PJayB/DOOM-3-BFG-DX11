@@ -367,6 +367,33 @@ void R_InitDirect3D() {
 
 /*
 ==================
+R_HandleLostDevice
+==================
+*/
+void R_HandleLostDevice() {
+
+    int vertexCacheFrame = vertexCache.currentFrame;
+
+    // Shut down the device dependent resources
+    globalImages->PurgeAllImages();
+    vertexCache.Shutdown();
+    idLayoutManager::Shutdown();
+    renderProgManager.Shutdown();
+
+    // Restore device
+ 	R_SetNewMode( false );
+   
+    // Restore per-device data
+	renderProgManager.Init();
+	vertexCache.Init();
+    idLayoutManager::Init();
+    globalImages->ReloadImages( true );
+
+    vertexCache.currentFrame = vertexCacheFrame;
+}
+
+/*
+==================
 GL_CheckErrors
 ==================
 */
@@ -1008,7 +1035,7 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 	}
 
 	// set the mode without re-initializing the context
-	R_SetNewMode( false );
+	R_HandleLostDevice();
 }
 
 /*

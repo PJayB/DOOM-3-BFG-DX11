@@ -83,7 +83,7 @@ void D3DDrv_Flush()
     }
     while ( ( hr == S_OK || hr == S_FALSE ) && finished == FALSE );
 
-    assert( SUCCEEDED( hr ) );
+    //assert( SUCCEEDED( hr ) );
 }
 
 //----------------------------------------------------------------------------

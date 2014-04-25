@@ -35,7 +35,6 @@ uniform TextureCube     tex0 : register(t0);
 uniform Texture2D       tex1 : register(t1);
 
 struct PS_IN {
-	float4 position		: VPOS;
 	float2 texcoord0	: TEXCOORD0;
 	float3 texcoord1	: TEXCOORD1;
 	float3 texcoord2	: TEXCOORD2;

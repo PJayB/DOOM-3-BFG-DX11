@@ -32,7 +32,6 @@ uniform SamplerState	samp0 : register(s0); // texture 0 is the cube map
 uniform TextureCube     tex0 : register(t0);
 
 struct PS_IN {
-	float4 position		: VPOS;
 	float3 texcoord0	: TEXCOORD0;
 	float3 texcoord1	: TEXCOORD1;
 	float4 color		: COLOR0;

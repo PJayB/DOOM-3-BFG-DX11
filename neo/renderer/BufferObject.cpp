@@ -116,7 +116,7 @@ ID3D11Buffer *CreateDirect3DBuffer( const void* data, UINT numBytes, UINT bindFl
 	D3D11_BUFFER_DESC desc;
 	ZeroMemory(&desc, sizeof(desc));
 
-	desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	desc.BindFlags = bindFlags;
 	desc.ByteWidth = (UINT)numBytes;
 
     if (data) {

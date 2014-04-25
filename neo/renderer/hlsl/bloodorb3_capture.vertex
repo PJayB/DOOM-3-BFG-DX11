@@ -28,18 +28,6 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "global.inc"
 
-uniform float4 rpUser0 : register( c128 ); //rpCenterScaleTex
-uniform float4 rpUser1 : register( c129 ); //rpRotateTex
-uniform float4 rpUser2 : register( c130 ); //rpColorFactor
-
-struct VS_IN {
-	float4 position : POSITION;
-	float2 texcoord : TEXCOORD0;
-	float4 normal : NORMAL;
-	float4 tangent : TANGENT;
-	float4 color : COLOR0;
-};
-
 struct VS_OUT {
 	float4 position : SV_POSITION;
 	float2 texcoord0 : TEXCOORD0;
@@ -49,7 +37,7 @@ struct VS_OUT {
 	float2 texcoord4 : TEXCOORD4;
 };
 
-void main( VS_IN vertex, out VS_OUT result ) {
+void main( drawVert_t vertex, out VS_OUT result ) {
 	result.position.x = dot4( vertex.position, rpMVPmatrixX );
 	result.position.y = dot4( vertex.position, rpMVPmatrixY );
 	result.position.z = dot4( vertex.position, rpMVPmatrixZ );

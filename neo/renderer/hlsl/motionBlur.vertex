@@ -28,17 +28,12 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "global.inc"
 
-struct VS_IN {
-	float4 position : POSITION;
-	float2 texcoord : TEXCOORD0;
-};
-
 struct VS_OUT {
 	float4 position : SV_POSITION;
 	float2 texcoord0 : TEXCOORD0;
 };
 
-void main( VS_IN vertex, out VS_OUT result ) {
+void main( drawVert_t vertex, out VS_OUT result ) {
 	result.position = vertex.position;
 	result.texcoord0 = vertex.texcoord;
 }

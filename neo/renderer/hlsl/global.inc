@@ -99,6 +99,23 @@ cbuffer BuiltinConstants : register(c0)
     float4 rpAlphaTest				;
 };
 
+cbuffer UserConstants : register(c1)
+{
+    float4 rpUser0;
+    float4 rpUser1;
+    float4 rpUser2;
+    float4 rpUser3;
+    float4 rpUser4;
+    float4 rpUser5;
+    float4 rpUser6;
+    float4 rpUser7;
+};
+
+cbuffer JointBuffer : register(c2)
+{
+    float4 matrices[408];
+};
+
 static float dot2( float2 a, float2 b ) { return dot( a, b ); }
 static float dot3( float3 a, float3 b ) { return dot( a, b ); }
 static float dot3( float3 a, float4 b ) { return dot( a, b.xyz ); }
@@ -180,3 +197,13 @@ static float2 vposToScreenPosTexCoord( float2 vpos ) { return vpos.xy * rpWindow
 
 #define BRANCH
 #define IFANY
+
+
+struct drawVert_t {
+	float4 position : POSITION;
+	float2 texcoord : TEXCOORD0;
+	float4 normal : NORMAL;
+	float4 tangent : TANGENT;
+	float4 color : COLOR0;
+	float4 color2 : COLOR1;
+};

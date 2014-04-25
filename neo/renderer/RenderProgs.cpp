@@ -138,14 +138,9 @@ void idRenderProgManager::Init() {
 
 	cmdSystem->AddCommand( "reloadShaders", R_ReloadShaders, CMD_FL_RENDERER, "reloads shaders" );
 
-    // Create the constant buffer
-    builtinCbuffer.dirty = true;
-    builtinCbuffer.size = sizeof(float) * 4 * RENDERPARM_TOTAL;
-    builtinCbuffer.pData = new float[builtinCbuffer.size / sizeof(float)];
-    builtinCbuffer.pBuffer = QD3D::CreateDynamicBuffer( 
-        D3DDrv_GetDevice(),
-        D3D11_BIND_CONSTANT_BUFFER,
-        builtinCbuffer.size );
+    // Create the constant buffers
+    InitConstantBuffer( &builtinCbuffer, RENDERPARM_TOTAL * sizeof(float) * 4 );
+    InitConstantBuffer( &userCbuffer, RENDERPARM_USER_COUNT * sizeof(float) * 4 );
 }
 
 /*
@@ -185,8 +180,8 @@ idRenderProgManager::Shutdown()
 void idRenderProgManager::Shutdown() {
 	KillAllShaders();
 
-    SAFE_RELEASE( builtinCbuffer.pBuffer );
-    SAFE_DELETE_ARRAY( builtinCbuffer.pData );
+    DestroyConstantBuffer( &builtinCbuffer );
+    DestroyConstantBuffer( &userCbuffer );
 }
 
 /*
@@ -331,11 +326,20 @@ void idRenderProgManager::LoadFragmentShader( int index ) {
 idRenderProgManager::SetRenderParms
 ================================================================================================
 */
-void idRenderProgManager::SetRenderParms( renderParm_t rp, const float * value, int num ) {
-    size_t size = sizeof(float) * 4 * num;
-    assert( sizeof(float) * 4 * rp + size <= builtinCbuffer.size );
-    memcpy( builtinCbuffer.pData + 4 * rp, value, size );
-    builtinCbuffer.dirty = true;
+void idRenderProgManager::SetRenderParms( renderParm_t parm, const float * value, int num ) {
+    int i = parm;
+    size_t size = sizeof(float) * 4;
+    cbufferInfo_t* cbuffer;
+    if ( i >= RENDERPARM_USER ) {
+        cbuffer = &userCbuffer;
+        i -= RENDERPARM_USER;
+    } else {
+        cbuffer = &builtinCbuffer;
+    }
+
+    assert( sizeof(float) * 4 * i + size <= cbuffer->size );
+    memcpy( cbuffer->pData + 4 * i, value, size );
+    cbuffer->dirty = true;
 }
 
 /*
@@ -343,11 +347,20 @@ void idRenderProgManager::SetRenderParms( renderParm_t rp, const float * value, 
 idRenderProgManager::SetRenderParm
 ================================================================================================
 */
-void idRenderProgManager::SetRenderParm( renderParm_t rp, const float * value ) {
+void idRenderProgManager::SetRenderParm( renderParm_t parm, const float * value ) {
+    int i = parm;
     size_t size = sizeof(float) * 4;
-    assert( sizeof(float) * 4 * rp + size <= builtinCbuffer.size );
-    memcpy( builtinCbuffer.pData + 4 * rp, value, size );
-    builtinCbuffer.dirty = true;
+    cbufferInfo_t* cbuffer;
+    if ( i >= RENDERPARM_USER ) {
+        cbuffer = &userCbuffer;
+        i -= RENDERPARM_USER;
+    } else {
+        cbuffer = &builtinCbuffer;
+    }
+
+    assert( sizeof(float) * 4 * i + size <= cbuffer->size );
+    memcpy( cbuffer->pData + 4 * i, value, size );
+    cbuffer->dirty = true;
 }
 
 /*
@@ -355,14 +368,51 @@ void idRenderProgManager::SetRenderParm( renderParm_t rp, const float * value ) 
 idRenderProgManager::UpdateConstantBuffer
 ================================================================================================
 */
-void idRenderProgManager::UpdateConstantBuffer( ID3D11DeviceContext* pContext )
+void idRenderProgManager::UpdateConstantBuffer( cbufferInfo_t* cbuffer, ID3D11DeviceContext1* pContext )
 {
-    if ( IsConstantBufferDirty() )
-    {
-        D3D11_MAPPED_SUBRESOURCE map;
-        pContext->Map( builtinCbuffer.pBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
-        memcpy( map.pData, builtinCbuffer.pData, builtinCbuffer.size );
-        pContext->Unmap( builtinCbuffer.pBuffer, 0 );
-        builtinCbuffer.dirty = false;
-    }
+    D3D11_MAPPED_SUBRESOURCE map;
+    pContext->Map( cbuffer->pBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
+    memcpy( map.pData, cbuffer->pData, cbuffer->size );
+    pContext->Unmap( cbuffer->pBuffer, 0 );
+    cbuffer->dirty = false;
+}
+
+/*
+================================================================================================
+idRenderProgManager::UpdateConstantBuffers
+================================================================================================
+*/
+void idRenderProgManager::InitConstantBuffer( cbufferInfo_t* cbuffer, size_t size )
+{
+    cbuffer->dirty = true;
+    cbuffer->size = sizeof(float) * 4 * RENDERPARM_TOTAL;
+    cbuffer->pData = new float[cbuffer->size / sizeof(float)];
+    cbuffer->pBuffer = QD3D::CreateDynamicBuffer( 
+        D3DDrv_GetDevice(),
+        D3D11_BIND_CONSTANT_BUFFER,
+        cbuffer->size );
+}
+
+/*
+================================================================================================
+idRenderProgManager::DestroyConstantBuffer
+================================================================================================
+*/
+void idRenderProgManager::DestroyConstantBuffer( cbufferInfo_t* cbuffer )
+{
+    SAFE_RELEASE( cbuffer->pBuffer );
+    SAFE_DELETE_ARRAY( cbuffer->pData );
+}
+
+/*
+================================================================================================
+idRenderProgManager::UpdateConstantBuffers
+================================================================================================
+*/
+void idRenderProgManager::UpdateConstantBuffers( ID3D11DeviceContext1* pContext )
+{
+    if ( builtinCbuffer.dirty )
+        UpdateConstantBuffer( &builtinCbuffer, pContext );
+    if ( userCbuffer.dirty )
+        UpdateConstantBuffer( &userCbuffer, pContext );
 }

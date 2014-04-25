@@ -28,17 +28,6 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "global.inc"
 
-uniform float4 matrices[408];
-
-struct VS_IN {
-	float4 position : POSITION;
-	float2 texcoord : TEXCOORD0;
-	float4 normal : NORMAL;
-	float4 tangent : TANGENT;
-	float4 color : COLOR0;
-	float4 color2 : COLOR1;
-};
-
 struct VS_OUT {
 	float4 position		: SV_POSITION;
 	float2 texcoord0	: TEXCOORD0;
@@ -49,7 +38,7 @@ struct VS_OUT {
 	float4 color		: COLOR0;
 };
 
-void main( VS_IN vertex, out VS_OUT result ) {
+void main( drawVert_t vertex, out VS_OUT result ) {
 	float4 vNormal = vertex.normal * 2.0 - 1.0;
 	float4 vTangent = vertex.tangent * 2.0 - 1.0;
 	float3 vBinormal = cross( vNormal.xyz, vTangent.xyz ) * vTangent.w;

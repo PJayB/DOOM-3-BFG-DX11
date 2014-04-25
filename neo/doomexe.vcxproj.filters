@@ -1232,9 +1232,6 @@
     <FxCompile Include="renderer\hlsl\fog_skinned.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\fxaa.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\gui.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
@@ -1323,9 +1320,6 @@
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\fog_skinned.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\fxaa.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\gui.pixel">

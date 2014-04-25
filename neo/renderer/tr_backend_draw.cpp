@@ -144,6 +144,13 @@ void RB_DrawElementsWithCounters( ID3D11DeviceContext1* pContext, const drawSurf
 		}
 	}
     */
+
+    UINT numCBuffers = 2;
+    ID3D11Buffer* constantBuffers[] = {
+        renderProgManager.GetRenderParmConstantBuffer(),
+        renderProgManager.GetUserParmConstantBuffer(),
+        nullptr
+    };
     
 	if ( surf->jointCache ) {
 		idJointBuffer jointBuffer;
@@ -154,10 +161,13 @@ void RB_DrawElementsWithCounters( ID3D11DeviceContext1* pContext, const drawSurf
 		assert( ( jointBuffer.GetOffset() & ( glConfig.uniformBufferOffsetAlignment - 1 ) ) == 0 );
 
         ID3D11Buffer* pJointBuffer = jointBuffer.GetBuffer();
-        pContext->VSSetConstantBuffers( 1, 1, &pJointBuffer );
+        constantBuffers[numCBuffers++] = pJointBuffer;
 	}
 
-	renderProgManager.UpdateConstantBuffer( pContext );
+	renderProgManager.UpdateConstantBuffers( pContext );
+
+    pContext->VSSetConstantBuffers( 0, numCBuffers, constantBuffers );
+    pContext->PSSetConstantBuffers( 0, numCBuffers, constantBuffers );
 
     ID3D11Buffer* pVertexBuffer = vertexBuffer->GetBuffer();
     UINT vbOffset = 0;

@@ -28,20 +28,12 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "global.inc"
 
-struct VS_IN {
-	float4 position : POSITION;
-	float2 texcoord : TEXCOORD0;
-	float4 normal : NORMAL;
-	float4 tangent : TANGENT;
-	float4 color : COLOR0;
-};
-
 struct VS_OUT {
 	float4 position		: SV_POSITION;
 	float4 texcoord0	: TEXCOORD0;
 };
 
-void main( VS_IN vertex, out VS_OUT result ) {
+void main( drawVert_t vertex, out VS_OUT result ) {
 	float4 position;
 	position.x = dot4( vertex.position, rpMVPmatrixX );
 	position.y = dot4( vertex.position, rpMVPmatrixY );

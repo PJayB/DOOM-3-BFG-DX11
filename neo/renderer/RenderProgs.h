@@ -120,6 +120,7 @@ enum renderParm_t {
 
 	RENDERPARM_TOTAL,
 	RENDERPARM_USER = 128,
+    RENDERPARM_USER_COUNT = 8
 };
 
 
@@ -142,8 +143,10 @@ public:
 	int		FindVertexShader( const char * name );
 	int		FindFragmentShader( const char * name );
 
-    inline bool IsConstantBufferDirty() const { return builtinCbuffer.dirty; }
-    void    UpdateConstantBuffer( ID3D11DeviceContext* pContext );
+    void    UpdateConstantBuffers( ID3D11DeviceContext1* pContext );
+
+    ID3D11Buffer* GetRenderParmConstantBuffer() const { return builtinCbuffer.pBuffer; }
+    ID3D11Buffer* GetUserParmConstantBuffer() const { return userCbuffer.pBuffer; }
 
     ID3D11VertexShader* GetVertexShader( int vshader ) const { return vertexShaders[vshader].pShader; }
     ID3D11PixelShader* GetPixelShader( int pshader ) const { return fragmentShaders[pshader].pShader; }
@@ -289,7 +292,12 @@ protected:
 	idList<vertexShader_t, TAG_RENDER> vertexShaders;
 	idList<fragmentShader_t, TAG_RENDER> fragmentShaders;
 
+    static void InitConstantBuffer( cbufferInfo_t* cbuffer, size_t size );
+    static void DestroyConstantBuffer( cbufferInfo_t* cbuffer );
+    static void UpdateConstantBuffer( cbufferInfo_t* cbuffer, ID3D11DeviceContext1* pContext );
+
     cbufferInfo_t builtinCbuffer;
+    cbufferInfo_t userCbuffer;
 };
 
 extern idRenderProgManager renderProgManager;

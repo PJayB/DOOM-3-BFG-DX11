@@ -721,10 +721,12 @@ DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt) const
         internalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 		break;
 	case FMT_XRGB8:
-        internalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+        // @pjb: todo: swizzle
+        internalFormat = DXGI_FORMAT_B8G8R8X8_UNORM;
 		break;
 	case FMT_RGB565:
-        internalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+        // @pjb: todo: swizzle
+        internalFormat = DXGI_FORMAT_B5G6R5_UNORM;
 		break;
 	case FMT_ALPHA:
 #if defined( USE_CORE_PROFILE )
@@ -752,7 +754,7 @@ DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt) const
 		break;
 	case FMT_INT8:
 #if defined( USE_CORE_PROFILE )
-        internalFormat = DXGI_FORMAT_R8_UNORM;
+        internalFormat = DXGI_FORMAT_R8_UINT;
 #else
 		internalFormat = GL_INTENSITY8;
 		dataFormat = GL_LUMINANCE;
@@ -907,7 +909,11 @@ void idImage::SubImageUpload( int mipLevel, int x, int y, int z, int width, int 
     //pContext->Unmap( pTexture, index );
 
     if ( !pixelPitch ) {
-        pixelPitch = width * BitsForFormat( opts.format ) / 8;
+        if ( IsCompressed() ) {
+            pixelPitch = ( ( width + 3 ) / 4 ) * int64( 16 ) * BitsForFormat( opts.format ) / 8;
+        } else {
+            pixelPitch = width * BitsForFormat( opts.format ) / 8;
+        }
     }
 
     D3D11_BOX box = { x, y, 0, x + width, y + height, 1 };

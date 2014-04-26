@@ -806,12 +806,6 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 
 		uint64 surfGLState = 0;
 
-		// set polygon offset if necessary
-        ID3D11RasterizerState* rasterizerState = 
-		    ( shader->GetRasterizerState() ) ?
-			shader->GetRasterizerState() :
-		    D3DDrv_GetRasterizerState( shader->GetCullType(), surfGLState );
-        
 		renderLog.OpenBlock( shader->GetName() );
 
 		// perforated surfaces may have multiple alpha tested stages

@@ -167,9 +167,16 @@ idDoubleBuffer_t& idDoubleBuffer_t::operator = ( const idDoubleBuffer_t& other )
     return *this;
 }
 
+#define NO_DOUBLE_BUFFER
+
 bool idDoubleBuffer_t::Init( const void* data, size_t size, uint bindFlags ) {
     m_mapBuffer = CreateDirect3DBuffer( data, size, bindFlags ); 
+#ifdef NO_DOUBLE_BUFFER
+    m_drawBuffer = m_mapBuffer;
+    m_drawBuffer->AddRef();
+#else
     m_drawBuffer = CreateDirect3DBuffer( data, size, bindFlags ); 
+#endif
     return m_mapBuffer != nullptr && m_drawBuffer != nullptr;
 }
 
@@ -329,7 +336,7 @@ void * idVertexBuffer::MapBuffer( bufferMapType_t mapType ) const {
     D3D11_MAPPED_SUBRESOURCE map;
 
     auto pIC = D3DDrv_GetImmediateContext();
-    pIC->Map( buffers.GetCurrentMapBuffer(), 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
+    pIC->Map( buffers.GetCurrentMapBuffer(), 0, D3D11_MAP_WRITE_NO_OVERWRITE, 0, &map );
 
 	SetMapped();
 
@@ -512,7 +519,7 @@ void * idIndexBuffer::MapBuffer( bufferMapType_t mapType ) const {
     D3D11_MAPPED_SUBRESOURCE map;
 
     auto pIC = D3DDrv_GetImmediateContext();
-    pIC->Map( buffers.GetCurrentMapBuffer(), 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
+    pIC->Map( buffers.GetCurrentMapBuffer(), 0, D3D11_MAP_WRITE_NO_OVERWRITE, 0, &map );
 
 	SetMapped();
 
@@ -694,7 +701,7 @@ float * idJointBuffer::MapBuffer( bufferMapType_t mapType ) const {
     D3D11_MAPPED_SUBRESOURCE map;
 
     auto pIC = D3DDrv_GetImmediateContext();
-    pIC->Map( buffers.GetCurrentMapBuffer(), 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
+    pIC->Map( buffers.GetCurrentMapBuffer(), 0, D3D11_MAP_WRITE_NO_OVERWRITE, 0, &map );
 
 	SetMapped();
 

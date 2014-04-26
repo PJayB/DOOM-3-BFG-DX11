@@ -19,7 +19,7 @@ ID3D11InputLayout* CreateDrawVertInputLayout()
     const void* pBlob = nullptr;
     uint blobSize = 0;
     renderProgManager.GetBuiltInVertexShaderByteCode( 
-        idRenderProgManager::BUILTIN_BUMPY_ENVIRONMENT_SKINNED, 
+        BUILTIN_SHADER_BUMPY_ENVIRONMENT_SKINNED, 
         &pBlob, 
         &blobSize );
     assert( pBlob );

@@ -37,8 +37,6 @@ idCVar r_skipShaderPasses( "r_skipShaderPasses", "0", CVAR_RENDERER | CVAR_BOOL,
 
 backEndState_t	backEnd;
 
-typedef idRenderProgManager::BUILTIN_SHADER (* builtInShaderSelectorFunc_t)( const drawSurf_t *surf, const shaderStage_t *pStage, const uint stageGLState );
-
 /*
 ================
 RB_BindImages
@@ -273,7 +271,7 @@ RB_PrepareStageTexturing
 static int RB_PrepareStageTexturing( 
     const shaderStage_t *pStage, 
     const drawSurf_t *surf, 
-    idRenderProgManager::BUILTIN_SHADER *shaderToUse,
+    BUILTIN_SHADER *shaderToUse,
     idImage* pImages[] ) {
 
     int numImages = 1;
@@ -299,7 +297,7 @@ static int RB_PrepareStageTexturing(
 			    // SWF GUI case is handled better, too
 
                 // @pjb: todo: kill this
-			    *shaderToUse = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
+			    *shaderToUse = BUILTIN_SHADER_TEXTURE_VERTEXCOLOR;
 		    }
         }
 	} else {
@@ -325,22 +323,22 @@ static int RB_PrepareStageTexturing(
 
 			RENDERLOG_PRINTF( "TexGen: TG_REFLECT_CUBE: Bumpy Environment\n" );
 			if ( surf->jointCache ) {
-				*shaderToUse = idRenderProgManager::BUILTIN_BUMPY_ENVIRONMENT_SKINNED;
+				*shaderToUse = BUILTIN_SHADER_BUMPY_ENVIRONMENT_SKINNED;
 			} else {
-				*shaderToUse = idRenderProgManager::BUILTIN_BUMPY_ENVIRONMENT;
+				*shaderToUse = BUILTIN_SHADER_BUMPY_ENVIRONMENT;
 			}
 		} else {
 			RENDERLOG_PRINTF( "TexGen: TG_REFLECT_CUBE: Environment\n" );
 			if ( surf->jointCache ) {
-                *shaderToUse = idRenderProgManager::BUILTIN_ENVIRONMENT_SKINNED;
+                *shaderToUse = BUILTIN_SHADER_ENVIRONMENT_SKINNED;
 			} else {
-                *shaderToUse = idRenderProgManager::BUILTIN_ENVIRONMENT;
+                *shaderToUse = BUILTIN_SHADER_ENVIRONMENT;
 			}
 		}
 
 	} else if ( pStage->texture.texgen == TG_SKYBOX_CUBE ) {
 
-        *shaderToUse = idRenderProgManager::BUILTIN_SKYBOX;
+        *shaderToUse = BUILTIN_SHADER_SKYBOX;
 
 	} else if ( pStage->texture.texgen == TG_WOBBLESKY_CUBE ) {
 
@@ -396,7 +394,7 @@ static int RB_PrepareStageTexturing(
 		transform[2*4+3] = 0.0f;
 
 		renderProgManager.SetRenderParms( RENDERPARM_WOBBLESKY_X, transform, 3 );		
-        *shaderToUse = idRenderProgManager::BUILTIN_WOBBLESKY;
+        *shaderToUse = BUILTIN_SHADER_WOBBLESKY;
 
 	} else if ( ( pStage->texture.texgen == TG_SCREEN ) || ( pStage->texture.texgen == TG_SCREEN2 ) ) {
 
@@ -526,7 +524,7 @@ RB_DrawStageBuiltInFVP
 */
 static void RB_DrawStageBuiltInVFP( 
     ID3D11DeviceContext1* pContext,
-    idRenderProgManager::BUILTIN_SHADER shader,
+    BUILTIN_SHADER shader,
     const drawSurf_t *surf, 
     const shaderStage_t *pStage, 
     uint64 stageGLState ) {
@@ -703,10 +701,10 @@ static void RB_FillDepthBufferGeneric( ID3D11DeviceContext1* pContext, const dra
 				idVec4 alphaTestValue( regs[ pStage->alphaTestRegister ] );
 				renderProgManager.SetRenderParm( RENDERPARM_ALPHA_TEST, alphaTestValue.ToFloatPtr() );
 
-                idRenderProgManager::BUILTIN_SHADER shaderToUse = 
+                BUILTIN_SHADER shaderToUse = 
 				    ( drawSurf->jointCache ) ?
-                    idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED :
-                    idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
+                    BUILTIN_SHADER_TEXTURE_VERTEXCOLOR_SKINNED :
+                    BUILTIN_SHADER_TEXTURE_VERTEXCOLOR;
 
 				RB_SetVertexColorParms( SVC_IGNORE );
 
@@ -742,15 +740,15 @@ static void RB_FillDepthBufferGeneric( ID3D11DeviceContext1* pContext, const dra
 		// draw the entire surface solid
 		if ( drawSolid ) {
 
-            idRenderProgManager::BUILTIN_SHADER shaderToUse;
+            BUILTIN_SHADER shaderToUse;
 			if ( shader->GetSort() == SS_SUBVIEW ) {
-				shaderToUse = idRenderProgManager::BUILTIN_COLOR;
+				shaderToUse = BUILTIN_SHADER_COLOR;
                 renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
 			} else {
 				if ( drawSurf->jointCache ) {
-					shaderToUse = idRenderProgManager::BUILTIN_DEPTH_SKINNED;
+					shaderToUse = BUILTIN_SHADER_DEPTH_SKINNED;
 				} else {
-					shaderToUse = idRenderProgManager::BUILTIN_DEPTH;
+					shaderToUse = BUILTIN_SHADER_DEPTH;
 				}
 				surfGLState |= GLS_ALPHAMASK;
 			}
@@ -843,10 +841,10 @@ static void RB_FillDepthBufferFast( ID3D11DeviceContext1* pContext, drawSurf_t *
 
 		renderLog.OpenBlock( shader->GetName() );
 
-        idRenderProgManager::BUILTIN_SHADER shaderToUse =
+        BUILTIN_SHADER shaderToUse =
 		    ( surf->jointCache ) ?
-			idRenderProgManager::BUILTIN_DEPTH_SKINNED :
-    		idRenderProgManager::BUILTIN_DEPTH;
+			BUILTIN_SHADER_DEPTH_SKINNED :
+    		BUILTIN_SHADER_DEPTH;
 
         // bind the shaders
         pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( shaderToUse ), nullptr, 0 );
@@ -875,15 +873,15 @@ LIT SHADER PASSES
 =============================================================================================
 */
 
-static idRenderProgManager::BUILTIN_SHADER RB_SelectShaderForMaterialPass( 
+static BUILTIN_SHADER RB_SelectShaderForMaterialPass( 
     const drawSurf_t* surf,
     const shaderStage_t* pStage,
     const uint stageGLState ) {
 
 	if ( surf->jointCache ) {
-		return idRenderProgManager::BUILTIN_INTERACTION_SKINNED;
+		return BUILTIN_SHADER_INTERACTION_SKINNED;
 	} else {
-		return idRenderProgManager::BUILTIN_INTERACTION;
+		return BUILTIN_SHADER_INTERACTION;
 	}
 }
 
@@ -995,7 +993,7 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 			    }
 			}
             
-            idRenderProgManager::BUILTIN_SHADER shader = RB_SelectShaderForMaterialPass( drawSurf, pStage, stageGLState );
+            BUILTIN_SHADER shader = RB_SelectShaderForMaterialPass( drawSurf, pStage, stageGLState );
 
             // @pjb: todo
             // write a new shader for material diffuse
@@ -1023,8 +1021,8 @@ NON-LIT SHADER PASSES
 
 /*
 */
-idRenderProgManager::BUILTIN_SHADER RB_SelectShaderPassShader( const drawSurf_t* surf, const shaderStage_t* pStage, const uint stageGLState ) {
-    idRenderProgManager::BUILTIN_SHADER builtInShader = idRenderProgManager::MAX_BUILTINS;
+BUILTIN_SHADER RB_SelectShaderPassShader( const drawSurf_t* surf, const shaderStage_t* pStage, const uint stageGLState ) {
+    BUILTIN_SHADER builtInShader = MAX_BUILTIN_SHADERS;
 
 	if ( surf->space->isGuiSurface ) {
 		// use special shaders for bink cinematics
@@ -1032,32 +1030,32 @@ idRenderProgManager::BUILTIN_SHADER RB_SelectShaderPassShader( const drawSurf_t*
 			if ( ( stageGLState & GLS_OVERRIDE ) != 0 ) {
 				// This is a hack... Only SWF Guis set GLS_OVERRIDE
 				// Old style guis do not, and we don't want them to use the new GUI renederProg
-				builtInShader = idRenderProgManager::BUILTIN_BINK_GUI;
+				builtInShader = BUILTIN_SHADER_BINK_GUI;
 			} else {
-				builtInShader = idRenderProgManager::BUILTIN_BINK;
+				builtInShader = BUILTIN_SHADER_BINK;
 			}
 		} else {
 			if ( ( stageGLState & GLS_OVERRIDE ) != 0 ) {
 				// This is a hack... Only SWF Guis set GLS_OVERRIDE
 				// Old style guis do not, and we don't want them to use the new GUI renderProg
-				builtInShader = idRenderProgManager::BUILTIN_GUI;
+				builtInShader = BUILTIN_SHADER_GUI;
 			} else {
 				if ( surf->jointCache ) {
-					builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED;
+					builtInShader = BUILTIN_SHADER_TEXTURE_VERTEXCOLOR_SKINNED;
 				} else {
-					builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
+					builtInShader = BUILTIN_SHADER_TEXTURE_VERTEXCOLOR;
 				}
 			}
 		}
 	} else if ( ( pStage->texture.texgen == TG_SCREEN ) || ( pStage->texture.texgen == TG_SCREEN2 ) ) {
-		builtInShader = idRenderProgManager::BUILTIN_TEXTURE_TEXGEN_VERTEXCOLOR;
+		builtInShader = BUILTIN_SHADER_TEXTURE_TEXGEN_VERTEXCOLOR;
 	} else if ( pStage->texture.cinematic ) {
-		builtInShader = idRenderProgManager::BUILTIN_BINK;
+		builtInShader = BUILTIN_SHADER_BINK;
 	} else {
 		if ( surf->jointCache ) {
-			builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED;
+			builtInShader = BUILTIN_SHADER_TEXTURE_VERTEXCOLOR_SKINNED;
 		} else {
-			builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
+			builtInShader = BUILTIN_SHADER_TEXTURE_VERTEXCOLOR;
 		}
 	}
     return builtInShader;
@@ -1210,7 +1208,7 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext1* pContext, const drawSurf_t
 			}
             else 
             {
-                idRenderProgManager::BUILTIN_SHADER shader = RB_SelectShaderPassShader( surf, pStage, stageGLState );
+                BUILTIN_SHADER shader = RB_SelectShaderPassShader( surf, pStage, stageGLState );
 			    RB_DrawStageBuiltInVFP( pContext, shader, surf, pStage, stageGLState );
             }
 		}

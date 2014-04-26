@@ -77,15 +77,12 @@ void idRenderProgManager::Init() {
 	} builtins[] = {
 		{ BUILTIN_SHADER_GUI, "gui.vfp" },
 		{ BUILTIN_SHADER_COLOR, "color.vfp" },
-		{ BUILTIN_SHADER_SIMPLESHADE, "simpleshade.vfp" },
 		{ BUILTIN_SHADER_TEXTURED, "texture.vfp" },
 		{ BUILTIN_SHADER_TEXTURE_VERTEXCOLOR, "texture_color.vfp" },
 		{ BUILTIN_SHADER_TEXTURE_VERTEXCOLOR_SKINNED, "texture_color_skinned.vfp" },
 		{ BUILTIN_SHADER_TEXTURE_TEXGEN_VERTEXCOLOR, "texture_color_texgen.vfp" },
 		{ BUILTIN_SHADER_INTERACTION, "interaction.vfp" },
 		{ BUILTIN_SHADER_INTERACTION_SKINNED, "interaction_skinned.vfp" },
-		{ BUILTIN_SHADER_INTERACTION_AMBIENT, "interactionAmbient.vfp" },
-		{ BUILTIN_SHADER_INTERACTION_AMBIENT_SKINNED, "interactionAmbient_skinned.vfp" },
 		{ BUILTIN_SHADER_ENVIRONMENT, "environment.vfp" },
 		{ BUILTIN_SHADER_ENVIRONMENT_SKINNED, "environment_skinned.vfp" },
 		{ BUILTIN_SHADER_BUMPY_ENVIRONMENT, "bumpyEnvironment.vfp" },
@@ -93,8 +90,6 @@ void idRenderProgManager::Init() {
 
 		{ BUILTIN_SHADER_DEPTH, "depth.vfp" },
 		{ BUILTIN_SHADER_DEPTH_SKINNED, "depth_skinned.vfp" },
-		{ BUILTIN_SHADER_SHADOW_DEBUG, "shadowDebug.vfp" },
-		{ BUILTIN_SHADER_SHADOW_DEBUG_SKINNED, "shadowDebug_skinned.vfp" },
 
 		{ BUILTIN_SHADER_BLENDLIGHT, "blendlight.vfp" },
 		{ BUILTIN_SHADER_FOG, "fog.vfp" },
@@ -119,18 +114,11 @@ void idRenderProgManager::Init() {
 		LoadFragmentShader( i );
 	}
 
-	// Special case handling for fastZ shaders
-	builtinShaders[BUILTIN_SHADER_SHADOW] = FindVertexShader( "shadow.vp" );
-	builtinShaders[BUILTIN_SHADER_SHADOW_SKINNED] = FindVertexShader( "shadow_skinned.vp" );
-
 	vertexShaders[builtinShaders[BUILTIN_SHADER_TEXTURE_VERTEXCOLOR_SKINNED]].usesJoints = true;
 	vertexShaders[builtinShaders[BUILTIN_SHADER_INTERACTION_SKINNED]].usesJoints = true;
-	vertexShaders[builtinShaders[BUILTIN_SHADER_INTERACTION_AMBIENT_SKINNED]].usesJoints = true;
 	vertexShaders[builtinShaders[BUILTIN_SHADER_ENVIRONMENT_SKINNED]].usesJoints = true;
 	vertexShaders[builtinShaders[BUILTIN_SHADER_BUMPY_ENVIRONMENT_SKINNED]].usesJoints = true;
 	vertexShaders[builtinShaders[BUILTIN_SHADER_DEPTH_SKINNED]].usesJoints = true;
-	vertexShaders[builtinShaders[BUILTIN_SHADER_SHADOW_SKINNED]].usesJoints = true;
-	vertexShaders[builtinShaders[BUILTIN_SHADER_SHADOW_DEBUG_SKINNED]].usesJoints = true;
 	vertexShaders[builtinShaders[BUILTIN_SHADER_FOG_SKINNED]].usesJoints = true;
 
 	cmdSystem->AddCommand( "reloadShaders", R_ReloadShaders, CMD_FL_RENDERER, "reloads shaders" );

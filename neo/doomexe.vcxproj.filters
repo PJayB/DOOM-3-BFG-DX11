@@ -1250,31 +1250,10 @@
     <FxCompile Include="renderer\hlsl\interaction_skinned.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\interactionAmbient.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\interactionAmbient_skinned.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\motionBlur.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\postprocess.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\shadow.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\shadow_skinned.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\shadowDebug.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\shadowDebug_skinned.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\simpleshade.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\skybox.vertex">
@@ -1340,31 +1319,10 @@
     <FxCompile Include="renderer\hlsl\interaction_skinned.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\interactionAmbient.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\interactionAmbient_skinned.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\motionBlur.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\postprocess.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\shadow.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\shadow_skinned.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\shadowDebug.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\shadowDebug_skinned.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\simpleshade.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\skybox.pixel">

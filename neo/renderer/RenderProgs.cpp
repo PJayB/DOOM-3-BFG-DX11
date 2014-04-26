@@ -102,12 +102,9 @@ void idRenderProgManager::Init() {
 		{ BUILTIN_SKYBOX, "skybox.vfp" },
 		{ BUILTIN_WOBBLESKY, "wobblesky.vfp" },
 		{ BUILTIN_POSTPROCESS, "postprocess.vfp" },
-		{ BUILTIN_STEREO_DEGHOST, "stereoDeGhost.vfp" },
-		{ BUILTIN_STEREO_WARP, "stereoWarp.vfp" },
 		{ BUILTIN_ZCULL_RECONSTRUCT, "zcullReconstruct.vfp" },
 		{ BUILTIN_BINK, "bink.vfp" },
 		{ BUILTIN_BINK_GUI, "bink_gui.vfp" },
-		{ BUILTIN_STEREO_INTERLACE, "stereoInterlace.vfp" },
 		{ BUILTIN_MOTION_BLUR, "motionBlur.vfp" },
 	};
 	int numBuiltins = sizeof( builtins ) / sizeof( builtins[0] );

@@ -97,6 +97,8 @@ cbuffer BuiltinConstants : register(b0)
     float4 rpOverbright				;
     float4 rpEnableSkinning			;
     float4 rpAlphaTest				;
+
+    uint4  rpJointOffset            ;
 };
 
 cbuffer UserConstants : register(b1)

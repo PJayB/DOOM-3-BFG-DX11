@@ -51,7 +51,14 @@ void RB_BindImages( ID3D11DeviceContext1* pContext, idImage** pImages, int numIm
 
     for ( int i = 0; i < numImages; ++i )
     {
-        pSRVs[i] = pImages[i]->GetSRV();
+        ID3D11ShaderResourceView* srv = pImages[i]->GetSRV();
+
+        // If it's null, get the default image
+        // @pjb: todo: this will b0rk if it's supposed to be a normal map or something
+        if ( srv == nullptr )
+            srv = globalImages->defaultImage->GetSRV();
+
+        pSRVs[i] = srv;
         pSamplers[i] = pImages[i]->GetSampler();
     }
 
@@ -162,6 +169,9 @@ void RB_DrawElementsWithCounters( ID3D11DeviceContext1* pContext, const drawSurf
 
         ID3D11Buffer* pJointBuffer = jointBuffer.GetBuffer();
         constantBuffers[numCBuffers++] = pJointBuffer;
+
+        uint offset[4] = { jointBuffer.GetOffset() / ( sizeof( float ) * 4 ), 0, 0, 0 };
+        renderProgManager.SetRenderParm( RENDERPARM_JOINT_OFFSET, (float*) offset );
 	}
 
 	renderProgManager.UpdateConstantBuffers( pContext );

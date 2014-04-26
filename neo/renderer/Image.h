@@ -75,7 +75,7 @@ public:
 
     ID_INLINE ID3D11Texture2D* GetTexture() const { return pTexture; }
     ID_INLINE ID3D11SamplerState* GetSampler() const { return pSampler; }
-    ID_INLINE ID3D11ShaderResourceView* GetSRV() const { assert(IsLoaded()); return pSRV; }
+    ID_INLINE ID3D11ShaderResourceView* GetSRV() const { return pSRV; }
 
 	// Should be called at least once
 	void		SetSamplerState( textureFilter_t tf, textureRepeat_t tr );

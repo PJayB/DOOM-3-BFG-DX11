@@ -928,20 +928,14 @@ HRESULT idImage::RegenerateSamplerState()
 {
     QD3D11Device* pDevice = D3DDrv_GetDevice();
 
-    D3D11_SAMPLER_DESC sDesc;
-    ZeroMemory( &sDesc, sizeof(sDesc) );
-
-    // r_maxAnisotropicFiltering
-    // r_useTrilinearFiltering
-    // r_lodBias
+    D3D11_SAMPLER_DESC desc;
+    ZeroMemory( &desc, sizeof(desc) );
 
     /*
     @pjb: todo
 
-
 	// ALPHA, LUMINANCE, LUMINANCE_ALPHA, and INTENSITY have been removed
 	// in OpenGL 3.2. In order to mimic those modes, we use the swizzle operators
-#if defined( USE_CORE_PROFILE )
 	if ( opts.colorFormat == CFM_GREEN_ALPHA ) {
 		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_ONE );
 		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_ONE );
@@ -973,36 +967,25 @@ HRESULT idImage::RegenerateSamplerState()
 		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_BLUE );
 		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_ALPHA );
 	}
-#else
-	if ( opts.colorFormat == CFM_GREEN_ALPHA ) {
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_ONE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_ONE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_ONE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_GREEN );
-	} else if ( opts.format == FMT_ALPHA ) {
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_ONE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_ONE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_ONE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_RED );
-	}
-#endif
+    */
+
+    // r_maxAnisotropicFiltering
+    // r_useTrilinearFiltering
+    // r_lodBias
 
 	switch( filter ) {
 		case TF_DEFAULT:
 			if ( r_useTrilinearFiltering.GetBool() ) {
-				qglTexParameterf( target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
+                desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 			} else {
-				qglTexParameterf( target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST );
+                desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
 			}
-			qglTexParameterf( target, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 			break;
 		case TF_LINEAR:
-			qglTexParameterf( target, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-			qglTexParameterf( target, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+            desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
 			break;
 		case TF_NEAREST:
-			qglTexParameterf( target, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-			qglTexParameterf( target, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+            desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
 			break;
 		default:
 			common->FatalError( "%s: bad texture filter %d", GetName(), filter );
@@ -1018,60 +1001,52 @@ HRESULT idImage::RegenerateSamplerState()
 			if ( aniso < 0 ) {
 				aniso = 0;
 			}
-			qglTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso );
+
+            desc.MaxAnisotropy = aniso;
+            desc.Filter = D3D11_FILTER_ANISOTROPIC;
 		} else {
-			qglTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, 1 );
+            desc.MaxAnisotropy = 1;
 		}
 	}
-	if ( glConfig.textureLODBiasAvailable && ( usage != TD_FONT ) ) {
+
+	if ( usage != TD_FONT ) {
 		// use a blurring LOD bias in combination with high anisotropy to fix our aliasing grate textures...
-		qglTexParameterf(target, GL_TEXTURE_LOD_BIAS_EXT, r_lodBias.GetFloat() );
+        desc.MipLODBias = r_lodBias.GetFloat();
 	}
+
+    desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
 
 	// set the wrap/clamp modes
 	switch( repeat ) {
 		case TR_REPEAT:
-			qglTexParameterf( target, GL_TEXTURE_WRAP_S, GL_REPEAT );
-			qglTexParameterf( target, GL_TEXTURE_WRAP_T, GL_REPEAT );
+            desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+            desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 			break;
 		case TR_CLAMP_TO_ZERO: {
-			float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-			qglTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, color );
-			qglTexParameterf( target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
-			qglTexParameterf( target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
+            desc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+            desc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+            desc.BorderColor[3] = 1;
 			}
 			break;
 		case TR_CLAMP_TO_ZERO_ALPHA: {
-			float color[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-			qglTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, color );
-			qglTexParameterf( target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
-			qglTexParameterf( target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
+            desc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+            desc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
 			}
 			break;
 		case TR_CLAMP:
-			qglTexParameterf( target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-			qglTexParameterf( target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+            desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+            desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
 			break;
 		default:
 			common->FatalError( "%s: bad texture repeat %d", GetName(), repeat );
 	}
-    */
 
 #ifdef _ARM_
-    sDesc.MaxLOD = FLT_MAX;
+    desc.MaxLOD = FLT_MAX;
 #else
-    sDesc.MaxLOD = opts.numLevels - 1;
+    desc.MaxLOD = opts.numLevels - 1;
 #endif
 
-    sDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-    sDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-    sDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-
-    if ( opts.numLevels > 0 && r_useTrilinearFiltering.GetBool() )
-        sDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-    else
-        sDesc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-
     // create sampler
-    return pDevice->CreateSamplerState( &sDesc, &pSampler );
+    return pDevice->CreateSamplerState( &desc, &pSampler );
 }

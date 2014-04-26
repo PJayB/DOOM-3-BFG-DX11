@@ -1298,9 +1298,6 @@
     <FxCompile Include="renderer\hlsl\interaction.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\interaction_skinned.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\motionBlur.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>

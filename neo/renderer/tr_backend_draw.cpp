@@ -867,19 +867,57 @@ LIT SHADER PASSES
 =============================================================================================
 */
 
-static BUILTIN_SHADER RB_SelectShaderForMaterialPass( 
-    const drawSurf_t* surf,
-    const shaderStage_t* pStage,
-    const uint stageGLState ) {
+/*
+==================
+RB_SetupInteractionStage
+==================
+*/
+static void RB_SetupInteractionStage( 
+    const shaderStage_t *surfaceStage, 
+    const float *surfaceRegs, 
+    idVec4 matrix[2] ) {
 
-	if ( surf->jointCache ) {
-		return BUILTIN_SHADER_INTERACTION_SKINNED;
+	if ( surfaceStage->texture.hasMatrix ) {
+		matrix[0][0] = surfaceRegs[surfaceStage->texture.matrix[0][0]];
+		matrix[0][1] = surfaceRegs[surfaceStage->texture.matrix[0][1]];
+		matrix[0][2] = 0.0f;
+		matrix[0][3] = surfaceRegs[surfaceStage->texture.matrix[0][2]];
+
+		matrix[1][0] = surfaceRegs[surfaceStage->texture.matrix[1][0]];
+		matrix[1][1] = surfaceRegs[surfaceStage->texture.matrix[1][1]];
+		matrix[1][2] = 0.0f;
+		matrix[1][3] = surfaceRegs[surfaceStage->texture.matrix[1][2]];
+
+		// we attempt to keep scrolls from generating incredibly large texture values, but
+		// center rotations and center scales can still generate offsets that need to be > 1
+		if ( matrix[0][3] < -40.0f || matrix[0][3] > 40.0f ) {
+			matrix[0][3] -= idMath::Ftoi( matrix[0][3] );
+		}
+		if ( matrix[1][3] < -40.0f || matrix[1][3] > 40.0f ) {
+			matrix[1][3] -= idMath::Ftoi( matrix[1][3] );
+		}
 	} else {
-		return BUILTIN_SHADER_INTERACTION;
+		matrix[0][0] = 1.0f;
+		matrix[0][1] = 0.0f;
+		matrix[0][2] = 0.0f;
+		matrix[0][3] = 0.0f;
+
+		matrix[1][0] = 0.0f;
+		matrix[1][1] = 1.0f;
+		matrix[1][2] = 0.0f;
+		matrix[1][3] = 0.0f;
 	}
 }
 
 static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSurf_t * const * drawSurfs, int numDrawSurfs ) {
+
+    idImage* pImages[3] = {
+        nullptr,
+        nullptr,
+        nullptr
+    };
+
+    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( BUILTIN_SHADER_INTERACTION ), nullptr, 0 );
 
 	for ( int i = 0; i < numDrawSurfs; i++ ) {
 		const drawSurf_t * drawSurf = drawSurfs[i];
@@ -954,7 +992,15 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
         const shaderStage_t* pSpecularStage = nullptr;
         uint64 diffuseStageState = surfGLState;
 
+        float diffuseColor[] = { 1, 1, 1, 1 };
+        float specularColor[] = { 0, 0, 0, 0 };
+	    stageVertexColor_t svc = SVC_IGNORE;
+        idVec4 bumpMatrix[2];
+        idVec4 diffuseMatrix[2];
+        idVec4 specularMatrix[2];
+
 		// perforated surfaces may have multiple alpha tested stages
+        bool hasStages = false;
 		for ( stage = 0; stage < shader->GetNumStages(); stage++ ) {		
 			const shaderStage_t *pStage = shader->GetStage(stage);
 
@@ -962,6 +1008,8 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 			if ( regs[ pStage->conditionRegister ] == 0 ) {
 				continue;
 			}
+
+            assert( pStage->rasterizerState == nullptr );
 
 			uint64 stageGLState = surfGLState;
 
@@ -979,36 +1027,94 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 				    continue;
 			    }
 			}
-            
-            BUILTIN_SHADER shader = RB_SelectShaderForMaterialPass( drawSurf, pStage, stageGLState );
 
 			// skip the stages not involved in lighting
             switch ( pStage->lighting ) {
             case SL_BUMP:
                 assert( pBumpStage == nullptr );
+                pImages[0] = pStage->texture.image;
+                RB_SetupInteractionStage( pStage, regs, bumpMatrix );
                 pBumpStage = pStage;
                 break;
             case SL_DIFFUSE:
                 assert( pDiffuseStage == nullptr );
                 diffuseStageState = stageGLState;
+                svc = pStage->vertexColor;
+                pImages[1] = pStage->texture.image;
+ 	            diffuseColor[0] = regs[ pStage->color.registers[0] ];
+	            diffuseColor[1] = regs[ pStage->color.registers[1] ];
+	            diffuseColor[2] = regs[ pStage->color.registers[2] ];
+	            diffuseColor[3] = regs[ pStage->color.registers[3] ];
+                RB_SetupInteractionStage( pStage, regs, diffuseMatrix );
                 pDiffuseStage = pStage;
                 break;
             case SL_SPECULAR:
                 assert( pSpecularStage == nullptr );
+                pImages[2] = pStage->texture.image;
+	            specularColor[0] = regs[ pStage->color.registers[0] ];
+	            specularColor[1] = regs[ pStage->color.registers[1] ];
+	            specularColor[2] = regs[ pStage->color.registers[2] ];
+	            specularColor[3] = regs[ pStage->color.registers[3] ];
+                RB_SetupInteractionStage( pStage, regs, specularMatrix );
                 pSpecularStage = pStage;
                 break;
             default:
                 continue;
 			}
+
+            hasStages = true;
         }
 
-        // @pjb: todo
-        // write a new shader for material diffuse
-        // bind the following:
-        // t0: bump image
-        // t1: diffuse
-        // t2: spec
-        // draw (see RB_SetupInteractionStage)
+        if (!hasStages)
+            continue;
+
+        RB_SetVertexColorParms( svc );
+
+        //
+        // Set up any missing images
+        //
+        if ( pImages[0] == nullptr ) { 
+            pImages[0] = globalImages->flatNormalMap;
+        }
+        if ( pImages[1] == nullptr ) {
+            pImages[1] = globalImages->whiteImage;
+        }
+        if ( pImages[2] == nullptr ) {
+            pImages[2] = globalImages->blackImage;
+        }
+
+        //
+        // Set up the constants
+        // @pjb: todo: split lighting interaction constants into a new buffer
+        //
+        renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMODIFIER, diffuseColor );
+        renderProgManager.SetRenderParm( RENDERPARM_SPECULARMODIFIER, specularColor );
+	    renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_S, bumpMatrix[0].ToFloatPtr() );
+	    renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_T, bumpMatrix[1].ToFloatPtr() );
+	    renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_S, diffuseMatrix[0].ToFloatPtr() );
+	    renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_T, diffuseMatrix[1].ToFloatPtr() );
+	    renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_S, specularMatrix[0].ToFloatPtr() );
+	    renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_T, specularMatrix[1].ToFloatPtr() );
+
+        //
+        // Set up the vertex shader
+        //
+        BUILTIN_SHADER vertexShader = 
+            ( drawSurf->jointCache ) ?
+            BUILTIN_SHADER_INTERACTION_SKINNED :
+            BUILTIN_SHADER_INTERACTION;
+
+        pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( vertexShader ), nullptr, 0 );
+
+        //
+        // Set up the state
+        //
+        D3DDrv_SetRasterizerStateFromMask( pContext, shader->GetCullType(), surfGLState );
+        D3DDrv_SetBlendStateFromMask( pContext, surfGLState );
+        D3DDrv_SetDepthStateFromMask( pContext, surfGLState );
+        RB_BindImages( pContext, pImages, _countof( pImages ) );
+
+        RB_DrawElementsWithCounters( pContext, drawSurf );
 
 		renderLog.CloseBlock();
 	}

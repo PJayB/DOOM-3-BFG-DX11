@@ -751,16 +751,6 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 			continue;
 		}
 
-		//if ( shader->SuppressInSubview() ) {
-		//	continue;
-		//}
-
-		if ( backEnd.viewDef->isXraySubview && drawSurf->space->entityDef ) {
-			if ( drawSurf->space->entityDef->parms.xrayIndex != 2 ) {
-				continue;
-			}
-		}
-
 		// we need to draw the post process shaders after we have drawn the fog lights
 		if ( shader->GetSort() >= SS_POST_PROCESS && !backEnd.currentRenderCopied ) {
 			break;

@@ -520,17 +520,16 @@ static void RB_DrawStageCustomVFP(
 /*
 =====================
 RB_DrawStageBuiltInFVP
+
+Make sure you bind your images before you call this
 =====================
 */
 static void RB_DrawStageBuiltInVFP( 
     ID3D11DeviceContext1* pContext,
-    BUILTIN_SHADER shader,
+    const BUILTIN_SHADER shader,
     const drawSurf_t *surf, 
     const shaderStage_t *pStage, 
-    uint64 stageGLState ) {
-
-    // @pjb: is this a safe constant?
-    idImage* pImages[16];
+    const uint64 stageGLState ) {
 
 	// get the expressions for conditionals / color / texcoords
 	const float	*regs = surf->shaderRegisters;
@@ -554,7 +553,6 @@ static void RB_DrawStageBuiltInVFP(
 		return;
 	}
 
-
 	renderLog.OpenBlock( "Old Shader Stage" );
 
     renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
@@ -569,10 +567,6 @@ static void RB_DrawStageBuiltInVFP(
 	// set the state
     D3DDrv_SetBlendStateFromMask( pContext, stageGLState );
     D3DDrv_SetDepthStateFromMask( pContext, stageGLState );
-		
-    pImages[0] = nullptr;
-	int numImages = RB_PrepareStageTexturing( pStage, surf, &shader, pImages );
-    RB_BindImages( pContext, pImages, numImages );
 		
     pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( shader ), nullptr, 0 );
     pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( shader ), nullptr, 0 );
@@ -955,6 +949,11 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 
 		renderLog.OpenBlock( shader->GetName() );
 
+        const shaderStage_t* pBumpStage = nullptr;
+        const shaderStage_t* pDiffuseStage = nullptr;
+        const shaderStage_t* pSpecularStage = nullptr;
+        uint64 diffuseStageState = surfGLState;
+
 		// perforated surfaces may have multiple alpha tested stages
 		for ( stage = 0; stage < shader->GetNumStages(); stage++ ) {		
 			const shaderStage_t *pStage = shader->GetStage(stage);
@@ -962,18 +961,6 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 			// check the stage enable condition
 			if ( regs[ pStage->conditionRegister ] == 0 ) {
 				continue;
-			}
-
-			// skip the stages not involved in lighting
-            switch ( pStage->lighting ) {
-            case SL_BUMP:
-                break;
-            case SL_DIFFUSE:
-                break;
-            case SL_SPECULAR:
-                break;
-            default:
-                continue;
 			}
 
 			uint64 stageGLState = surfGLState;
@@ -995,14 +982,33 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
             
             BUILTIN_SHADER shader = RB_SelectShaderForMaterialPass( drawSurf, pStage, stageGLState );
 
-            // @pjb: todo
-            // write a new shader for material diffuse
-            // bind the following:
-            // t0: bump image
-            // t1: diffuse
-            // t2: spec
-            // draw (see RB_SetupInteractionStage)
+			// skip the stages not involved in lighting
+            switch ( pStage->lighting ) {
+            case SL_BUMP:
+                assert( pBumpStage == nullptr );
+                pBumpStage = pStage;
+                break;
+            case SL_DIFFUSE:
+                assert( pDiffuseStage == nullptr );
+                diffuseStageState = stageGLState;
+                pDiffuseStage = pStage;
+                break;
+            case SL_SPECULAR:
+                assert( pSpecularStage == nullptr );
+                pSpecularStage = pStage;
+                break;
+            default:
+                continue;
+			}
         }
+
+        // @pjb: todo
+        // write a new shader for material diffuse
+        // bind the following:
+        // t0: bump image
+        // t1: diffuse
+        // t2: spec
+        // draw (see RB_SetupInteractionStage)
 
 		renderLog.CloseBlock();
 	}
@@ -1209,6 +1215,14 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext1* pContext, const drawSurf_t
             else 
             {
                 BUILTIN_SHADER shader = RB_SelectShaderPassShader( surf, pStage, stageGLState );
+
+                // Bind the images for this shader
+                // @pjb: is this a safe constant?
+                idImage* pImages[16];
+                pImages[0] = nullptr;
+	            int numImages = RB_PrepareStageTexturing( pStage, surf, &shader, pImages );
+                RB_BindImages( pContext, pImages, numImages );
+
 			    RB_DrawStageBuiltInVFP( pContext, shader, surf, pStage, stageGLState );
             }
 		}

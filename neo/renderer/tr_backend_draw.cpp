@@ -740,8 +740,6 @@ static void RB_DrawShaderPassStage_Old(
 
 static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSurf_t * const * drawSurfs, int numDrawSurfs ) {
 
-    idImage* pImages[16];
-
 	for ( int i = 0; i < numDrawSurfs; i++ ) {
 		const drawSurf_t * drawSurf = drawSurfs[i];
 		const idMaterial * shader = drawSurf->material;
@@ -851,9 +849,6 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 			newShaderStage_t *newStage = pStage->newStage;
 			if ( newStage != NULL ) 
             {
-	            if ( r_skipNewAmbient.GetBool() ) {
-		            continue;
-	            }
                 RB_DrawShaderPassStage_New( pContext, drawSurf, newStage, stageGLState );
 			}
             else 

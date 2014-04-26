@@ -2966,7 +2966,7 @@ idFile *idFileSystemLocal::OpenFileWrite( const char *relativePath, const char *
 		common->Printf( "idFileSystem::OpenFileWrite: %s\n", OSpath.c_str() );
 	}
 
-	common->DPrintf( "writing to: %s\n", OSpath.c_str() );
+	//common->DPrintf( "writing to: %s\n", OSpath.c_str() );
 	CreateOSPath( OSpath );
 
 	f = new (TAG_IDFILE) idFile_Permanent();
@@ -3066,7 +3066,7 @@ idFile *idFileSystemLocal::OpenExplicitFileWrite( const char *OSPath ) {
 		common->Printf( "idFileSystem::OpenExplicitFileWrite: %s\n", OSPath );
 	}
 
-	common->DPrintf( "writing to: %s\n", OSPath );
+	//common->DPrintf( "writing to: %s\n", OSPath );
 	CreateOSPath( OSPath );
 
 	f = new (TAG_IDFILE) idFile_Permanent();

@@ -818,7 +818,7 @@ void idImage::AllocImage() {
 	// allocate all the mip levels with NULL data
 	//----------------------------------------------------
 
-    if ( opts.width % minSize != 0 && opts.height % minSize != 0 ) {
+    if ( opts.width % minSize != 0 || opts.height % minSize != 0 ) {
         common->Warning( "Image '%s' has bad size: %dx%d (needs to be a multiple of %dx%d)", 
             GetName(), opts.width, opts.height, minSize, minSize );
         return;

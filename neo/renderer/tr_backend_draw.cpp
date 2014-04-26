@@ -37,6 +37,8 @@ idCVar r_skipShaderPasses( "r_skipShaderPasses", "0", CVAR_RENDERER | CVAR_BOOL,
 
 backEndState_t	backEnd;
 
+typedef idRenderProgManager::BUILTIN_SHADER (* builtInShaderSelectorFunc_t)( const drawSurf_t *surf, const shaderStage_t *pStage, const uint stageGLState );
+
 /*
 ================
 RB_BindImages
@@ -448,6 +450,142 @@ static int RB_PrepareStageTexturing(
 }
 
 /*
+=====================
+RB_DrawStageCustomVFP
+
+new style stages
+=====================
+*/
+static void RB_DrawStageCustomVFP( 
+    ID3D11DeviceContext1* pContext, 
+    const drawSurf_t* surf,
+    const newShaderStage_t *newStage, 
+    uint64 stageGLState ) {
+
+    // @pjb: is this a safe constant?
+    idImage* pImages[16];
+
+	// get the expressions for conditionals / color / texcoords
+	const float	*regs = surf->shaderRegisters;
+
+	renderLog.OpenBlock( "New Shader Stage" );
+
+    D3DDrv_SetBlendStateFromMask( pContext, stageGLState );
+    D3DDrv_SetDepthStateFromMask( pContext, stageGLState );
+
+	for ( int j = 0; j < newStage->numVertexParms; j++ ) {
+		float parm[4];
+		parm[0] = regs[ newStage->vertexParms[j][0] ];
+		parm[1] = regs[ newStage->vertexParms[j][1] ];
+		parm[2] = regs[ newStage->vertexParms[j][2] ];
+		parm[3] = regs[ newStage->vertexParms[j][3] ];
+		renderProgManager.SetRenderParm( (renderParm_t)( RENDERPARM_USER + j ), parm );
+	}
+
+	// set rpEnableSkinning if the shader has optional support for skinning
+	if ( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning( newStage->vertexProgram ) ) {
+		const idVec4 skinningParm( 1.0f );
+		renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
+	}
+
+    assert( newStage->numFragmentProgramImages < _countof( pImages ) );
+
+	// bind texture units
+	for ( int j = 0; j < newStage->numFragmentProgramImages; j++ ) {
+		idImage * image = newStage->fragmentProgramImages[j];
+		if ( image != NULL ) {
+            pImages[j] = image;
+		}
+	}
+                
+    ID3D11VertexShader* pVertexShader = renderProgManager.GetVertexShader( newStage->vertexProgram );
+    ID3D11PixelShader* pPixelShader = renderProgManager.GetPixelShader( newStage->fragmentProgram );
+
+    pContext->VSSetShader( pVertexShader, nullptr, 0 );
+    pContext->PSSetShader( pPixelShader, nullptr, 0 );
+    RB_BindImages( pContext, pImages, newStage->numFragmentProgramImages );
+
+	// draw it
+	RB_DrawElementsWithCounters( pContext, surf );
+                
+	// clear rpEnableSkinning if it was set
+	if ( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning( newStage->vertexProgram ) ) {
+		const idVec4 skinningParm( 0.0f );
+		renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
+	}
+
+	renderLog.CloseBlock();
+}
+
+/*
+=====================
+RB_DrawStageBuiltInFVP
+=====================
+*/
+static void RB_DrawStageBuiltInVFP( 
+    ID3D11DeviceContext1* pContext,
+    builtInShaderSelectorFunc_t shaderSelect,
+    const drawSurf_t *surf, 
+    const shaderStage_t *pStage, 
+    uint64 stageGLState ) {
+
+    // @pjb: is this a safe constant?
+    idImage* pImages[16];
+
+	// get the expressions for conditionals / color / texcoords
+	const float	*regs = surf->shaderRegisters;
+
+	// set the color
+	float color[4];
+	color[0] = regs[ pStage->color.registers[0] ];
+	color[1] = regs[ pStage->color.registers[1] ];
+	color[2] = regs[ pStage->color.registers[2] ];
+	color[3] = regs[ pStage->color.registers[3] ];
+
+	// skip the entire stage if an add would be black
+	if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE ) 
+		&& color[0] <= 0 && color[1] <= 0 && color[2] <= 0 ) {
+		return;
+	}
+
+	// skip the entire stage if a blend would be completely transparent
+	if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA )
+		&& color[3] <= 0 ) {
+		return;
+	}
+
+
+	renderLog.OpenBlock( "Old Shader Stage" );
+
+    renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
+
+    idRenderProgManager::BUILTIN_SHADER builtInShader = shaderSelect( surf, pStage, stageGLState );
+
+	stageVertexColor_t svc = pStage->vertexColor;
+	if ( surf->space->isGuiSurface ) {
+		// Force gui surfaces to always be SVC_MODULATE
+		svc = SVC_MODULATE;
+    }
+    RB_SetVertexColorParms( svc );
+
+	// set the state
+    D3DDrv_SetBlendStateFromMask( pContext, stageGLState );
+    D3DDrv_SetDepthStateFromMask( pContext, stageGLState );
+		
+    pImages[0] = nullptr;
+	int numImages = RB_PrepareStageTexturing( pStage, surf, &builtInShader, pImages );
+    RB_BindImages( pContext, pImages, numImages );
+		
+    pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( builtInShader ), nullptr, 0 );
+    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( builtInShader ), nullptr, 0 );
+
+	// draw it
+	RB_DrawElementsWithCounters( pContext, surf );
+
+	renderLog.CloseBlock();
+}
+
+/*
 =========================================================================================
 
 DEPTH BUFFER RENDERING
@@ -736,17 +874,18 @@ LIT SHADER PASSES
 
 =============================================================================================
 */
-static void RB_DrawShaderPassStage_New( 
-    ID3D11DeviceContext1* pContext, 
-    const drawSurf_t* surf,
-    const newShaderStage_t *newStage, 
-    uint64 stageGLState );
 
-static void RB_DrawShaderPassStage_Old( 
-    ID3D11DeviceContext1* pContext, 
-    const drawSurf_t *surf, 
-    const shaderStage_t *pStage, 
-    uint64 stageGLState );
+static idRenderProgManager::BUILTIN_SHADER RB_SelectShaderForMaterialPass( 
+    const drawSurf_t* surf,
+    const shaderStage_t* pStage,
+    const uint stageGLState ) {
+
+	if ( surf->jointCache ) {
+		return idRenderProgManager::BUILTIN_INTERACTION_SKINNED;
+	} else {
+		return idRenderProgManager::BUILTIN_INTERACTION;
+	}
+}
 
 static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSurf_t * const * drawSurfs, int numDrawSurfs ) {
 
@@ -779,6 +918,10 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 		if ( stage == shader->GetNumStages() ) {
 			continue;
 		}
+
+	    if ( drawSurf->space->isGuiSurface ) {
+            continue;
+        }
 
 		// change the matrix and other space related vars if needed
 		if ( drawSurf->space != backEnd.currentSpace ) {
@@ -853,11 +996,11 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 			newShaderStage_t *newStage = pStage->newStage;
 			if ( newStage != NULL ) 
             {
-                RB_DrawShaderPassStage_New( pContext, drawSurf, newStage, stageGLState );
+                RB_DrawStageCustomVFP( pContext, drawSurf, newStage, stageGLState );
 			}
             else 
             {
-			    RB_DrawShaderPassStage_Old( pContext, drawSurf, pStage, stageGLState );
+			    RB_DrawStageBuiltInVFP( pContext, RB_SelectShaderForMaterialPass, drawSurf, pStage, stageGLState );
             }
 		}
 
@@ -877,117 +1020,11 @@ NON-LIT SHADER PASSES
 */
 
 /*
-=====================
-RB_DrawShaderPassStage_New
-
-new style stages
-=====================
 */
-static void RB_DrawShaderPassStage_New( 
-    ID3D11DeviceContext1* pContext, 
-    const drawSurf_t* surf,
-    const newShaderStage_t *newStage, 
-    uint64 stageGLState ) {
-
-    // @pjb: is this a safe constant?
-    idImage* pImages[16];
-
-	// get the expressions for conditionals / color / texcoords
-	const float	*regs = surf->shaderRegisters;
-
-	renderLog.OpenBlock( "New Shader Stage" );
-
-    D3DDrv_SetBlendStateFromMask( pContext, stageGLState );
-    D3DDrv_SetDepthStateFromMask( pContext, stageGLState );
-
-	for ( int j = 0; j < newStage->numVertexParms; j++ ) {
-		float parm[4];
-		parm[0] = regs[ newStage->vertexParms[j][0] ];
-		parm[1] = regs[ newStage->vertexParms[j][1] ];
-		parm[2] = regs[ newStage->vertexParms[j][2] ];
-		parm[3] = regs[ newStage->vertexParms[j][3] ];
-		renderProgManager.SetRenderParm( (renderParm_t)( RENDERPARM_USER + j ), parm );
-	}
-
-	// set rpEnableSkinning if the shader has optional support for skinning
-	if ( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning( newStage->vertexProgram ) ) {
-		const idVec4 skinningParm( 1.0f );
-		renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
-	}
-
-    assert( newStage->numFragmentProgramImages < _countof( pImages ) );
-
-	// bind texture units
-	for ( int j = 0; j < newStage->numFragmentProgramImages; j++ ) {
-		idImage * image = newStage->fragmentProgramImages[j];
-		if ( image != NULL ) {
-            pImages[j] = image;
-		}
-	}
-                
-    ID3D11VertexShader* pVertexShader = renderProgManager.GetVertexShader( newStage->vertexProgram );
-    ID3D11PixelShader* pPixelShader = renderProgManager.GetPixelShader( newStage->fragmentProgram );
-
-    pContext->VSSetShader( pVertexShader, nullptr, 0 );
-    pContext->PSSetShader( pPixelShader, nullptr, 0 );
-    RB_BindImages( pContext, pImages, newStage->numFragmentProgramImages );
-
-	// draw it
-	RB_DrawElementsWithCounters( pContext, surf );
-                
-	// clear rpEnableSkinning if it was set
-	if ( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning( newStage->vertexProgram ) ) {
-		const idVec4 skinningParm( 0.0f );
-		renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
-	}
-
-	renderLog.CloseBlock();
-}
-
-/*
-=====================
-RB_DrawShaderPassStage_Old
-=====================
-*/
-static void RB_DrawShaderPassStage_Old( ID3D11DeviceContext1* pContext, const drawSurf_t *surf, const shaderStage_t *pStage, uint64 stageGLState ) {
-
-    // @pjb: is this a safe constant?
-    idImage* pImages[16];
-
-	// get the expressions for conditionals / color / texcoords
-	const float	*regs = surf->shaderRegisters;
-
-	// set the color
-	float color[4];
-	color[0] = regs[ pStage->color.registers[0] ];
-	color[1] = regs[ pStage->color.registers[1] ];
-	color[2] = regs[ pStage->color.registers[2] ];
-	color[3] = regs[ pStage->color.registers[3] ];
-
-	// skip the entire stage if an add would be black
-	if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE ) 
-		&& color[0] <= 0 && color[1] <= 0 && color[2] <= 0 ) {
-		return;
-	}
-
-	// skip the entire stage if a blend would be completely transparent
-	if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA )
-		&& color[3] <= 0 ) {
-		return;
-	}
-
-	stageVertexColor_t svc = pStage->vertexColor;
-
-	renderLog.OpenBlock( "Old Shader Stage" );
-
-    renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
-
+idRenderProgManager::BUILTIN_SHADER RB_SelectShaderPassShader( const drawSurf_t* surf, const shaderStage_t* pStage, const uint stageGLState ) {
     idRenderProgManager::BUILTIN_SHADER builtInShader = idRenderProgManager::MAX_BUILTINS;
 
 	if ( surf->space->isGuiSurface ) {
-		// Force gui surfaces to always be SVC_MODULATE
-		svc = SVC_MODULATE;
-
 		// use special shaders for bink cinematics
 		if ( pStage->texture.cinematic ) {
 			if ( ( stageGLState & GLS_OVERRIDE ) != 0 ) {
@@ -1021,24 +1058,7 @@ static void RB_DrawShaderPassStage_Old( ID3D11DeviceContext1* pContext, const dr
 			builtInShader = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
 		}
 	}
-
-    RB_SetVertexColorParms( svc );
-
-	// set the state
-    D3DDrv_SetBlendStateFromMask( pContext, stageGLState );
-    D3DDrv_SetDepthStateFromMask( pContext, stageGLState );
-		
-    pImages[0] = nullptr;
-	int numImages = RB_PrepareStageTexturing( pStage, surf, &builtInShader, pImages );
-    RB_BindImages( pContext, pImages, numImages );
-		
-    pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( builtInShader ), nullptr, 0 );
-    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( builtInShader ), nullptr, 0 );
-
-	// draw it
-	RB_DrawElementsWithCounters( pContext, surf );
-
-	renderLog.CloseBlock();
+    return builtInShader;
 }
 
 /*
@@ -1184,11 +1204,11 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext1* pContext, const drawSurf_t
 	            if ( r_skipNewAmbient.GetBool() ) {
 		            continue;
 	            }
-                RB_DrawShaderPassStage_New( pContext, surf, newStage, stageGLState );
+                RB_DrawStageCustomVFP( pContext, surf, newStage, stageGLState );
 			}
             else 
             {
-			    RB_DrawShaderPassStage_Old( pContext, surf, pStage, stageGLState );
+			    RB_DrawStageBuiltInVFP( pContext, RB_SelectShaderPassShader, surf, pStage, stageGLState );
             }
 		}
 

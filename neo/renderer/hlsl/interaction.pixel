@@ -79,6 +79,7 @@ void main( PS_IN fragment, out PS_OUT result ) {
 	float3 specularColor = specMap.xyz * specularContribution * rpSpecularModifier.xyz;
 	float3 lightColor = dot3( lightVector, localNormal ) * lightProj.xyz * lightFalloff.xyz;
 
-	result.color.xyz = ( diffuseColor + specularColor ) * lightColor * fragment.color.xyz;
+	//result.color.xyz = ( diffuseColor + specularColor ) * lightColor * fragment.color.xyz;
+	result.color.xyz = bumpMap.xyz; //diffuseColor * fragment.color.xyz;
 	result.color.w = 1.0;
 }

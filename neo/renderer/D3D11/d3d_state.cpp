@@ -70,11 +70,10 @@ void DestroyBuffers()
 //----------------------------------------------------------------------------
 void D3DDrv_SetBlendStateFromMask( ID3D11DeviceContext1* pContext, uint64 stateBits )
 {
-    FLOAT b[4] = { 0, 0, 0, 0 };
     UINT mask = ~0U;
     pContext->OMSetBlendState( 
         D3DDrv_GetBlendState( stateBits ),
-        b, 
+        NULL, 
         mask );
 }
 

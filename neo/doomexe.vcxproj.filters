@@ -1184,9 +1184,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="renderer\hlsl\blendLight.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\bloodorb_draw.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
@@ -1224,12 +1221,6 @@
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\enviroSuit.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\fog.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\fog_skinned.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\gui.vertex">
@@ -1274,9 +1265,6 @@
     <FxCompile Include="renderer\hlsl\wobblesky.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\zcullReconstruct.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\colorProcess.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
@@ -1293,12 +1281,6 @@
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\enviroSuit.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\fog.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\fog_skinned.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\gui.pixel">
@@ -1343,16 +1325,10 @@
     <FxCompile Include="renderer\hlsl\wobblesky.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\zcullReconstruct.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\bink.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\bink_gui.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\blendLight.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\bloodorb_draw.pixel">

@@ -297,6 +297,8 @@ static int RB_PrepareStageTexturing(
 			    // because the shaders may have already been set - we need to make sure we are not using a bink shader which would 
 			    // display incorrectly.  We may want to get rid of RB_BindVariableStageImage and inline the code so that the
 			    // SWF GUI case is handled better, too
+
+                // @pjb: todo: kill this
 			    *shaderToUse = idRenderProgManager::BUILTIN_TEXTURE_VERTEXCOLOR;
 		    }
         }
@@ -524,7 +526,7 @@ RB_DrawStageBuiltInFVP
 */
 static void RB_DrawStageBuiltInVFP( 
     ID3D11DeviceContext1* pContext,
-    builtInShaderSelectorFunc_t shaderSelect,
+    idRenderProgManager::BUILTIN_SHADER shader,
     const drawSurf_t *surf, 
     const shaderStage_t *pStage, 
     uint64 stageGLState ) {
@@ -559,8 +561,6 @@ static void RB_DrawStageBuiltInVFP(
 
     renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
 
-    idRenderProgManager::BUILTIN_SHADER builtInShader = shaderSelect( surf, pStage, stageGLState );
-
 	stageVertexColor_t svc = pStage->vertexColor;
 	if ( surf->space->isGuiSurface ) {
 		// Force gui surfaces to always be SVC_MODULATE
@@ -573,11 +573,11 @@ static void RB_DrawStageBuiltInVFP(
     D3DDrv_SetDepthStateFromMask( pContext, stageGLState );
 		
     pImages[0] = nullptr;
-	int numImages = RB_PrepareStageTexturing( pStage, surf, &builtInShader, pImages );
+	int numImages = RB_PrepareStageTexturing( pStage, surf, &shader, pImages );
     RB_BindImages( pContext, pImages, numImages );
 		
-    pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( builtInShader ), nullptr, 0 );
-    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( builtInShader ), nullptr, 0 );
+    pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( shader ), nullptr, 0 );
+    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( shader ), nullptr, 0 );
 
 	// draw it
 	RB_DrawElementsWithCounters( pContext, surf );
@@ -919,10 +919,6 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 			continue;
 		}
 
-	    if ( drawSurf->space->isGuiSurface ) {
-            continue;
-        }
-
 		// change the matrix and other space related vars if needed
 		if ( drawSurf->space != backEnd.currentSpace ) {
 			backEnd.currentSpace = drawSurf->space;
@@ -971,8 +967,15 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 			}
 
 			// skip the stages not involved in lighting
-			if ( pStage->lighting == SL_AMBIENT ) {
-				continue;
+            switch ( pStage->lighting ) {
+            case SL_BUMP:
+                break;
+            case SL_DIFFUSE:
+                break;
+            case SL_SPECULAR:
+                break;
+            default:
+                continue;
 			}
 
 			uint64 stageGLState = surfGLState;
@@ -992,17 +995,16 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 			    }
 			}
             
-			// see if we are a new-style stage
-			newShaderStage_t *newStage = pStage->newStage;
-			if ( newStage != NULL ) 
-            {
-                RB_DrawStageCustomVFP( pContext, drawSurf, newStage, stageGLState );
-			}
-            else 
-            {
-			    RB_DrawStageBuiltInVFP( pContext, RB_SelectShaderForMaterialPass, drawSurf, pStage, stageGLState );
-            }
-		}
+            idRenderProgManager::BUILTIN_SHADER shader = RB_SelectShaderForMaterialPass( drawSurf, pStage, stageGLState );
+
+            // @pjb: todo
+            // write a new shader for material diffuse
+            // bind the following:
+            // t0: bump image
+            // t1: diffuse
+            // t2: spec
+            // draw (see RB_SetupInteractionStage)
+        }
 
 		renderLog.CloseBlock();
 	}
@@ -1208,7 +1210,8 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext1* pContext, const drawSurf_t
 			}
             else 
             {
-			    RB_DrawStageBuiltInVFP( pContext, RB_SelectShaderPassShader, surf, pStage, stageGLState );
+                idRenderProgManager::BUILTIN_SHADER shader = RB_SelectShaderPassShader( surf, pStage, stageGLState );
+			    RB_DrawStageBuiltInVFP( pContext, shader, surf, pStage, stageGLState );
             }
 		}
 

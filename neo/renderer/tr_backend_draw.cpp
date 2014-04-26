@@ -722,7 +722,167 @@ static void RB_FillDepthBufferFast( ID3D11DeviceContext1* pContext, drawSurf_t *
 /*
 =============================================================================================
 
-NON-INTERACTION SHADER PASSES
+LIT SHADER PASSES
+
+=============================================================================================
+*/
+static void RB_DrawShaderPassStage_New( 
+    ID3D11DeviceContext1* pContext, 
+    const drawSurf_t* surf,
+    const newShaderStage_t *newStage, 
+    uint64 stageGLState );
+
+static void RB_DrawShaderPassStage_Old( 
+    ID3D11DeviceContext1* pContext, 
+    const drawSurf_t *surf, 
+    const shaderStage_t *pStage, 
+    uint64 stageGLState );
+
+static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSurf_t * const * drawSurfs, int numDrawSurfs ) {
+
+    idImage* pImages[16];
+
+	for ( int i = 0; i < numDrawSurfs; i++ ) {
+		const drawSurf_t * drawSurf = drawSurfs[i];
+		const idMaterial * shader = drawSurf->material;
+
+		// some deforms may disable themselves by setting numIndexes = 0
+		if ( drawSurf->numIndexes == 0 ) {
+			continue;
+		}
+
+		//if ( shader->SuppressInSubview() ) {
+		//	continue;
+		//}
+
+		if ( backEnd.viewDef->isXraySubview && drawSurf->space->entityDef ) {
+			if ( drawSurf->space->entityDef->parms.xrayIndex != 2 ) {
+				continue;
+			}
+		}
+
+		// we need to draw the post process shaders after we have drawn the fog lights
+		if ( shader->GetSort() >= SS_POST_PROCESS && !backEnd.currentRenderCopied ) {
+			break;
+		}
+
+		// get the expressions for conditionals / color / texcoords
+		const float * regs = drawSurf->shaderRegisters;
+
+		// if all stages of a material have been conditioned off, don't do anything
+		int stage = 0;
+		for ( ; stage < shader->GetNumStages(); stage++ ) {		
+			const shaderStage_t * pStage = shader->GetStage( stage );
+			// check the stage enable condition
+			if ( regs[ pStage->conditionRegister ] != 0 ) {
+				break;
+			}
+		}
+		if ( stage == shader->GetNumStages() ) {
+			continue;
+		}
+
+		// change the matrix and other space related vars if needed
+		if ( drawSurf->space != backEnd.currentSpace ) {
+			backEnd.currentSpace = drawSurf->space;
+
+			const viewEntity_t *space = backEnd.currentSpace;
+
+			RB_SetMVP( space->mvp );
+
+			// set eye position in local space
+			idVec4 localViewOrigin( 1.0f );
+			R_GlobalPointToLocal( space->modelMatrix, backEnd.viewDef->renderView.vieworg, localViewOrigin.ToVec3() );
+			renderProgManager.SetRenderParm( RENDERPARM_LOCALVIEWORIGIN, localViewOrigin.ToFloatPtr() );
+
+			// set model Matrix
+			float modelMatrixTranspose[16];
+			R_MatrixTranspose( space->modelMatrix, modelMatrixTranspose );
+			renderProgManager.SetRenderParms( RENDERPARM_MODELMATRIX_X, modelMatrixTranspose, 4 );
+
+			// Set ModelView Matrix
+			float modelViewMatrixTranspose[16];
+			R_MatrixTranspose( space->modelViewMatrix, modelViewMatrixTranspose );
+			renderProgManager.SetRenderParms( RENDERPARM_MODELVIEWMATRIX_X, modelViewMatrixTranspose, 4 );
+		}
+
+		// change the scissor if needed
+		if ( !backEnd.currentScissor.Equals( drawSurf->scissorRect ) && r_useScissor.GetBool() ) {
+			D3DDrv_SetScissor( pContext,
+                               backEnd.viewDef->viewport.x1 + drawSurf->scissorRect.x1, 
+						       backEnd.viewDef->viewport.y1 + drawSurf->scissorRect.y1,
+						       drawSurf->scissorRect.x2 + 1 - drawSurf->scissorRect.x1,
+						       drawSurf->scissorRect.y2 + 1 - drawSurf->scissorRect.y1 );
+			backEnd.currentScissor = drawSurf->scissorRect;
+		}
+
+		uint64 surfGLState = 0;
+
+		// set polygon offset if necessary
+        ID3D11RasterizerState* rasterizerState = 
+		    ( shader->GetRasterizerState() ) ?
+			shader->GetRasterizerState() :
+		    D3DDrv_GetRasterizerState( shader->GetCullType(), surfGLState );
+        
+		renderLog.OpenBlock( shader->GetName() );
+
+		// perforated surfaces may have multiple alpha tested stages
+		for ( stage = 0; stage < shader->GetNumStages(); stage++ ) {		
+			const shaderStage_t *pStage = shader->GetStage(stage);
+
+			// check the stage enable condition
+			if ( regs[ pStage->conditionRegister ] == 0 ) {
+				continue;
+			}
+
+			// skip the stages not involved in lighting
+			if ( pStage->lighting == SL_AMBIENT ) {
+				continue;
+			}
+
+			uint64 stageGLState = surfGLState;
+
+			if ( ( surfGLState & GLS_OVERRIDE ) == 0 ) {
+				stageGLState |= pStage->drawStateBits;
+			}
+
+			if ( pStage->hasAlphaTest ) {
+			    // skip the entire stage if alpha would be black
+                if ( pStage->color.registers[3] <= 0.0f ) {
+				    continue;
+                }
+			    // skip if the stage is ( GL_ZERO, GL_ONE ), which is used for some alpha masks
+			    if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_ZERO | GLS_DSTBLEND_ONE ) ) {
+				    continue;
+			    }
+			}
+            
+			// see if we are a new-style stage
+			newShaderStage_t *newStage = pStage->newStage;
+			if ( newStage != NULL ) 
+            {
+	            if ( r_skipNewAmbient.GetBool() ) {
+		            continue;
+	            }
+                RB_DrawShaderPassStage_New( pContext, drawSurf, newStage, stageGLState );
+			}
+            else 
+            {
+			    RB_DrawShaderPassStage_Old( pContext, drawSurf, pStage, stageGLState );
+            }
+		}
+
+		renderLog.CloseBlock();
+	}
+
+    renderProgManager.SetRenderParm( RENDERPARM_ALPHA_TEST, vec4_zero.ToFloatPtr() );
+}
+
+
+/*
+=============================================================================================
+
+NON-LIT SHADER PASSES
 
 =============================================================================================
 */
@@ -1149,6 +1309,13 @@ void RB_DrawViewInternal( const viewDef_t * viewDef ) {
 	//-------------------------------------------------
 	if ( backEnd.viewDef->viewEntitys != NULL && numDrawSurfs > 0 ) {
         RB_FillDepthBufferFast( pContext, drawSurfs, numDrawSurfs );
+    }
+
+	//-------------------------------------------------
+	// draw the lit material passes
+	//-------------------------------------------------
+	if ( backEnd.viewDef->viewEntitys != NULL && numDrawSurfs > 0 ) {
+        RB_DrawMaterialPasses( pContext, drawSurfs, numDrawSurfs );
     }
 
 	//-------------------------------------------------

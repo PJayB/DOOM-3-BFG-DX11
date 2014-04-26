@@ -919,10 +919,9 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext1* pContext, const drawSurf_t
 		const drawSurf_t * surf = drawSurfs[i];
 		const idMaterial * shader = surf->material;
 
-        // @pjb: todo: restore
-//		if ( !shader->HasAmbient() ) {
-//			continue;
-//		}
+		if ( !shader->HasAmbient() ) {
+			continue;
+		}
 
 		if ( shader->IsPortalSky() ) {
 			continue;
@@ -933,16 +932,15 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext1* pContext, const drawSurf_t
 			continue;
 		}
 
-        // @pjb: todo: restore
-//		if ( shader->SuppressInSubview() ) {
-//			continue;
-//		}
-//
-//		if ( backEnd.viewDef->isXraySubview && surf->space->entityDef ) {
-//			if ( surf->space->entityDef->parms.xrayIndex != 2 ) {
-//				continue;
-//			}
-//		}
+		if ( shader->SuppressInSubview() ) {
+			continue;
+		}
+
+		if ( backEnd.viewDef->isXraySubview && surf->space->entityDef ) {
+			if ( surf->space->entityDef->parms.xrayIndex != 2 ) {
+				continue;
+			}
+		}
 
 		// we need to draw the post process shaders after we have drawn the fog lights
 		if ( shader->GetSort() >= SS_POST_PROCESS && !backEnd.currentRenderCopied ) {
@@ -1016,10 +1014,9 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext1* pContext, const drawSurf_t
 			}
 
 			// skip the stages involved in lighting
-            // @pjb: todo: restore
-//			if ( pStage->lighting != SL_AMBIENT ) {
-//				continue;
-//			}
+			if ( pStage->lighting != SL_AMBIENT ) {
+				continue;
+			}
 
 			uint64 stageGLState = surfGLState;
 			if ( ( surfGLState & GLS_OVERRIDE ) == 0 ) {

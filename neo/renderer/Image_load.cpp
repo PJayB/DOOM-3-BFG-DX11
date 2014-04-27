@@ -931,44 +931,6 @@ HRESULT idImage::RegenerateSamplerState()
     D3D11_SAMPLER_DESC desc;
     ZeroMemory( &desc, sizeof(desc) );
 
-    /*
-    @pjb: todo
-
-	// ALPHA, LUMINANCE, LUMINANCE_ALPHA, and INTENSITY have been removed
-	// in OpenGL 3.2. In order to mimic those modes, we use the swizzle operators
-	if ( opts.colorFormat == CFM_GREEN_ALPHA ) {
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_ONE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_ONE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_ONE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_GREEN );
-	} else if ( opts.format == FMT_LUM8 ) {
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_RED );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_RED );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_RED );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_ONE );
-	} else if ( opts.format == FMT_L8A8 ) {
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_RED );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_RED );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_RED );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_GREEN );
-	} else if ( opts.format == FMT_ALPHA ) {
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_ONE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_ONE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_ONE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_RED );
-	} else if ( opts.format == FMT_INT8 ) {
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_RED );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_RED );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_RED );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_RED );
-	} else {
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_R, GL_RED );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_G, GL_GREEN );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_B, GL_BLUE );
-		qglTexParameteri( target, GL_TEXTURE_SWIZZLE_A, GL_ALPHA );
-	}
-    */
-
     switch( filter ) {
 		case TF_DEFAULT:
 			if ( r_useTrilinearFiltering.GetBool() ) {

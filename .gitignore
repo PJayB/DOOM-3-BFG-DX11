@@ -26,3 +26,4 @@ base/renderprogs/hlsl
 *.lang
 *.PAT
 compiled_shaders
+base/generated

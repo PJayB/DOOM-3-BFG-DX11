@@ -446,4 +446,129 @@ void idBinaryImage::GetGeneratedFileName( idStr & gfn, const char *name ) {
 	gfn.Replace( " ", "" );
 }
 
+/*
+============================
+Various swizzling functions
+============================
+*/
+template<class T> inline void Swap( T& a, T& b ) {
+    T c = a;
+    a = b;
+    b = c;
+}
 
+void idBinaryImage::SwizzleGreenAlphaToRGBA() {
+    idDxtDecoder decoder;
+
+    assert( fileData.format == FMT_DXT1 );
+    assert( fileData.colorFormat == CFM_GREEN_ALPHA );
+
+    for ( int i = 0; i < NumImages(); ++i ) {
+        idBinaryImageData* img = &images[i];
+
+        // Store uncompressed
+        int targetSize = img->width * img->height * 4;
+        byte* target = (byte *) Mem_Alloc( targetSize, TAG_IMAGE );
+
+        decoder.DecompressImageDXT1( img->data, target, img->width, img->height );
+
+        for ( int i = 0; i < targetSize; i += 4 ) {
+            target[i + 3] = target[i + 1]; // alpha
+            target[i + 2] = 255; // blue
+            target[i + 1] = 255; // green
+            target[i + 0] = 255; // red
+        }
+
+        // Point the image to the new data
+        img->Free();
+        img->data = target;
+        img->dataSize = targetSize;
+    }
+
+    fileData.format = FMT_RGBA8;
+    fileData.colorFormat = CFM_DEFAULT;
+}
+
+void idBinaryImage::SwizzleLum8ToRGBA() {
+    assert( fileData.format == FMT_LUM8 );
+
+    for ( int i = 0; i < NumImages(); ++i ) {
+        idBinaryImageData* img = &images[i];
+
+        // Store uncompressed
+        int sourceSize = img->width * img->height;
+        int targetSize = img->width * img->height * 4;
+        byte* target = (byte *) Mem_Alloc( targetSize, TAG_IMAGE );
+
+        for ( int i = 0; i < sourceSize; ++i ) {
+            target[i * 4 + 3] = 255; // alpha
+            target[i * 4 + 2] = img->data[i]; // blue
+            target[i * 4 + 1] = img->data[i]; // green
+            target[i * 4 + 0] = img->data[i]; // red
+        }
+
+        // Point the image to the new data
+        img->Free();
+        img->data = target;
+        img->dataSize = targetSize;
+    }
+
+    fileData.format = FMT_RGBA8;
+    fileData.colorFormat = CFM_DEFAULT;
+}
+
+void idBinaryImage::SwizzleL8A8ToRGBA() {
+    assert( fileData.format == FMT_L8A8 );
+
+    for ( int i = 0; i < NumImages(); ++i ) {
+        idBinaryImageData* img = &images[i];
+
+        // Store uncompressed
+        int sourceSize = img->width * img->height * 2;
+        int targetSize = img->width * img->height * 4;
+        byte* target = (byte *) Mem_Alloc( targetSize, TAG_IMAGE );
+
+        for ( int i = 0; i < sourceSize; i += 2 ) {
+            target[i * 2 + 3] = img->data[i + 1]; // alpha
+            target[i * 2 + 2] = img->data[i + 0]; // blue
+            target[i * 2 + 1] = img->data[i + 0]; // green
+            target[i * 2 + 0] = img->data[i + 0]; // red
+        }
+
+        // Point the image to the new data
+        img->Free();
+        img->data = target;
+        img->dataSize = targetSize;
+    }
+
+    fileData.format = FMT_RGBA8;
+    fileData.colorFormat = CFM_DEFAULT;
+}
+
+void idBinaryImage::SwizzleAlphaToRGBA() {
+    assert( fileData.format == FMT_ALPHA );
+
+    for ( int i = 0; i < NumImages(); ++i ) {
+        idBinaryImageData* img = &images[i];
+
+        // Store uncompressed
+        int sourceSize = img->width * img->height;
+        int targetSize = img->width * img->height * 4;
+        byte* target = (byte *) Mem_Alloc( targetSize, TAG_IMAGE );
+
+        for ( int i = 0; i < sourceSize; ++i ) {
+            target[i * 4 + 3] = img->data[i]; // alpha
+            target[i * 4 + 2] = 255; // blue
+            target[i * 4 + 1] = 255; // green
+            target[i * 4 + 0] = 255; // red
+        }
+
+        // Point the image to the new data
+        img->Free();
+        img->data = target;
+        img->dataSize = targetSize;
+    }
+
+    fileData.format = FMT_RGBA8;
+    fileData.colorFormat = CFM_DEFAULT;
+}

@@ -70,7 +70,7 @@ ID_INLINE void idImage::DeriveOpts() {
 		switch ( usage ) {
 			case TD_COVERAGE:
 				opts.format = FMT_DXT1;
-				opts.colorFormat = CFM_GREEN_ALPHA;
+				opts.colorFormat = CFM_DEFAULT;
 				break;
 			case TD_DEPTH:
 				opts.format = FMT_DEPTH;
@@ -97,7 +97,7 @@ ID_INLINE void idImage::DeriveOpts() {
 				break;
 			case TD_FONT:
 				opts.format = FMT_DXT1;
-				opts.colorFormat = CFM_GREEN_ALPHA;
+				opts.colorFormat = CFM_DEFAULT;
 				opts.numLevels = 4; // We only support 4 levels because we align to 16 in the exporter
 				opts.gammaMips = true;
 				break;
@@ -109,7 +109,7 @@ ID_INLINE void idImage::DeriveOpts() {
 				opts.format = FMT_INT8;
 				break;
 			case TD_LOOKUP_TABLE_ALPHA:
-				opts.format = FMT_ALPHA;
+				opts.format = FMT_RGBA8;
 				break;
 			case TD_LOOKUP_TABLE_RGB1:
 			case TD_LOOKUP_TABLE_RGBA:
@@ -339,6 +339,34 @@ void idImage::ActuallyLoadImage( bool fromBackEnd ) {
 		}
 	}
 	const bimageFile_t & header = im.GetFileHeader();
+
+    // Intercept: we need to do a post-process on shipped assets with the following
+    // file formats:
+    // GREENALPHA -> 1, 1, 1, G
+    // LUM8 -> R, R, R, 1
+    // L8A8 -> R, R, R, G
+    // ALPHA -> 1, 1, 1, R
+    if ( binaryFileTime != FILE_NOT_FOUND_TIMESTAMP  ) {
+
+        bool requiresResave = true;
+        if ( header.colorFormat == CFM_GREEN_ALPHA ) {
+            assert( header.format == FMT_DXT1 );
+            im.SwizzleGreenAlphaToRGBA();
+        } else if ( header.format == FMT_LUM8 ) {
+            im.SwizzleLum8ToRGBA();
+        } else if ( header.format == FMT_L8A8 ) {
+            im.SwizzleL8A8ToRGBA();
+        } else if ( header.format == FMT_ALPHA ) {
+            im.SwizzleAlphaToRGBA();
+        } else {
+            requiresResave = false;
+        }
+
+        if ( requiresResave ) {
+            common->Warning( "Had to reconvert old format to RGBA: %s", GetName() );
+            binaryFileTime = im.WriteGeneratedFile( sourceFileTime );
+        }
+    }
 
 	if ( ( fileSystem->InProductionMode() && binaryFileTime != FILE_NOT_FOUND_TIMESTAMP ) || ( ( binaryFileTime != FILE_NOT_FOUND_TIMESTAMP )
 		&& ( header.colorFormat == opts.colorFormat )
@@ -721,44 +749,22 @@ DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt) const
         internalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 		break;
 	case FMT_XRGB8:
-        // @pjb: todo: swizzle
         internalFormat = DXGI_FORMAT_B8G8R8X8_UNORM;
 		break;
 	case FMT_RGB565:
-        // @pjb: todo: swizzle
         internalFormat = DXGI_FORMAT_B5G6R5_UNORM;
 		break;
 	case FMT_ALPHA:
-#if defined( USE_CORE_PROFILE )
 		internalFormat = DXGI_FORMAT_R8_UNORM;
-#else
-		internalFormat = GL_ALPHA8;
-		dataFormat = GL_ALPHA;
-#endif
 		break;
 	case FMT_L8A8:
-#if defined( USE_CORE_PROFILE )
         internalFormat = DXGI_FORMAT_R8G8_UNORM;
-#else
-		internalFormat = GL_LUMINANCE8_ALPHA8;
-		dataFormat = GL_LUMINANCE_ALPHA;
-#endif
 		break;
 	case FMT_LUM8:
-#if defined( USE_CORE_PROFILE )
         internalFormat = DXGI_FORMAT_R8_UNORM;
-#else
-		internalFormat = GL_LUMINANCE8;
-		dataFormat = GL_LUMINANCE;
-#endif
 		break;
 	case FMT_INT8:
-#if defined( USE_CORE_PROFILE )
         internalFormat = DXGI_FORMAT_R8_UINT;
-#else
-		internalFormat = GL_INTENSITY8;
-		dataFormat = GL_LUMINANCE;
-#endif
 		break;
 	case FMT_DXT1:
         internalFormat = DXGI_FORMAT_BC1_UNORM;

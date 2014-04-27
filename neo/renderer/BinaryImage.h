@@ -53,6 +53,11 @@ public:
 
 	const bimageFile_t &	GetFileHeader() { return fileData; }
 
+    void                SwizzleGreenAlphaToRGBA();
+    void                SwizzleLum8ToRGBA();
+    void                SwizzleL8A8ToRGBA();
+    void                SwizzleAlphaToRGBA();
+
 	int					NumImages() { return images.Num(); }
 	const bimageImage_t &	GetImageHeader( int i ) const { return images[i]; }
 	const byte *			GetImageData( int i ) const { return images[i].data; }

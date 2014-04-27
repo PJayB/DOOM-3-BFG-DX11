@@ -969,11 +969,7 @@ HRESULT idImage::RegenerateSamplerState()
 	}
     */
 
-    // r_maxAnisotropicFiltering
-    // r_useTrilinearFiltering
-    // r_lodBias
-
-	switch( filter ) {
+    switch( filter ) {
 		case TF_DEFAULT:
 			if ( r_useTrilinearFiltering.GetBool() ) {
                 desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;

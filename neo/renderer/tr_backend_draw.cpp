@@ -33,6 +33,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "../../framework/Common_local.h"
 
 idCVar r_motionBlur( "r_motionBlur", "0", CVAR_RENDERER | CVAR_INTEGER | CVAR_ARCHIVE, "1 - 5, log2 of the number of motion blur samples" );
+idCVar r_skipInteractionFastPath( "r_skipInteractionFastPath", "1", CVAR_RENDERER | CVAR_BOOL, "" );
 idCVar r_skipShaderPasses( "r_skipShaderPasses", "0", CVAR_RENDERER | CVAR_BOOL, "" );
 
 backEndState_t	backEnd;
@@ -909,19 +910,111 @@ static void RB_SetupInteractionStage(
 	}
 }
 
+/*
+=================
+RB_SetupForFastPathInteractions
+
+These are common for all fast path surfaces
+=================
+*/
+static void RB_SetupForFastPathInteractions( const idVec4 & diffuseColor, const idVec4 & specularColor ) {
+	const idVec4 sMatrix( 1, 0, 0, 0 );
+	const idVec4 tMatrix( 0, 1, 0, 0 );
+
+	// bump matrix
+	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_S, sMatrix.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_T, tMatrix.ToFloatPtr() );
+
+	// diffuse matrix
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_S, sMatrix.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_T, tMatrix.ToFloatPtr() );
+
+	// specular matrix
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_S, sMatrix.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_T, tMatrix.ToFloatPtr() );
+
+	RB_SetVertexColorParms( SVC_IGNORE );
+
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMODIFIER, diffuseColor.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMODIFIER, specularColor.ToFloatPtr() );
+}
+
+/*
+=================
+RB_DrawSingleInteraction
+=================
+*/
+static void RB_DrawSingleInteraction( ID3D11DeviceContext1* pContext, drawInteraction_t * din ) {
+	if ( din->bumpImage == NULL ) {
+		// stage wasn't actually an interaction
+		return;
+	}
+
+	if ( din->diffuseImage == NULL || r_skipDiffuse.GetBool() ) {
+		// this isn't a YCoCg black, but it doesn't matter, because
+		// the diffuseColor will also be 0
+		din->diffuseImage = globalImages->blackImage;
+	}
+	if ( din->specularImage == NULL || r_skipSpecular.GetBool() || din->ambientLight ) {
+		din->specularImage = globalImages->blackImage;
+	}
+	if ( r_skipBump.GetBool() ) {
+		din->bumpImage = globalImages->flatNormalMap;
+	}
+
+	// if we wouldn't draw anything, don't call the Draw function
+	const bool diffuseIsBlack = ( din->diffuseImage == globalImages->blackImage )
+									|| ( ( din->diffuseColor[0] <= 0 ) && ( din->diffuseColor[1] <= 0 ) && ( din->diffuseColor[2] <= 0 ) );
+	const bool specularIsBlack = ( din->specularImage == globalImages->blackImage )
+									|| ( ( din->specularColor[0] <= 0 ) && ( din->specularColor[1] <= 0 ) && ( din->specularColor[2] <= 0 ) );
+	if ( diffuseIsBlack && specularIsBlack ) {
+		return;
+	}
+
+	// bump matrix
+	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_S, din->bumpMatrix[0].ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_T, din->bumpMatrix[1].ToFloatPtr() );
+
+	// diffuse matrix
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_S, din->diffuseMatrix[0].ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_T, din->diffuseMatrix[1].ToFloatPtr() );
+
+	// specular matrix
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_S, din->specularMatrix[0].ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_T, din->specularMatrix[1].ToFloatPtr() );
+
+	RB_SetVertexColorParms( din->vertexColor );
+
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMODIFIER, din->diffuseColor.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMODIFIER, din->specularColor.ToFloatPtr() );
+
+	RB_BindImages( pContext, din->images, _countof( din->images ) );
+
+	RB_DrawElementsWithCounters( pContext, din->surf );
+}
+
 static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSurf_t * const * drawSurfs, int numDrawSurfs ) {
 
-    idImage* pImages[3] = {
-        nullptr,
-        nullptr,
-        nullptr
-    };
+    idVec4 diffuseColor( 1 );
+    idVec4 specularColor( 1 );
 
-    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( BUILTIN_SHADER_INTERACTION ), nullptr, 0 );
+	drawInteraction_t inter = {};
+	inter.ambientLight = 0;
 
+	//---------------------------------
+	// Split out the complex surfaces from the fast-path surfaces
+	// so we can do the fast path ones all in a row.
+	// The surfaces should already be sorted by space because they
+	// are added single-threaded, and there is only a negligable amount
+	// of benefit to trying to sort by materials.
+	//---------------------------------
+	static const int MAX_INTERACTIONS = 1024;
+	idStaticList< const drawSurf_t *, MAX_INTERACTIONS > allSurfaces;
+	idStaticList< const drawSurf_t *, MAX_INTERACTIONS > complexSurfaces;
 	for ( int i = 0; i < numDrawSurfs; i++ ) {
 		const drawSurf_t * drawSurf = drawSurfs[i];
-		const idMaterial * shader = drawSurf->material;
+		const idMaterial * surfaceShader = drawSurf->material;
+		const float * regs = drawSurf->shaderRegisters;
 
 		// some deforms may disable themselves by setting numIndexes = 0
 		if ( drawSurf->numIndexes == 0 ) {
@@ -929,192 +1022,174 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 		}
 
 		// we need to draw the post process shaders after we have drawn the fog lights
-		if ( shader->GetSort() >= SS_POST_PROCESS && !backEnd.currentRenderCopied ) {
+		if ( surfaceShader->GetSort() >= SS_POST_PROCESS ) {
 			break;
 		}
 
-		// get the expressions for conditionals / color / texcoords
-		const float * regs = drawSurf->shaderRegisters;
-
 		// if all stages of a material have been conditioned off, don't do anything
 		int stage = 0;
-		for ( ; stage < shader->GetNumStages(); stage++ ) {		
-			const shaderStage_t * pStage = shader->GetStage( stage );
+		for ( ; stage < surfaceShader->GetNumStages(); stage++ ) {		
+			const shaderStage_t * pStage = surfaceShader->GetStage( stage );
 			// check the stage enable condition
 			if ( regs[ pStage->conditionRegister ] != 0 ) {
 				break;
 			}
 		}
-		if ( stage == shader->GetNumStages() ) {
+		if ( stage == surfaceShader->GetNumStages() ) {
 			continue;
 		}
-
-		// change the matrix and other space related vars if needed
-		if ( drawSurf->space != backEnd.currentSpace ) {
-			backEnd.currentSpace = drawSurf->space;
-
-			const viewEntity_t *space = backEnd.currentSpace;
-
-			RB_SetMVP( space->mvp );
-
-			// set eye position in local space
-			idVec4 localViewOrigin( 1.0f );
-			R_GlobalPointToLocal( space->modelMatrix, backEnd.viewDef->renderView.vieworg, localViewOrigin.ToVec3() );
-			renderProgManager.SetRenderParm( RENDERPARM_LOCALVIEWORIGIN, localViewOrigin.ToFloatPtr() );
-
-			// set model Matrix
-			float modelMatrixTranspose[16];
-			R_MatrixTranspose( space->modelMatrix, modelMatrixTranspose );
-			renderProgManager.SetRenderParms( RENDERPARM_MODELMATRIX_X, modelMatrixTranspose, 4 );
-
-			// Set ModelView Matrix
-			float modelViewMatrixTranspose[16];
-			R_MatrixTranspose( space->modelViewMatrix, modelViewMatrixTranspose );
-			renderProgManager.SetRenderParms( RENDERPARM_MODELVIEWMATRIX_X, modelViewMatrixTranspose, 4 );
+        
+		if ( surfaceShader->GetFastPathBumpImage() ) {
+			allSurfaces.Append( drawSurf );
+		} else {
+			complexSurfaces.Append( drawSurf );
 		}
+	}
+	for ( int i = 0; i < complexSurfaces.Num(); i++ ) {
+		allSurfaces.Append( complexSurfaces[i] );
+	}
 
-		// change the scissor if needed
-		if ( !backEnd.currentScissor.Equals( drawSurf->scissorRect ) && r_useScissor.GetBool() ) {
-			D3DDrv_SetScissor( pContext,
-                               backEnd.viewDef->viewport.x1 + drawSurf->scissorRect.x1, 
-						       backEnd.viewDef->viewport.y1 + drawSurf->scissorRect.y1,
-						       drawSurf->scissorRect.x2 + 1 - drawSurf->scissorRect.x1,
-						       drawSurf->scissorRect.y2 + 1 - drawSurf->scissorRect.y1 );
-			backEnd.currentScissor = drawSurf->scissorRect;
-		}
+    //
+    // Set up the state
+    //
+    D3DDrv_SetRasterizerStateFromMask( pContext, CT_FRONT_SIDED, 0 );
+    D3DDrv_SetBlendStateFromMask( pContext, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
+    RB_SetupForFastPathInteractions( diffuseColor, specularColor );
 
-		uint64 surfGLState = 0;
+    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( BUILTIN_SHADER_INTERACTION ), nullptr, 0 );
 
-		renderLog.OpenBlock( shader->GetName() );
+	backEnd.currentSpace = NULL;
 
-        const shaderStage_t* pBumpStage = nullptr;
-        const shaderStage_t* pDiffuseStage = nullptr;
-        const shaderStage_t* pSpecularStage = nullptr;
-        uint64 diffuseStageState = surfGLState;
+    for ( int sortedSurfNum = 0; sortedSurfNum < allSurfaces.Num(); sortedSurfNum++ ) {
+		const drawSurf_t * const surf = allSurfaces[ sortedSurfNum ];
+		const idMaterial * surfaceShader = surf->material;
+		const float * surfaceRegs = surf->shaderRegisters;
 
-        float diffuseColor[] = { 1, 1, 1, 1 };
-        float specularColor[] = { 0, 0, 0, 0 };
-	    stageVertexColor_t svc = SVC_IGNORE;
-        idVec4 bumpMatrix[2];
-        idVec4 diffuseMatrix[2];
-        idVec4 specularMatrix[2];
-
-		// perforated surfaces may have multiple alpha tested stages
-        bool hasStages = false;
-		for ( stage = 0; stage < shader->GetNumStages(); stage++ ) {		
-			const shaderStage_t *pStage = shader->GetStage(stage);
-
-			// check the stage enable condition
-			if ( regs[ pStage->conditionRegister ] == 0 ) {
-				continue;
-			}
-
-            assert( pStage->rasterizerState == nullptr );
-
-			uint64 stageGLState = surfGLState;
-
-			if ( ( surfGLState & GLS_OVERRIDE ) == 0 ) {
-				stageGLState |= pStage->drawStateBits;
-			}
-
-			if ( pStage->hasAlphaTest ) {
-			    // skip the entire stage if alpha would be black
-                if ( pStage->color.registers[3] <= 0.0f ) {
-				    continue;
-                }
-			    // skip if the stage is ( GL_ZERO, GL_ONE ), which is used for some alpha masks
-			    if ( ( stageGLState & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_ZERO | GLS_DSTBLEND_ONE ) ) {
-				    continue;
-			    }
-			}
-
-			// skip the stages not involved in lighting
-            switch ( pStage->lighting ) {
-            case SL_BUMP:
-                assert( pBumpStage == nullptr );
-                pImages[0] = pStage->texture.image;
-                RB_SetupInteractionStage( pStage, regs, bumpMatrix );
-                pBumpStage = pStage;
-                break;
-            case SL_DIFFUSE:
-                assert( pDiffuseStage == nullptr );
-                diffuseStageState = stageGLState;
-                svc = pStage->vertexColor;
-                pImages[1] = pStage->texture.image;
- 	            diffuseColor[0] = regs[ pStage->color.registers[0] ];
-	            diffuseColor[1] = regs[ pStage->color.registers[1] ];
-	            diffuseColor[2] = regs[ pStage->color.registers[2] ];
-	            diffuseColor[3] = regs[ pStage->color.registers[3] ];
-                RB_SetupInteractionStage( pStage, regs, diffuseMatrix );
-                pDiffuseStage = pStage;
-                break;
-            case SL_SPECULAR:
-                assert( pSpecularStage == nullptr );
-                pImages[2] = pStage->texture.image;
-	            specularColor[0] = regs[ pStage->color.registers[0] ];
-	            specularColor[1] = regs[ pStage->color.registers[1] ];
-	            specularColor[2] = regs[ pStage->color.registers[2] ];
-	            specularColor[3] = regs[ pStage->color.registers[3] ];
-                RB_SetupInteractionStage( pStage, regs, specularMatrix );
-                pSpecularStage = pStage;
-                break;
-            default:
-                continue;
-			}
-
-            hasStages = true;
-        }
-
-        if (!hasStages)
-            continue;
-
-        RB_SetVertexColorParms( svc );
-
-        //
-        // Set up any missing images
-        //
-        if ( pImages[0] == nullptr ) { 
-            pImages[0] = globalImages->flatNormalMap;
-        }
-        if ( pImages[1] == nullptr ) {
-            pImages[1] = globalImages->whiteImage;
-        }
-        if ( pImages[2] == nullptr ) {
-            pImages[2] = globalImages->blackImage;
-        }
-
-        //
-        // Set up the constants
-        // @pjb: todo: split lighting interaction constants into a new buffer
-        //
-        renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMODIFIER, diffuseColor );
-        renderProgManager.SetRenderParm( RENDERPARM_SPECULARMODIFIER, specularColor );
-	    renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_S, bumpMatrix[0].ToFloatPtr() );
-	    renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_T, bumpMatrix[1].ToFloatPtr() );
-	    renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_S, diffuseMatrix[0].ToFloatPtr() );
-	    renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_T, diffuseMatrix[1].ToFloatPtr() );
-	    renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_S, specularMatrix[0].ToFloatPtr() );
-	    renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_T, specularMatrix[1].ToFloatPtr() );
+		inter.surf = surf;
 
         //
         // Set up the vertex shader
         //
         BUILTIN_SHADER vertexShader = 
-            ( drawSurf->jointCache ) ?
+            ( surf->jointCache ) ?
             BUILTIN_SHADER_INTERACTION_SKINNED :
             BUILTIN_SHADER_INTERACTION;
 
+        bool translucent = false; // @pjb: todo
+        uint64 depthState = GLS_DEPTHMASK;
+
+        if ( translucent ) { 
+            depthState |= GLS_DEPTHFUNC_LESS;
+        } else {
+            depthState |= GLS_DEPTHFUNC_EQUAL;
+        }
+
+        D3DDrv_SetDepthStateFromMask( pContext, depthState );
+
         pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( vertexShader ), nullptr, 0 );
+
+		// change the MVP matrix, view/light origin and light projection vectors if needed
+		if ( surf->space != backEnd.currentSpace ) {
+			backEnd.currentSpace = surf->space;
+
+			// model-view-projection
+			RB_SetMVP( surf->space->mvp );
+
+            // @pjb: todo: eye origin in local space?
+		}
+			
+		renderLog.OpenBlock( surf->material->GetName() );
+
+		// check for the fast path
+		if ( surfaceShader->GetFastPathBumpImage() && !r_skipInteractionFastPath.GetBool() ) {
+
+            inter.bumpImage = surfaceShader->GetFastPathBumpImage();
+            inter.diffuseImage = surfaceShader->GetFastPathDiffuseImage();
+            inter.specularImage = surfaceShader->GetFastPathSpecularImage();
+            RB_BindImages( pContext, inter.images, _countof( inter.images ) );
+
+			RB_DrawElementsWithCounters( pContext, surf );
+
+			renderLog.CloseBlock();
+			continue;
+		}
+
+		inter.bumpImage = NULL;
+		inter.specularImage = NULL;
+		inter.diffuseImage = NULL;
+		inter.diffuseColor[0] = inter.diffuseColor[1] = inter.diffuseColor[2] = inter.diffuseColor[3] = 1;
+		inter.specularColor[0] = inter.specularColor[1] = inter.specularColor[2] = inter.specularColor[3] = 1;
+
+		// go through the individual surface stages
+		//
+		// This is somewhat arcane because of the old support for video cards that had to render
+		// interactions in multiple passes.
+		//
+		// We also have the very rare case of some materials that have conditional interactions
+		// for the "hell writing" that can be shined on them.
+		for ( int surfaceStageNum = 0; surfaceStageNum < surfaceShader->GetNumStages(); surfaceStageNum++ ) {
+			const shaderStage_t	*surfaceStage = surfaceShader->GetStage( surfaceStageNum );
+
+			switch( surfaceStage->lighting ) {
+				case SL_COVERAGE: {
+					// ignore any coverage stages since they should only be used for the depth fill pass
+					// for diffuse stages that use alpha test.
+					break;
+				}
+				case SL_AMBIENT: {
+					// ignore ambient stages while drawing interactions
+					break;
+				}
+				case SL_BUMP: {
+					// ignore stage that fails the condition
+					if ( !surfaceRegs[ surfaceStage->conditionRegister ] ) {
+						break;
+					}
+					// draw any previous interaction
+					if ( inter.bumpImage != NULL ) {
+						RB_DrawSingleInteraction( pContext, &inter );
+					}
+					inter.bumpImage = surfaceStage->texture.image;
+					inter.diffuseImage = NULL;
+					inter.specularImage = NULL;
+					RB_SetupInteractionStage( surfaceStage, surfaceRegs, inter.bumpMatrix );
+					break;
+				}
+				case SL_DIFFUSE: {
+					// ignore stage that fails the condition
+					if ( !surfaceRegs[ surfaceStage->conditionRegister ] ) {
+						break;
+					}
+					// draw any previous interaction
+					if ( inter.diffuseImage != NULL ) {
+						RB_DrawSingleInteraction( pContext, &inter );
+					}
+					inter.diffuseImage = surfaceStage->texture.image;
+					inter.vertexColor = surfaceStage->vertexColor;
+					RB_SetupInteractionStage( surfaceStage, surfaceRegs, inter.diffuseMatrix );
+					break;
+				}
+				case SL_SPECULAR: {
+					// ignore stage that fails the condition
+					if ( !surfaceRegs[ surfaceStage->conditionRegister ] ) {
+						break;
+					}
+					// draw any previous interaction
+					if ( inter.specularImage != NULL ) {
+						RB_DrawSingleInteraction( pContext, &inter );
+					}
+					inter.specularImage = surfaceStage->texture.image;
+					inter.vertexColor = surfaceStage->vertexColor;
+					RB_SetupInteractionStage( surfaceStage, surfaceRegs, inter.specularMatrix );
+					break;
+				}
+			}
+		}
 
         //
         // Set up the state
         //
-        D3DDrv_SetRasterizerStateFromMask( pContext, shader->GetCullType(), surfGLState );
-        D3DDrv_SetBlendStateFromMask( pContext, surfGLState );
-        D3DDrv_SetDepthStateFromMask( pContext, surfGLState );
-        RB_BindImages( pContext, pImages, _countof( pImages ) );
-
-        RB_DrawElementsWithCounters( pContext, drawSurf );
+        RB_DrawSingleInteraction( pContext, &inter );
 
 		renderLog.CloseBlock();
 	}

@@ -432,9 +432,17 @@ struct viewDef_t {
 struct drawInteraction_t {
 	const drawSurf_t *	surf;
 
-	idImage *			bumpImage;
-	idImage *			diffuseImage;
-	idImage *			specularImage;
+#pragma warning( disable : 4201 )
+    union { 
+        struct { 
+	        idImage *			bumpImage;
+	        idImage *			diffuseImage;
+	        idImage *			specularImage;
+        };
+        idImage *               images[3];
+    };
+#pragma warning( default : 4201 )
+
 
 	idVec4				diffuseColor;	// may have a light color baked into it
 	idVec4				specularColor;	// may have a light color baked into it

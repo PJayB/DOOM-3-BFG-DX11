@@ -876,7 +876,8 @@ RB_SetupInteractionStage
 static void RB_SetupInteractionStage( 
     const shaderStage_t *surfaceStage, 
     const float *surfaceRegs, 
-    idVec4 matrix[2] ) {
+    idVec4 matrix[2],
+    float* color ) {
 
 	if ( surfaceStage->texture.hasMatrix ) {
 		matrix[0][0] = surfaceRegs[surfaceStage->texture.matrix[0][0]];
@@ -907,6 +908,15 @@ static void RB_SetupInteractionStage(
 		matrix[1][1] = 1.0f;
 		matrix[1][2] = 0.0f;
 		matrix[1][3] = 0.0f;
+	}
+
+	if ( color != NULL ) {
+		for ( int i = 0; i < 4; i++ ) {
+			// clamp here, so cards with a greater range don't look different.
+			// we could perform overbrighting like we do for lights, but
+			// it doesn't currently look worth it.
+			color[i] = idMath::ClampFloat( 0.0f, 1.0f, surfaceRegs[surfaceStage->color.registers[i]] );
+		}
 	}
 }
 
@@ -1152,7 +1162,7 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 					inter.bumpImage = surfaceStage->texture.image;
 					inter.diffuseImage = NULL;
 					inter.specularImage = NULL;
-					RB_SetupInteractionStage( surfaceStage, surfaceRegs, inter.bumpMatrix );
+					RB_SetupInteractionStage( surfaceStage, surfaceRegs, inter.bumpMatrix, nullptr );
 					break;
 				}
 				case SL_DIFFUSE: {
@@ -1166,7 +1176,7 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 					}
 					inter.diffuseImage = surfaceStage->texture.image;
 					inter.vertexColor = surfaceStage->vertexColor;
-					RB_SetupInteractionStage( surfaceStage, surfaceRegs, inter.diffuseMatrix );
+					RB_SetupInteractionStage( surfaceStage, surfaceRegs, inter.diffuseMatrix, inter.diffuseColor.ToFloatPtr() );
 					break;
 				}
 				case SL_SPECULAR: {
@@ -1180,7 +1190,7 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 					}
 					inter.specularImage = surfaceStage->texture.image;
 					inter.vertexColor = surfaceStage->vertexColor;
-					RB_SetupInteractionStage( surfaceStage, surfaceRegs, inter.specularMatrix );
+					RB_SetupInteractionStage( surfaceStage, surfaceRegs, inter.specularMatrix, inter.specularColor.ToFloatPtr() );
 					break;
 				}
 			}

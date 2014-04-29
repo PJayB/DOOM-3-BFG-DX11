@@ -1208,7 +1208,7 @@ NON-LIT SHADER PASSES
 
 /*
 */
-BUILTIN_SHADER RB_SelectShaderPassShader( const drawSurf_t* surf, const shaderStage_t* pStage, const uint stageGLState ) {
+BUILTIN_SHADER RB_SelectShaderPassShader( const drawSurf_t* surf, const shaderStage_t* pStage, const uint64 stageGLState ) {
     BUILTIN_SHADER builtInShader = MAX_BUILTIN_SHADERS;
 
 	if ( surf->space->isGuiSurface ) {

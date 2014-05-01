@@ -32,9 +32,13 @@ If you have questions concerning this license or the applicable additional terms
 #include "tr_local.h"
 #include "../../framework/Common_local.h"
 
+idCVar r_drawEyeColor( "r_drawEyeColor", "0", CVAR_RENDERER | CVAR_BOOL, "Draw a colored box, red = left eye, blue = right eye, grey = non-stereo" );
 idCVar r_motionBlur( "r_motionBlur", "0", CVAR_RENDERER | CVAR_INTEGER | CVAR_ARCHIVE, "1 - 5, log2 of the number of motion blur samples" );
-idCVar r_skipInteractionFastPath( "r_skipInteractionFastPath", "1", CVAR_RENDERER | CVAR_BOOL, "" );
+idCVar r_forceZPassStencilShadows( "r_forceZPassStencilShadows", "0", CVAR_RENDERER | CVAR_BOOL, "force Z-pass rendering for performance testing" );
+idCVar r_useStencilShadowPreload( "r_useStencilShadowPreload", "1", CVAR_RENDERER | CVAR_BOOL, "use stencil shadow preload algorithm instead of Z-fail" );
 idCVar r_skipShaderPasses( "r_skipShaderPasses", "0", CVAR_RENDERER | CVAR_BOOL, "" );
+idCVar r_skipInteractionFastPath( "r_skipInteractionFastPath", "1", CVAR_RENDERER | CVAR_BOOL, "" );
+idCVar r_useLightStencilSelect( "r_useLightStencilSelect", "0", CVAR_RENDERER | CVAR_BOOL, "use stencil select pass" );
 
 backEndState_t	backEnd;
 
@@ -43,7 +47,7 @@ backEndState_t	backEnd;
 RB_BindImages
 ================
 */
-void RB_BindImages( ID3D11DeviceContext1* pContext, idImage** pImages, int numImages )
+void RB_BindImages( ID3D11DeviceContext1* pContext, idImage** pImages, int offset, int numImages )
 {
     ID3D11ShaderResourceView* pSRVs[16];
     ID3D11SamplerState* pSamplers[16];
@@ -63,8 +67,8 @@ void RB_BindImages( ID3D11DeviceContext1* pContext, idImage** pImages, int numIm
         pSamplers[i] = pImages[i]->GetSampler();
     }
 
-    pContext->PSSetShaderResources( 0, numImages, pSRVs );
-    pContext->PSSetSamplers( 0, numImages, pSamplers );
+    pContext->PSSetShaderResources( offset, numImages, pSRVs );
+    pContext->PSSetSamplers( offset, numImages, pSamplers );
 }
 
 /*
@@ -504,7 +508,7 @@ static void RB_DrawStageCustomVFP(
 
     pContext->VSSetShader( pVertexShader, nullptr, 0 );
     pContext->PSSetShader( pPixelShader, nullptr, 0 );
-    RB_BindImages( pContext, pImages, newStage->numFragmentProgramImages );
+    RB_BindImages( pContext, pImages, 0, newStage->numFragmentProgramImages );
 
 	// draw it
 	RB_DrawElementsWithCounters( pContext, surf );
@@ -706,7 +710,7 @@ static void RB_FillDepthBufferGeneric( ID3D11DeviceContext1* pContext, const dra
 				// bind the textures
                 pImages[0] = pStage->texture.image;
                 int numImages = RB_PrepareStageTexturing( pStage, drawSurf, &shaderToUse, pImages );
-                RB_BindImages( pContext, pImages, numImages );
+                RB_BindImages( pContext, pImages, 0, numImages );
 
                 // bind the shaders
                 pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( shaderToUse ), nullptr, 0 );
@@ -861,23 +865,407 @@ static void RB_FillDepthBufferFast( ID3D11DeviceContext1* pContext, drawSurf_t *
 }
 
 /*
-=============================================================================================
+==============================================================================================
 
-LIT SHADER PASSES
+STENCIL SHADOW RENDERING
 
-=============================================================================================
+==============================================================================================
 */
+#if 0
+/*
+=====================
+RB_StencilShadowPass
+
+The stencil buffer should have been set to 128 on any surfaces that might receive shadows.
+=====================
+*/
+static void RB_StencilShadowPass( const drawSurf_t *drawSurfs, const viewLight_t * vLight ) {
+	if ( r_skipShadows.GetBool() ) {
+		return;
+	}
+
+	if ( drawSurfs == NULL ) {
+		return;
+	}
+
+	RENDERLOG_PRINTF( "---------- RB_StencilShadowPass ----------\n" );
+
+	renderProgManager.BindShader_Shadow();
+
+	GL_SelectTexture( 0 );
+	globalImages->BindNull();
+
+	uint64 glState = 0;
+
+	// for visualizing the shadows
+	if ( r_showShadows.GetInteger() ) {
+		// set the debug shadow color
+		SetFragmentParm( RENDERPARM_COLOR, colorMagenta.ToFloatPtr() );
+		if ( r_showShadows.GetInteger() == 2 ) {
+			// draw filled in
+			glState = GLS_DEPTHMASK | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_LESS;
+		} else {
+			// draw as lines, filling the depth buffer
+			glState = GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO | GLS_POLYMODE_LINE | GLS_DEPTHFUNC_ALWAYS;
+		}
+	} else {
+		// don't write to the color or depth buffer, just the stencil buffer
+		glState = GLS_DEPTHMASK | GLS_COLORMASK | GLS_ALPHAMASK | GLS_DEPTHFUNC_LESS;
+	}
+
+	GL_PolygonOffset( r_shadowPolygonFactor.GetFloat(), -r_shadowPolygonOffset.GetFloat() );
+
+	// the actual stencil func will be set in the draw code, but we need to make sure it isn't
+	// disabled here, and that the value will get reset for the interactions without looking
+	// like a no-change-required
+	GL_State( glState | GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_KEEP | GLS_STENCIL_OP_PASS_INCR | 
+		GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE ) | GLS_STENCIL_MAKE_MASK( STENCIL_SHADOW_MASK_VALUE ) | GLS_POLYGON_OFFSET );
+
+	// Two Sided Stencil reduces two draw calls to one for slightly faster shadows
+	GL_Cull( CT_TWO_SIDED );
+
+
+	// process the chain of shadows with the current rendering state
+	backEnd.currentSpace = NULL;
+
+	for ( const drawSurf_t * drawSurf = drawSurfs; drawSurf != NULL; drawSurf = drawSurf->nextOnLight ) {
+		if ( drawSurf->scissorRect.IsEmpty() ) {
+			continue;	// !@# FIXME: find out why this is sometimes being hit!
+						// temporarily jump over the scissor and draw so the gl error callback doesn't get hit
+		}
+
+		// make sure the shadow volume is done
+		if ( drawSurf->shadowVolumeState != SHADOWVOLUME_DONE ) {
+			assert( drawSurf->shadowVolumeState == SHADOWVOLUME_UNFINISHED || drawSurf->shadowVolumeState == SHADOWVOLUME_DONE );
+
+			uint64 start = Sys_Microseconds();
+			while ( drawSurf->shadowVolumeState == SHADOWVOLUME_UNFINISHED ) {
+				Sys_Yield();
+			}
+			uint64 end = Sys_Microseconds();
+
+			backEnd.pc.shadowMicroSec += end - start;
+		}
+
+		if ( drawSurf->numIndexes == 0 ) {
+			continue;	// a job may have created an empty shadow volume
+		}
+
+		if ( !backEnd.currentScissor.Equals( drawSurf->scissorRect ) && r_useScissor.GetBool() ) {
+			// change the scissor
+			GL_Scissor( backEnd.viewDef->viewport.x1 + drawSurf->scissorRect.x1,
+						backEnd.viewDef->viewport.y1 + drawSurf->scissorRect.y1,
+						drawSurf->scissorRect.x2 + 1 - drawSurf->scissorRect.x1,
+						drawSurf->scissorRect.y2 + 1 - drawSurf->scissorRect.y1 );
+			backEnd.currentScissor = drawSurf->scissorRect;
+		}
+
+		if ( drawSurf->space != backEnd.currentSpace ) {
+			// change the matrix
+			RB_SetMVP( drawSurf->space->mvp );
+
+			// set the local light position to allow the vertex program to project the shadow volume end cap to infinity
+			idVec4 localLight( 0.0f );
+			R_GlobalPointToLocal( drawSurf->space->modelMatrix, vLight->globalLightOrigin, localLight.ToVec3() );
+			SetVertexParm( RENDERPARM_LOCALLIGHTORIGIN, localLight.ToFloatPtr() );
+
+			backEnd.currentSpace = drawSurf->space;
+		}
+
+		if ( r_showShadows.GetInteger() == 0 ) {
+			if ( drawSurf->jointCache ) {
+				renderProgManager.BindShader_ShadowSkinned();
+			} else {
+				renderProgManager.BindShader_Shadow();
+			}
+		} else {
+			if ( drawSurf->jointCache ) {
+				renderProgManager.BindShader_ShadowDebugSkinned();
+			} else {
+				renderProgManager.BindShader_ShadowDebug();
+			}
+		}
+
+		// set depth bounds per shadow
+		if ( r_useShadowDepthBounds.GetBool() ) {
+			GL_DepthBoundsTest( drawSurf->scissorRect.zmin, drawSurf->scissorRect.zmax );
+		}
+
+		// Determine whether or not the shadow volume needs to be rendered with Z-pass or
+		// Z-fail. It is worthwhile to spend significant resources to reduce the number of
+		// cases where shadow volumes need to be rendered with Z-fail because Z-fail
+		// rendering can be significantly slower even on today's hardware. For instance,
+		// on NVIDIA hardware Z-fail rendering causes the Z-Cull to be used in reverse:
+		// Z-near becomes Z-far (trivial accept becomes trivial reject). Using the Z-Cull
+		// in reverse is far less efficient because the Z-Cull only stores Z-near per 16x16
+		// pixels while the Z-far is stored per 4x2 pixels. (The Z-near coallesce buffer
+		// which has 4x4 granularity is only used when updating the depth which is not the
+		// case for shadow volumes.) Note that it is also important to NOT use a Z-Cull
+		// reconstruct because that would clear the Z-near of the Z-Cull which results in
+		// no trivial rejection for Z-fail stencil shadow rendering.
+
+		const bool renderZPass = ( drawSurf->renderZFail == 0 ) || r_forceZPassStencilShadows.GetBool();
+
+
+		if ( renderZPass ) {
+			// Z-pass
+			qglStencilOpSeparate( GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR );
+			qglStencilOpSeparate( GL_BACK, GL_KEEP, GL_KEEP, GL_DECR );
+		} else if ( r_useStencilShadowPreload.GetBool() ) {
+			// preload + Z-pass
+			qglStencilOpSeparate( GL_FRONT, GL_KEEP, GL_DECR, GL_DECR );
+			qglStencilOpSeparate( GL_BACK, GL_KEEP, GL_INCR, GL_INCR );
+		} else {
+			// Z-fail
+		}
+
+
+		// get vertex buffer
+		const vertCacheHandle_t vbHandle = drawSurf->shadowCache;
+		idVertexBuffer * vertexBuffer;
+		if ( vertexCache.CacheIsStatic( vbHandle ) ) {
+			vertexBuffer = &vertexCache.staticData.vertexBuffer;
+		} else {
+			const uint64 frameNum = (int)( vbHandle >> VERTCACHE_FRAME_SHIFT ) & VERTCACHE_FRAME_MASK;
+			if ( frameNum != ( ( vertexCache.currentFrame - 1 ) & VERTCACHE_FRAME_MASK ) ) {
+				idLib::Warning( "RB_DrawElementsWithCounters, vertexBuffer == NULL" );
+				continue;
+			}
+			vertexBuffer = &vertexCache.frameData[vertexCache.drawListNum].vertexBuffer;
+		}
+		const int vertOffset = (int)( vbHandle >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK;
+
+		// get index buffer
+		const vertCacheHandle_t ibHandle = drawSurf->indexCache;
+		idIndexBuffer * indexBuffer;
+		if ( vertexCache.CacheIsStatic( ibHandle ) ) {
+			indexBuffer = &vertexCache.staticData.indexBuffer;
+		} else {
+			const uint64 frameNum = (int)( ibHandle >> VERTCACHE_FRAME_SHIFT ) & VERTCACHE_FRAME_MASK;
+			if ( frameNum != ( ( vertexCache.currentFrame - 1 ) & VERTCACHE_FRAME_MASK ) ) {
+				idLib::Warning( "RB_DrawElementsWithCounters, indexBuffer == NULL" );
+				continue;
+			}
+			indexBuffer = &vertexCache.frameData[vertexCache.drawListNum].indexBuffer;
+		}
+		const uint64 indexOffset = (int)( ibHandle >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK;
+
+		RENDERLOG_PRINTF( "Binding Buffers: %p %p\n", vertexBuffer, indexBuffer );
+
+
+		if ( backEnd.glState.currentIndexBuffer != (GLuint)indexBuffer->GetAPIObject() || !r_useStateCaching.GetBool() ) {
+			qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, (GLuint)indexBuffer->GetAPIObject() );
+			backEnd.glState.currentIndexBuffer = (GLuint)indexBuffer->GetAPIObject();
+		}
+
+		if ( drawSurf->jointCache ) {
+			assert( renderProgManager.ShaderUsesJoints() );
+
+			idJointBuffer jointBuffer;
+			if ( !vertexCache.GetJointBuffer( drawSurf->jointCache, &jointBuffer ) ) {
+				idLib::Warning( "RB_DrawElementsWithCounters, jointBuffer == NULL" );
+				continue;
+			}
+			assert( ( jointBuffer.GetOffset() & ( glConfig.uniformBufferOffsetAlignment - 1 ) ) == 0 );
+
+			const GLuint ubo = reinterpret_cast< GLuint >( jointBuffer.GetAPIObject() );
+			qglBindBufferRange( GL_UNIFORM_BUFFER, 0, ubo, jointBuffer.GetOffset(), jointBuffer.GetNumJoints() * sizeof( idJointMat ) );
+
+			if ( ( backEnd.glState.vertexLayout != LAYOUT_DRAW_SHADOW_VERT_SKINNED) || ( backEnd.glState.currentVertexBuffer != (GLuint)vertexBuffer->GetAPIObject() ) || !r_useStateCaching.GetBool() ) {
+				qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)vertexBuffer->GetAPIObject() );
+				backEnd.glState.currentVertexBuffer = (GLuint)vertexBuffer->GetAPIObject();
+
+				qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_VERTEX );
+				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_NORMAL );
+				qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR );
+				qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR2 );
+				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_ST );
+				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_TANGENT );
+
+				qglVertexAttribPointerARB( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVertSkinned ), (void *)( SHADOWVERTSKINNED_XYZW_OFFSET ) );
+				qglVertexAttribPointerARB( PC_ATTRIB_INDEX_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), (void *)( SHADOWVERTSKINNED_COLOR_OFFSET ) );
+				qglVertexAttribPointerARB( PC_ATTRIB_INDEX_COLOR2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), (void *)( SHADOWVERTSKINNED_COLOR2_OFFSET ) );
+
+				backEnd.glState.vertexLayout = LAYOUT_DRAW_SHADOW_VERT_SKINNED;
+			}
+
+		} else {
+
+			if ( ( backEnd.glState.vertexLayout != LAYOUT_DRAW_SHADOW_VERT ) || ( backEnd.glState.currentVertexBuffer != (GLuint)vertexBuffer->GetAPIObject() ) || !r_useStateCaching.GetBool() ) {
+				qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)vertexBuffer->GetAPIObject() );
+				backEnd.glState.currentVertexBuffer = (GLuint)vertexBuffer->GetAPIObject();
+
+				qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_VERTEX );
+				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_NORMAL );
+				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR );
+				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR2 );
+				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_ST );
+				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_TANGENT );
+
+				qglVertexAttribPointerARB( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVert ), (void *)( SHADOWVERT_XYZW_OFFSET ) );
+
+				backEnd.glState.vertexLayout = LAYOUT_DRAW_SHADOW_VERT;
+			}
+		}
+
+		renderProgManager.CommitUniforms();
+
+		if ( drawSurf->jointCache ) {
+			qglDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, (triIndex_t *)indexOffset, vertOffset / sizeof( idShadowVertSkinned ) );
+		} else {
+			qglDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, (triIndex_t *)indexOffset, vertOffset / sizeof( idShadowVert ) );
+		}
+
+		if ( !renderZPass && r_useStencilShadowPreload.GetBool() ) {
+			// render again with Z-pass
+			qglStencilOpSeparate( GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR );
+			qglStencilOpSeparate( GL_BACK, GL_KEEP, GL_KEEP, GL_DECR );
+
+			if ( drawSurf->jointCache ) {
+				qglDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, (triIndex_t *)indexOffset, vertOffset / sizeof ( idShadowVertSkinned ) );
+			} else {
+				qglDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, (triIndex_t *)indexOffset, vertOffset / sizeof ( idShadowVert ) );
+			}
+		}
+	}
+
+	// cleanup the shadow specific rendering state
+
+	GL_Cull( CT_FRONT_SIDED );
+
+	// reset depth bounds
+	if ( r_useShadowDepthBounds.GetBool() ) {
+		if ( r_useLightDepthBounds.GetBool() ) {
+			GL_DepthBoundsTest( vLight->scissorRect.zmin, vLight->scissorRect.zmax );
+		} else {
+			GL_DepthBoundsTest( 0.0f, 0.0f );
+		}
+	}
+}
+
+/*
+==================
+RB_StencilSelectLight
+
+Deform the zeroOneCubeModel to exactly cover the light volume. Render the deformed cube model to the stencil buffer in
+such a way that only fragments that are directly visible and contained within the volume will be written creating a 
+mask to be used by the following stencil shadow and draw interaction passes.
+==================
+*/
+static void RB_StencilSelectLight( const viewLight_t * vLight ) {
+	renderLog.OpenBlock( "Stencil Select" );
+
+	// enable the light scissor
+	if ( !backEnd.currentScissor.Equals( vLight->scissorRect ) && r_useScissor.GetBool() ) {
+		GL_Scissor( backEnd.viewDef->viewport.x1 + vLight->scissorRect.x1, 
+					backEnd.viewDef->viewport.y1 + vLight->scissorRect.y1,
+					vLight->scissorRect.x2 + 1 - vLight->scissorRect.x1,
+					vLight->scissorRect.y2 + 1 - vLight->scissorRect.y1 );
+		backEnd.currentScissor = vLight->scissorRect;
+	}
+
+	// clear stencil buffer to 0 (not drawable)
+	uint64 glStateMinusStencil = GL_GetCurrentStateMinusStencil();
+	GL_State( glStateMinusStencil | GLS_STENCIL_FUNC_ALWAYS | GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE ) | GLS_STENCIL_MAKE_MASK( STENCIL_SHADOW_MASK_VALUE ) );	// make sure stencil mask passes for the clear
+	GL_Clear( false, false, true, 0, 0.0f, 0.0f, 0.0f, 0.0f );	// clear to 0 for stencil select
+
+	// set the depthbounds
+	GL_DepthBoundsTest( vLight->scissorRect.zmin, vLight->scissorRect.zmax );
+
+
+	GL_State( GLS_COLORMASK | GLS_ALPHAMASK | GLS_DEPTHMASK | GLS_DEPTHFUNC_LESS | GLS_STENCIL_FUNC_ALWAYS | GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE ) | GLS_STENCIL_MAKE_MASK( STENCIL_SHADOW_MASK_VALUE ) );
+	GL_Cull( CT_TWO_SIDED );
+
+	renderProgManager.BindShader_Depth();
+
+	// set the matrix for deforming the 'zeroOneCubeModel' into the frustum to exactly cover the light volume
+	idRenderMatrix invProjectMVPMatrix;
+	idRenderMatrix::Multiply( backEnd.viewDef->worldSpace.mvp, vLight->inverseBaseLightProject, invProjectMVPMatrix );
+	RB_SetMVP( invProjectMVPMatrix );
+
+	// two-sided stencil test
+	qglStencilOpSeparate( GL_FRONT, GL_KEEP, GL_REPLACE, GL_ZERO );
+	qglStencilOpSeparate( GL_BACK, GL_KEEP, GL_ZERO, GL_REPLACE );
+
+	RB_DrawElementsWithCounters( &backEnd.zeroOneCubeSurface );
+
+	// reset stencil state
+
+	GL_Cull( CT_FRONT_SIDED );
+
+	renderProgManager.Unbind();
+
+
+	// unset the depthbounds
+	GL_DepthBoundsTest( 0.0f, 0.0f );
+
+	renderLog.CloseBlock();
+}
+#endif
+
+/*
+=========================================================================================
+
+GENERAL INTERACTION RENDERING
+
+=========================================================================================
+*/
+
+const int INTERACTION_TEXUNIT_FALLOFF		= 0;
+const int INTERACTION_TEXUNIT_PROJECTION	= 1;
+const int INTERACTION_TEXUNIT_BUMP			= 2;
+const int INTERACTION_TEXUNIT_DIFFUSE		= 3;
+const int INTERACTION_TEXUNIT_SPECULAR		= 4;
+
+/*
+=====================
+RB_BakeTextureMatrixIntoTexgen
+=====================
+*/
+static void RB_BakeTextureMatrixIntoTexgen( idPlane lightProject[3], const float *textureMatrix ) {
+	float genMatrix[16];
+	float final[16];
+
+	genMatrix[0*4+0] = lightProject[0][0];
+	genMatrix[1*4+0] = lightProject[0][1];
+	genMatrix[2*4+0] = lightProject[0][2];
+	genMatrix[3*4+0] = lightProject[0][3];
+
+	genMatrix[0*4+1] = lightProject[1][0];
+	genMatrix[1*4+1] = lightProject[1][1];
+	genMatrix[2*4+1] = lightProject[1][2];
+	genMatrix[3*4+1] = lightProject[1][3];
+
+	genMatrix[0*4+2] = 0.0f;
+	genMatrix[1*4+2] = 0.0f;
+	genMatrix[2*4+2] = 0.0f;
+	genMatrix[3*4+2] = 0.0f;
+
+	genMatrix[0*4+3] = lightProject[2][0];
+	genMatrix[1*4+3] = lightProject[2][1];
+	genMatrix[2*4+3] = lightProject[2][2];
+	genMatrix[3*4+3] = lightProject[2][3];
+
+	R_MatrixMultiply( genMatrix, textureMatrix, final );
+
+	lightProject[0][0] = final[0*4+0];
+	lightProject[0][1] = final[1*4+0];
+	lightProject[0][2] = final[2*4+0];
+	lightProject[0][3] = final[3*4+0];
+
+	lightProject[1][0] = final[0*4+1];
+	lightProject[1][1] = final[1*4+1];
+	lightProject[1][2] = final[2*4+1];
+	lightProject[1][3] = final[3*4+1];
+}
 
 /*
 ==================
 RB_SetupInteractionStage
 ==================
 */
-static void RB_SetupInteractionStage( 
-    const shaderStage_t *surfaceStage, 
-    const float *surfaceRegs, 
-    idVec4 matrix[2],
-    float* color ) {
+static void RB_SetupInteractionStage( const shaderStage_t *surfaceStage, const float *surfaceRegs, const float lightColor[4],
+									idVec4 matrix[2], float color[4] ) {
 
 	if ( surfaceStage->texture.hasMatrix ) {
 		matrix[0][0] = surfaceRegs[surfaceStage->texture.matrix[0][0]];
@@ -915,38 +1303,9 @@ static void RB_SetupInteractionStage(
 			// clamp here, so cards with a greater range don't look different.
 			// we could perform overbrighting like we do for lights, but
 			// it doesn't currently look worth it.
-			color[i] = idMath::ClampFloat( 0.0f, 1.0f, surfaceRegs[surfaceStage->color.registers[i]] );
+			color[i] = idMath::ClampFloat( 0.0f, 1.0f, surfaceRegs[surfaceStage->color.registers[i]] ) * lightColor[i];
 		}
 	}
-}
-
-/*
-=================
-RB_SetupForFastPathInteractions
-
-These are common for all fast path surfaces
-=================
-*/
-static void RB_SetupForFastPathInteractions( const idVec4 & diffuseColor, const idVec4 & specularColor ) {
-	const idVec4 sMatrix( 1, 0, 0, 0 );
-	const idVec4 tMatrix( 0, 1, 0, 0 );
-
-	// bump matrix
-	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_S, sMatrix.ToFloatPtr() );
-	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_T, tMatrix.ToFloatPtr() );
-
-	// diffuse matrix
-	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_S, sMatrix.ToFloatPtr() );
-	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_T, tMatrix.ToFloatPtr() );
-
-	// specular matrix
-	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_S, sMatrix.ToFloatPtr() );
-	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_T, tMatrix.ToFloatPtr() );
-
-	RB_SetVertexColorParms( SVC_IGNORE );
-
-	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMODIFIER, diffuseColor.ToFloatPtr() );
-	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMODIFIER, specularColor.ToFloatPtr() );
 }
 
 /*
@@ -954,7 +1313,10 @@ static void RB_SetupForFastPathInteractions( const idVec4 & diffuseColor, const 
 RB_DrawSingleInteraction
 =================
 */
-static void RB_DrawSingleInteraction( ID3D11DeviceContext1* pContext, drawInteraction_t * din ) {
+static void RB_DrawSingleInteraction( 
+    ID3D11DeviceContext1* pContext, 
+    drawInteraction_t * din ) {
+
 	if ( din->bumpImage == NULL ) {
 		// stage wasn't actually an interaction
 		return;
@@ -998,18 +1360,77 @@ static void RB_DrawSingleInteraction( ID3D11DeviceContext1* pContext, drawIntera
 	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMODIFIER, din->diffuseColor.ToFloatPtr() );
 	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMODIFIER, din->specularColor.ToFloatPtr() );
 
-	RB_BindImages( pContext, din->images, _countof( din->images ) );
-
+    RB_BindImages( pContext, din->images, INTERACTION_TEXUNIT_BUMP, _countof(din->images) );
 	RB_DrawElementsWithCounters( pContext, din->surf );
 }
 
-static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSurf_t * const * drawSurfs, int numDrawSurfs ) {
+/*
+=================
+RB_SetupForFastPathInteractions
 
-    idVec4 diffuseColor( 1 );
-    idVec4 specularColor( 1 );
+These are common for all fast path surfaces
+=================
+*/
+static void RB_SetupForFastPathInteractions( const idVec4 & diffuseColor, const idVec4 & specularColor ) {
+	const idVec4 sMatrix( 1, 0, 0, 0 );
+	const idVec4 tMatrix( 0, 1, 0, 0 );
+
+	// bump matrix
+	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_S, sMatrix.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_T, tMatrix.ToFloatPtr() );
+
+	// diffuse matrix
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_S, sMatrix.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_T, tMatrix.ToFloatPtr() );
+
+	// specular matrix
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_S, sMatrix.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_T, tMatrix.ToFloatPtr() );
+
+	RB_SetVertexColorParms( SVC_IGNORE );
+
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMODIFIER, diffuseColor.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMODIFIER, specularColor.ToFloatPtr() );
+}
+
+/*
+=============
+RB_RenderInteractions
+
+With added sorting and trivial path work.
+=============
+*/
+static void RB_RenderInteractions( ID3D11DeviceContext1* pContext, const drawSurf_t *surfList, const viewLight_t * vLight, int depthFunc, bool performStencilTest ) {
+	if ( surfList == NULL ) {
+		return;
+	}
+
+	// change the scissor if needed, it will be constant across all the surfaces lit by the light
+	if ( !backEnd.currentScissor.Equals( vLight->scissorRect ) && r_useScissor.GetBool() ) {
+		D3DDrv_SetScissor(  pContext,
+                            backEnd.viewDef->viewport.x1 + vLight->scissorRect.x1, 
+					        backEnd.viewDef->viewport.y1 + vLight->scissorRect.y1,
+					        vLight->scissorRect.x2 + 1 - vLight->scissorRect.x1,
+					        vLight->scissorRect.y2 + 1 - vLight->scissorRect.y1 );
+		backEnd.currentScissor = vLight->scissorRect;
+	}
+
+	// perform setup here that will be constant for all interactions
+    D3DDrv_SetBlendStateFromMask( pContext, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
+    D3DDrv_SetRasterizerStateFromMask( pContext, CT_FRONT_SIDED, 0 );
+
+    if ( performStencilTest ) {
+        D3DDrv_SetDepthStateFromMask( pContext, GLS_DEPTHMASK | depthFunc | GLS_DEPTH_STENCIL_PACKAGE_REF_EQUAL | GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE ) );
+	} else {
+        D3DDrv_SetDepthStateFromMask( pContext, GLS_DEPTHMASK | depthFunc );
+	}
+
+	// some rare lights have multiple animating stages, loop over them outside the surface list
+	const idMaterial * lightShader = vLight->lightShader;
+	const float * lightRegs = vLight->shaderRegisters;
 
 	drawInteraction_t inter = {};
-	inter.ambientLight = 0;
+	inter.ambientLight = lightShader->IsAmbientLight();
 
 	//---------------------------------
 	// Split out the complex surfaces from the fast-path surfaces
@@ -1018,195 +1439,362 @@ static void RB_DrawMaterialPasses( ID3D11DeviceContext1* pContext, const drawSur
 	// are added single-threaded, and there is only a negligable amount
 	// of benefit to trying to sort by materials.
 	//---------------------------------
-	static const int MAX_INTERACTIONS = 1024;
-	idStaticList< const drawSurf_t *, MAX_INTERACTIONS > allSurfaces;
-	idStaticList< const drawSurf_t *, MAX_INTERACTIONS > complexSurfaces;
-	for ( int i = 0; i < numDrawSurfs; i++ ) {
-		const drawSurf_t * drawSurf = drawSurfs[i];
-		const idMaterial * surfaceShader = drawSurf->material;
-		const float * regs = drawSurf->shaderRegisters;
+	static const int MAX_INTERACTIONS_PER_LIGHT = 1024;
+	static const int MAX_COMPLEX_INTERACTIONS_PER_LIGHT = 128;
+	idStaticList< const drawSurf_t *, MAX_INTERACTIONS_PER_LIGHT > allSurfaces;
+	idStaticList< const drawSurf_t *, MAX_COMPLEX_INTERACTIONS_PER_LIGHT > complexSurfaces;
+	for ( const drawSurf_t * walk = surfList; walk != NULL; walk = walk->nextOnLight ) {
 
-		// some deforms may disable themselves by setting numIndexes = 0
-		if ( drawSurf->numIndexes == 0 ) {
-			continue;
-		}
+		// make sure the triangle culling is done
+		if ( walk->shadowVolumeState != SHADOWVOLUME_DONE ) {
+			assert( walk->shadowVolumeState == SHADOWVOLUME_UNFINISHED || walk->shadowVolumeState == SHADOWVOLUME_DONE );
 
-		// we need to draw the post process shaders after we have drawn the fog lights
-		if ( surfaceShader->GetSort() >= SS_POST_PROCESS ) {
-			break;
-		}
-
-		// if all stages of a material have been conditioned off, don't do anything
-		int stage = 0;
-		for ( ; stage < surfaceShader->GetNumStages(); stage++ ) {		
-			const shaderStage_t * pStage = surfaceShader->GetStage( stage );
-			// check the stage enable condition
-			if ( regs[ pStage->conditionRegister ] != 0 ) {
-				break;
+			uint64 start = Sys_Microseconds();
+			while ( walk->shadowVolumeState == SHADOWVOLUME_UNFINISHED ) {
+				Sys_Yield();
 			}
+			uint64 end = Sys_Microseconds();
+
+			backEnd.pc.shadowMicroSec += end - start;
 		}
-		if ( stage == surfaceShader->GetNumStages() ) {
-			continue;
-		}
-        
+
+		const idMaterial * surfaceShader = walk->material;
 		if ( surfaceShader->GetFastPathBumpImage() ) {
-			allSurfaces.Append( drawSurf );
+			allSurfaces.Append( walk );
 		} else {
-			complexSurfaces.Append( drawSurf );
+			complexSurfaces.Append( walk );
 		}
 	}
 	for ( int i = 0; i < complexSurfaces.Num(); i++ ) {
 		allSurfaces.Append( complexSurfaces[i] );
 	}
 
-    //
-    // Set up the state
-    //
-    D3DDrv_SetRasterizerStateFromMask( pContext, CT_FRONT_SIDED, 0 );
-    D3DDrv_SetBlendStateFromMask( pContext, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
-    RB_SetupForFastPathInteractions( diffuseColor, specularColor );
+	for ( int lightStageNum = 0; lightStageNum < lightShader->GetNumStages(); lightStageNum++ ) {
+		const shaderStage_t	*lightStage = lightShader->GetStage( lightStageNum );
 
-    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( BUILTIN_SHADER_INTERACTION ), nullptr, 0 );
-
-	backEnd.currentSpace = NULL;
-
-    for ( int sortedSurfNum = 0; sortedSurfNum < allSurfaces.Num(); sortedSurfNum++ ) {
-		const drawSurf_t * const surf = allSurfaces[ sortedSurfNum ];
-		const idMaterial * surfaceShader = surf->material;
-		const float * surfaceRegs = surf->shaderRegisters;
-
-		inter.surf = surf;
-
-        //
-        // Set up the vertex shader
-        //
-        BUILTIN_SHADER vertexShader = 
-            ( surf->jointCache ) ?
-            BUILTIN_SHADER_INTERACTION_SKINNED :
-            BUILTIN_SHADER_INTERACTION;
-
-        bool translucent = false; // @pjb: todo
-        uint64 depthState = GLS_DEPTHMASK;
-
-        if ( translucent ) { 
-            depthState |= GLS_DEPTHFUNC_LESS;
-        } else {
-            depthState |= GLS_DEPTHFUNC_EQUAL;
-        }
-
-        D3DDrv_SetDepthStateFromMask( pContext, depthState );
-
-        pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( vertexShader ), nullptr, 0 );
-
-		// change the MVP matrix, view/light origin and light projection vectors if needed
-		if ( surf->space != backEnd.currentSpace ) {
-			backEnd.currentSpace = surf->space;
-
-			// model-view-projection
-			RB_SetMVP( surf->space->mvp );
-
-            // @pjb: todo: eye origin in local space?
-		}
-			
-		renderLog.OpenBlock( surf->material->GetName() );
-
-		// check for the fast path
-		if ( surfaceShader->GetFastPathBumpImage() && !r_skipInteractionFastPath.GetBool() ) {
-
-            inter.bumpImage = surfaceShader->GetFastPathBumpImage();
-            inter.diffuseImage = surfaceShader->GetFastPathDiffuseImage();
-            inter.specularImage = surfaceShader->GetFastPathSpecularImage();
-            RB_BindImages( pContext, inter.images, _countof( inter.images ) );
-
-			RB_DrawElementsWithCounters( pContext, surf );
-
-			renderLog.CloseBlock();
+		// ignore stages that fail the condition
+		if ( !lightRegs[ lightStage->conditionRegister ] ) {
 			continue;
 		}
 
-		inter.bumpImage = NULL;
-		inter.specularImage = NULL;
-		inter.diffuseImage = NULL;
-		inter.diffuseColor[0] = inter.diffuseColor[1] = inter.diffuseColor[2] = inter.diffuseColor[3] = 0;
-		inter.specularColor[0] = inter.specularColor[1] = inter.specularColor[2] = inter.specularColor[3] = 0;
+		const float lightScale = r_lightScale.GetFloat();
+		const idVec4 lightColor(
+			lightScale * lightRegs[ lightStage->color.registers[0] ],
+			lightScale * lightRegs[ lightStage->color.registers[1] ],
+			lightScale * lightRegs[ lightStage->color.registers[2] ],
+			lightRegs[ lightStage->color.registers[3] ] );
+		// apply the world-global overbright and the 2x factor for specular
+		const idVec4 diffuseColor = lightColor;
+		const idVec4 specularColor = lightColor * 2.0f;
 
-		// go through the individual surface stages
-		//
-		// This is somewhat arcane because of the old support for video cards that had to render
-		// interactions in multiple passes.
-		//
-		// We also have the very rare case of some materials that have conditional interactions
-		// for the "hell writing" that can be shined on them.
-		for ( int surfaceStageNum = 0; surfaceStageNum < surfaceShader->GetNumStages(); surfaceStageNum++ ) {
-			const shaderStage_t	*surfaceStage = surfaceShader->GetStage( surfaceStageNum );
+		float lightTextureMatrix[16];
+		if ( lightStage->texture.hasMatrix ) {
+			RB_GetShaderTextureMatrix( lightRegs, &lightStage->texture, lightTextureMatrix );
+		}
 
-			switch( surfaceStage->lighting ) {
-				case SL_COVERAGE: {
-					// ignore any coverage stages since they should only be used for the depth fill pass
-					// for diffuse stages that use alpha test.
-					break;
+        // Bind the lighting images
+        idImage* pLightImages[] = {
+            vLight->falloffImage,
+            lightStage->texture.image
+        };
+
+        RB_BindImages( pContext, pLightImages, INTERACTION_TEXUNIT_FALLOFF, _countof( pLightImages ) );
+
+		// force the light textures to not use anisotropic filtering, which is wasted on them
+		// all of the texture sampler parms should be constant for all interactions, only
+		// the actual texture image bindings will change
+
+		//----------------------------------
+		// For all surfaces on this light list, generate an interaction for this light stage
+		//----------------------------------
+
+		// setup renderparms assuming we will be drawing trivial surfaces first
+		RB_SetupForFastPathInteractions( diffuseColor, specularColor );
+
+		// even if the space does not change between light stages, each light stage may need a different lightTextureMatrix baked in
+		backEnd.currentSpace = NULL;
+
+		for ( int sortedSurfNum = 0; sortedSurfNum < allSurfaces.Num(); sortedSurfNum++ ) {
+			const drawSurf_t * const surf = allSurfaces[ sortedSurfNum ];
+
+			// select the render prog
+            BUILTIN_SHADER vshader, pshader;
+			if ( lightShader->IsAmbientLight() ) {
+                pshader = BUILTIN_SHADER_INTERACTION_AMBIENT; 
+
+				if ( surf->jointCache ) {
+					vshader = BUILTIN_SHADER_INTERACTION_AMBIENT_SKINNED;
+				} else {
+					vshader = BUILTIN_SHADER_INTERACTION_AMBIENT;
 				}
-				case SL_AMBIENT: {
-					// ignore ambient stages while drawing interactions
-					break;
+			} else {
+                pshader = BUILTIN_SHADER_INTERACTION; 
+
+				if ( surf->jointCache ) {
+					vshader = BUILTIN_SHADER_INTERACTION_SKINNED;
+				} else {
+					vshader = BUILTIN_SHADER_INTERACTION;
 				}
-				case SL_BUMP: {
-					// ignore stage that fails the condition
-					if ( !surfaceRegs[ surfaceStage->conditionRegister ] ) {
+			}
+
+            pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( vshader ), nullptr, 0 );
+            pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( pshader ), nullptr, 0 );
+
+			const idMaterial * surfaceShader = surf->material;
+			const float * surfaceRegs = surf->shaderRegisters;
+
+			inter.surf = surf;
+
+			// change the MVP matrix, view/light origin and light projection vectors if needed
+			if ( surf->space != backEnd.currentSpace ) {
+				backEnd.currentSpace = surf->space;
+
+				// model-view-projection
+				RB_SetMVP( surf->space->mvp );
+
+				// tranform the light/view origin into model local space
+				idVec4 localLightOrigin( 0.0f );
+				idVec4 localViewOrigin( 1.0f );
+				R_GlobalPointToLocal( surf->space->modelMatrix, vLight->globalLightOrigin, localLightOrigin.ToVec3() );
+				R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, localViewOrigin.ToVec3() );
+
+				// set the local light/view origin
+				renderProgManager.SetRenderParm( RENDERPARM_LOCALLIGHTORIGIN, localLightOrigin.ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_LOCALVIEWORIGIN, localViewOrigin.ToFloatPtr() );
+
+				// transform the light project into model local space
+				idPlane lightProjection[4];
+				for ( int i = 0; i < 4; i++ ) {
+					R_GlobalPlaneToLocal( surf->space->modelMatrix, vLight->lightProject[i], lightProjection[i] );
+				}
+
+				// optionally multiply the local light projection by the light texture matrix
+				if ( lightStage->texture.hasMatrix ) {
+					RB_BakeTextureMatrixIntoTexgen( lightProjection, lightTextureMatrix );
+				}
+
+				// set the light projection
+				renderProgManager.SetRenderParm( RENDERPARM_LIGHTPROJECTION_S, lightProjection[0].ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_LIGHTPROJECTION_T, lightProjection[1].ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_LIGHTPROJECTION_Q, lightProjection[2].ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_LIGHTFALLOFF_S, lightProjection[3].ToFloatPtr() );
+			}
+
+			// check for the fast path
+			if ( surfaceShader->GetFastPathBumpImage() && !r_skipInteractionFastPath.GetBool() ) {
+				renderLog.OpenBlock( surf->material->GetName() );
+
+                // Bind the images and draw
+                idImage* pMaterialImages[] = {
+                    surfaceShader->GetFastPathBumpImage(),
+                    surfaceShader->GetFastPathDiffuseImage(),
+                    surfaceShader->GetFastPathSpecularImage()
+                };
+                RB_BindImages( pContext, pMaterialImages, INTERACTION_TEXUNIT_BUMP, _countof( pMaterialImages ) );
+
+				RB_DrawElementsWithCounters( pContext, surf );
+
+				renderLog.CloseBlock();
+				continue;
+			}
+			
+			renderLog.OpenBlock( surf->material->GetName() );
+
+			inter.bumpImage = NULL;
+			inter.specularImage = NULL;
+			inter.diffuseImage = NULL;
+			inter.diffuseColor[0] = inter.diffuseColor[1] = inter.diffuseColor[2] = inter.diffuseColor[3] = 0;
+			inter.specularColor[0] = inter.specularColor[1] = inter.specularColor[2] = inter.specularColor[3] = 0;
+
+			// go through the individual surface stages
+			//
+			// This is somewhat arcane because of the old support for video cards that had to render
+			// interactions in multiple passes.
+			//
+			// We also have the very rare case of some materials that have conditional interactions
+			// for the "hell writing" that can be shined on them.
+			for ( int surfaceStageNum = 0; surfaceStageNum < surfaceShader->GetNumStages(); surfaceStageNum++ ) {
+				const shaderStage_t	*surfaceStage = surfaceShader->GetStage( surfaceStageNum );
+
+				switch( surfaceStage->lighting ) {
+					case SL_COVERAGE: {
+						// ignore any coverage stages since they should only be used for the depth fill pass
+						// for diffuse stages that use alpha test.
 						break;
 					}
-					// draw any previous interaction
-					if ( inter.bumpImage != NULL ) {
-						RB_DrawSingleInteraction( pContext, &inter );
-					}
-					inter.bumpImage = surfaceStage->texture.image;
-					inter.diffuseImage = NULL;
-					inter.specularImage = NULL;
-					RB_SetupInteractionStage( surfaceStage, surfaceRegs, inter.bumpMatrix, nullptr );
-					break;
-				}
-				case SL_DIFFUSE: {
-					// ignore stage that fails the condition
-					if ( !surfaceRegs[ surfaceStage->conditionRegister ] ) {
+					case SL_AMBIENT: {
+						// ignore ambient stages while drawing interactions
 						break;
 					}
-					// draw any previous interaction
-					if ( inter.diffuseImage != NULL ) {
-						RB_DrawSingleInteraction( pContext, &inter );
-					}
-					inter.diffuseImage = surfaceStage->texture.image;
-					inter.vertexColor = surfaceStage->vertexColor;
-					RB_SetupInteractionStage( surfaceStage, surfaceRegs, inter.diffuseMatrix, inter.diffuseColor.ToFloatPtr() );
-					break;
-				}
-				case SL_SPECULAR: {
-					// ignore stage that fails the condition
-					if ( !surfaceRegs[ surfaceStage->conditionRegister ] ) {
+					case SL_BUMP: {
+						// ignore stage that fails the condition
+						if ( !surfaceRegs[ surfaceStage->conditionRegister ] ) {
+							break;
+						}
+						// draw any previous interaction
+						if ( inter.bumpImage != NULL ) {
+							RB_DrawSingleInteraction( pContext, &inter );
+						}
+						inter.bumpImage = surfaceStage->texture.image;
+						inter.diffuseImage = NULL;
+						inter.specularImage = NULL;
+						RB_SetupInteractionStage( surfaceStage, surfaceRegs, NULL,
+												inter.bumpMatrix, NULL );
 						break;
 					}
-					// draw any previous interaction
-					if ( inter.specularImage != NULL ) {
-						RB_DrawSingleInteraction( pContext, &inter );
+					case SL_DIFFUSE: {
+						// ignore stage that fails the condition
+						if ( !surfaceRegs[ surfaceStage->conditionRegister ] ) {
+							break;
+						}
+						// draw any previous interaction
+						if ( inter.diffuseImage != NULL ) {
+							RB_DrawSingleInteraction( pContext, &inter );
+						}
+						inter.diffuseImage = surfaceStage->texture.image;
+						inter.vertexColor = surfaceStage->vertexColor;
+						RB_SetupInteractionStage( surfaceStage, surfaceRegs, diffuseColor.ToFloatPtr(),
+												inter.diffuseMatrix, inter.diffuseColor.ToFloatPtr() );
+						break;
 					}
-					inter.specularImage = surfaceStage->texture.image;
-					inter.vertexColor = surfaceStage->vertexColor;
-					RB_SetupInteractionStage( surfaceStage, surfaceRegs, inter.specularMatrix, inter.specularColor.ToFloatPtr() );
-					break;
+					case SL_SPECULAR: {
+						// ignore stage that fails the condition
+						if ( !surfaceRegs[ surfaceStage->conditionRegister ] ) {
+							break;
+						}
+						// draw any previous interaction
+						if ( inter.specularImage != NULL ) {
+							RB_DrawSingleInteraction( pContext, &inter );
+						}
+						inter.specularImage = surfaceStage->texture.image;
+						inter.vertexColor = surfaceStage->vertexColor;
+						RB_SetupInteractionStage( surfaceStage, surfaceRegs, specularColor.ToFloatPtr(),
+												inter.specularMatrix, inter.specularColor.ToFloatPtr() );
+						break;
+					}
 				}
+			}
+
+			// draw the final interaction
+			RB_DrawSingleInteraction( pContext, &inter );
+
+			renderLog.CloseBlock();
+		}
+	}
+}
+
+static void RB_DrawInteractions( ID3D11DeviceContext1* pContext ) {
+	if ( r_skipInteractions.GetBool() ) {
+		return;
+	}
+
+	renderLog.OpenMainBlock( MRB_DRAW_INTERACTIONS );
+	renderLog.OpenBlock( "RB_DrawInteractions" );
+
+	//
+	// for each light, perform shadowing and adding
+	//
+	for ( const viewLight_t * vLight = backEnd.viewDef->viewLights; vLight != NULL; vLight = vLight->next ) {
+		// do fogging later
+		if ( vLight->lightShader->IsFogLight() ) {
+			continue;
+		}
+		if ( vLight->lightShader->IsBlendLight() ) {
+			continue;
+		}
+
+		if ( vLight->localInteractions == NULL && vLight->globalInteractions == NULL && vLight->translucentInteractions == NULL ) {
+			continue;
+		}
+
+		const idMaterial * lightShader = vLight->lightShader;
+		renderLog.OpenBlock( lightShader->GetName() );
+
+		// only need to clear the stencil buffer and perform stencil testing if there are shadows
+		const bool performStencilTest = ( vLight->globalShadows != NULL || vLight->localShadows != NULL );
+
+		// mirror flips the sense of the stencil select, and I don't want to risk accidentally breaking it
+		// in the normal case, so simply disable the stencil select in the mirror case
+		const bool useLightStencilSelect = ( r_useLightStencilSelect.GetBool() && backEnd.viewDef->isMirror == false );
+
+		if ( performStencilTest ) {
+			if ( useLightStencilSelect ) {
+				// write a stencil mask for the visible light bounds to hi-stencil
+// @pjb: todo				RB_StencilSelectLight( pContext, vLight );
+			} else {
+				// always clear whole S-Cull tiles
+				idScreenRect rect;
+				rect.x1 = ( vLight->scissorRect.x1 +  0 ) & ~15;
+				rect.y1 = ( vLight->scissorRect.y1 +  0 ) & ~15;
+				rect.x2 = ( vLight->scissorRect.x2 + 15 ) & ~15;
+				rect.y2 = ( vLight->scissorRect.y2 + 15 ) & ~15;
+
+				if ( !backEnd.currentScissor.Equals( rect ) && r_useScissor.GetBool() ) {
+		            D3DDrv_SetScissor( pContext,
+					            backEnd.viewDef->viewport.x1 + rect.x1,
+								backEnd.viewDef->viewport.y1 + rect.y1,
+								rect.x2 + 1 - rect.x1,
+								rect.y2 + 1 - rect.y1 );
+					backEnd.currentScissor = rect;
+				}
+
+                D3DDrv_SetBlendStateFromMask( pContext, 0 );
+                D3DDrv_SetDepthStateFromMask( pContext, 0 ); // make sure stencil mask passes for the clear
+                D3DDrv_Clear( pContext, CLEAR_STENCIL, nullptr, STENCIL_SHADOW_TEST_VALUE, 0 );
 			}
 		}
 
-        //
-        // Set up the state
-        //
-        RB_DrawSingleInteraction( pContext, &inter );
+		if ( vLight->globalShadows != NULL ) {
+			renderLog.OpenBlock( "Global Light Shadows" );
+// @pjb: todo			RB_StencilShadowPass( pContext, vLight->globalShadows, vLight );
+			renderLog.CloseBlock();
+		}
+
+		if ( vLight->localInteractions != NULL ) {
+			renderLog.OpenBlock( "Local Light Interactions" );
+			RB_RenderInteractions( pContext, vLight->localInteractions, vLight, GLS_DEPTHFUNC_EQUAL, performStencilTest );
+			renderLog.CloseBlock();
+		}
+
+		if ( vLight->localShadows != NULL ) {
+			renderLog.OpenBlock( "Local Light Shadows" );
+// @pjb: todo			RB_StencilShadowPass( pContext, vLight->localShadows, vLight );
+			renderLog.CloseBlock();
+		}
+
+		if ( vLight->globalInteractions != NULL ) {
+			renderLog.OpenBlock( "Global Light Interactions" );
+			RB_RenderInteractions( pContext, vLight->globalInteractions, vLight, GLS_DEPTHFUNC_EQUAL, performStencilTest );
+			renderLog.CloseBlock();
+		}
+
+
+		if ( vLight->translucentInteractions != NULL && !r_skipTranslucent.GetBool() ) {
+			renderLog.OpenBlock( "Translucent Interactions" );
+
+			// The depth buffer wasn't filled in for translucent surfaces, so they
+			// can never be constrained to perforated surfaces with the depthfunc equal.
+
+			// Translucent surfaces do not receive shadows. This is a case where a
+			// shadow buffer solution would work but stencil shadows do not because
+			// stencil shadows only affect surfaces that contribute to the view depth
+			// buffer and translucent surfaces do not contribute to the view depth buffer.
+
+			RB_RenderInteractions( pContext, vLight->translucentInteractions, vLight, GLS_DEPTHFUNC_LESS, false );
+
+			renderLog.CloseBlock();
+		}
 
 		renderLog.CloseBlock();
 	}
 
-    renderProgManager.SetRenderParm( RENDERPARM_ALPHA_TEST, vec4_zero.ToFloatPtr() );
-}
+	// disable stencil shadow test
+    D3DDrv_SetBlendStateFromMask( pContext, 0 );
+    D3DDrv_SetDepthStateFromMask( pContext, 0 );
 
+	renderLog.CloseBlock();
+	renderLog.CloseMainBlock();
+}
 
 /*
 =============================================================================================
@@ -1412,7 +2000,7 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext1* pContext, const drawSurf_t
                 idImage* pImages[16];
                 pImages[0] = nullptr;
 	            int numImages = RB_PrepareStageTexturing( pStage, surf, &shader, pImages );
-                RB_BindImages( pContext, pImages, numImages );
+                RB_BindImages( pContext, pImages, 0, numImages );
 
 			    RB_DrawStageBuiltInVFP( pContext, shader, surf, pStage, stageGLState );
             }
@@ -1529,9 +2117,7 @@ void RB_DrawViewInternal( const viewDef_t * viewDef ) {
 	//-------------------------------------------------
 	// draw the lit material passes
 	//-------------------------------------------------
-	if ( backEnd.viewDef->viewEntitys != NULL && numDrawSurfs > 0 ) {
-        RB_DrawMaterialPasses( pContext, drawSurfs, numDrawSurfs );
-    }
+	RB_DrawInteractions( pContext );
 
 	//-------------------------------------------------
 	// now draw any non-light dependent shading passes

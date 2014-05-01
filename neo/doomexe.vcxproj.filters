@@ -1177,6 +1177,12 @@
     <None Include="renderer\hlsl\global.inc">
       <Filter>Renderer\Shaders</Filter>
     </None>
+    <None Include="renderer\hlsl\interactionAmbient.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </None>
+    <None Include="renderer\hlsl\interaction.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="sys\win32\rc\doom.rc">
@@ -1235,12 +1241,6 @@
     <FxCompile Include="renderer\hlsl\heatHazeWithMaskAndVertex.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\interaction.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\interaction_skinned.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\motionBlur.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
@@ -1271,13 +1271,7 @@
     <FxCompile Include="renderer\hlsl\depth.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\depth_skinned.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\environment.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\environment_skinned.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\enviroSuit.pixel">
@@ -1295,9 +1289,6 @@
     <FxCompile Include="renderer\hlsl\heatHazeWithMaskAndVertex.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\interaction.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\motionBlur.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
@@ -1311,9 +1302,6 @@
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\texture_color.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
-    <FxCompile Include="renderer\hlsl\texture_color_skinned.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\texture_color_texgen.pixel">
@@ -1343,9 +1331,6 @@
     <FxCompile Include="renderer\hlsl\bumpyenvironment.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\bumpyenvironment_skinned.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </FxCompile>
     <FxCompile Include="renderer\hlsl\color.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
@@ -1353,6 +1338,18 @@
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
     <FxCompile Include="renderer\hlsl\bink.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\interactionAmbient_skinned.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\interaction.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\interaction_skinned.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\interactionAmbient.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
   </ItemGroup>

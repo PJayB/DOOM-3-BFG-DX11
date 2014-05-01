@@ -134,6 +134,8 @@ enum BUILTIN_SHADER {
 	BUILTIN_SHADER_TEXTURE_TEXGEN_VERTEXCOLOR,
 	BUILTIN_SHADER_INTERACTION,
 	BUILTIN_SHADER_INTERACTION_SKINNED,
+	BUILTIN_SHADER_INTERACTION_AMBIENT,
+	BUILTIN_SHADER_INTERACTION_AMBIENT_SKINNED,
 	BUILTIN_SHADER_ENVIRONMENT,
 	BUILTIN_SHADER_ENVIRONMENT_SKINNED,
 	BUILTIN_SHADER_BUMPY_ENVIRONMENT,
@@ -180,18 +182,18 @@ public:
     ID3D11PixelShader* GetPixelShader( int pshader ) const { return fragmentShaders[pshader].pShader; }
 
     void GetBuiltInVertexShaderByteCode( int vshader, const void** ppBlob, uint* length ) const {
-        *ppBlob = vertexShaders[builtinShaders[vshader]].pByteCode;
-        *length = vertexShaders[builtinShaders[vshader]].ByteCodeSize;
+        *ppBlob = vertexShaders[vshader].pByteCode;
+        *length = vertexShaders[vshader].ByteCodeSize;
     }
     
     ID3D11VertexShader* GetBuiltInVertexShader( int vshader ) const { 
         assert( vshader < MAX_BUILTIN_SHADERS );
-        return vertexShaders[builtinShaders[vshader]].pShader; 
+        return vertexShaders[vshader].pShader; 
     }
 
     ID3D11PixelShader* GetBuiltInPixelShader( int pshader ) const { 
         assert( pshader < MAX_BUILTIN_SHADERS );
-        return fragmentShaders[builtinShaders[pshader]].pShader; 
+        return fragmentShaders[pshader].pShader; 
     }
 
 	// the joints buffer should only be bound for vertex programs that use joints
@@ -208,8 +210,6 @@ protected:
 	void	LoadFragmentShader( int index );
 
     int     LoadShaderBlob( const char* name, void** ppOut, shaderType_t shaderType ) const;
-
-	int builtinShaders[MAX_BUILTIN_SHADERS];
 
 	struct vertexShader_t {
 					vertexShader_t() : pShader( nullptr ), pByteCode( nullptr ), usesJoints( false ), optionalSkinning( false ) {}

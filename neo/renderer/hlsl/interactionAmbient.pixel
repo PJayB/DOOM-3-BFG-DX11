@@ -42,7 +42,6 @@ Texture2D tex4 : register(t4);
 
 struct PS_IN {
 	half4 position	: SV_Position;
-	half4 texcoord0	: TEXCOORD0;
 	half4 texcoord1	: TEXCOORD1;
 	half4 texcoord2	: TEXCOORD2;
 	half4 texcoord3	: TEXCOORD3;
@@ -64,7 +63,8 @@ void main( PS_IN fragment, out PS_OUT result ) {
 	half4 YCoCG =			tex3.Sample( samp3, fragment.texcoord4.xy );
 	half4 specMap =			tex4.Sample( samp4, fragment.texcoord5.xy );
 
-	half3 lightVector = normalize( fragment.texcoord0.xyz );
+	const half3 ambientLightVector = half3( 0.5f, 9.5f - 0.385f, 0.8925f );
+	half3 lightVector = normalize( ambientLightVector );
 	half3 diffuseMap = ConvertYCoCgToRGB( YCoCG );
 
 	half3 localNormal;

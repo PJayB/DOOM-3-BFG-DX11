@@ -67,14 +67,20 @@ idRenderProgManager::Init()
 void idRenderProgManager::Init() {
 	common->Printf( "----- Initializing Render Shaders -----\n" );
 
+	vertexShaders.SetNum( MAX_BUILTIN_SHADERS );
+	fragmentShaders.SetNum( MAX_BUILTIN_SHADERS );
 
 	for ( int i = 0; i < MAX_BUILTIN_SHADERS; i++ ) {
-		builtinShaders[i] = -1;
+        vertexShaders[i].pShader = nullptr;
+        fragmentShaders[i].pShader = nullptr;
 	}
+
 	struct builtinShaders_t {
 		int index;
 		const char * name;
-	} builtins[] = {
+	};
+    
+    builtinShaders_t builtinVs[] = {
 		{ BUILTIN_SHADER_GUI, "gui.vfp" },
 		{ BUILTIN_SHADER_COLOR, "color.vfp" },
 		{ BUILTIN_SHADER_TEXTURED, "texture.vfp" },
@@ -83,6 +89,8 @@ void idRenderProgManager::Init() {
 		{ BUILTIN_SHADER_TEXTURE_TEXGEN_VERTEXCOLOR, "texture_color_texgen.vfp" },
 		{ BUILTIN_SHADER_INTERACTION, "interaction.vfp" },
 		{ BUILTIN_SHADER_INTERACTION_SKINNED, "interaction_skinned.vfp" },
+		{ BUILTIN_SHADER_INTERACTION_AMBIENT, "interactionAMBIENT.vfp" },
+		{ BUILTIN_SHADER_INTERACTION_AMBIENT_SKINNED, "interactionAMBIENT_skinned.vfp" },
 		{ BUILTIN_SHADER_ENVIRONMENT, "environment.vfp" },
 		{ BUILTIN_SHADER_ENVIRONMENT_SKINNED, "environment_skinned.vfp" },
 		{ BUILTIN_SHADER_BUMPY_ENVIRONMENT, "bumpyEnvironment.vfp" },
@@ -98,23 +106,52 @@ void idRenderProgManager::Init() {
 		{ BUILTIN_SHADER_BINK_GUI, "bink_gui.vfp" },
 		{ BUILTIN_SHADER_MOTION_BLUR, "motionBlur.vfp" },
 	};
-	int numBuiltins = sizeof( builtins ) / sizeof( builtins[0] );
-	vertexShaders.SetNum( numBuiltins );
-	fragmentShaders.SetNum( numBuiltins );
 
-	for ( int i = 0; i < numBuiltins; i++ ) {
-		vertexShaders[i].name = builtins[i].name;
-		fragmentShaders[i].name = builtins[i].name;
-		builtinShaders[builtins[i].index] = i;
-		LoadVertexShader( i );
-		LoadFragmentShader( i );
+    builtinShaders_t builtinFs[] = {
+		{ BUILTIN_SHADER_GUI, "gui.vfp" },
+		{ BUILTIN_SHADER_COLOR, "color.vfp" },
+		{ BUILTIN_SHADER_TEXTURED, "texture.vfp" },
+		{ BUILTIN_SHADER_TEXTURE_VERTEXCOLOR, "texture_color.vfp" },
+		{ BUILTIN_SHADER_TEXTURE_TEXGEN_VERTEXCOLOR, "texture_color_texgen.vfp" },
+		{ BUILTIN_SHADER_INTERACTION, "interaction.vfp" },
+		{ BUILTIN_SHADER_INTERACTION_AMBIENT, "interactionAMBIENT.vfp" },
+		{ BUILTIN_SHADER_ENVIRONMENT, "environment.vfp" },
+		{ BUILTIN_SHADER_BUMPY_ENVIRONMENT, "bumpyEnvironment.vfp" },
+		{ BUILTIN_SHADER_DEPTH, "depth.vfp" },
+		{ BUILTIN_SHADER_SKYBOX, "skybox.vfp" },
+		{ BUILTIN_SHADER_WOBBLESKY, "wobblesky.vfp" },
+		{ BUILTIN_SHADER_POSTPROCESS, "postprocess.vfp" },
+		{ BUILTIN_SHADER_BINK, "bink.vfp" },
+		{ BUILTIN_SHADER_BINK_GUI, "bink_gui.vfp" },
+		{ BUILTIN_SHADER_MOTION_BLUR, "motionBlur.vfp" },
+	};
+
+    BUILTIN_SHADER builtinSkinned[] = {
+        BUILTIN_SHADER_TEXTURE_VERTEXCOLOR_SKINNED,
+        BUILTIN_SHADER_INTERACTION_SKINNED,
+        BUILTIN_SHADER_INTERACTION_AMBIENT_SKINNED,
+        BUILTIN_SHADER_ENVIRONMENT_SKINNED,
+        BUILTIN_SHADER_BUMPY_ENVIRONMENT_SKINNED,
+        BUILTIN_SHADER_DEPTH_SKINNED
+    };
+
+	int numBuiltinVs = sizeof( builtinVs ) / sizeof( builtinVs[0] );
+	int numBuiltinFs = sizeof( builtinFs ) / sizeof( builtinFs[0] );
+	for ( int i = 0; i < numBuiltinVs; i++ ) {
+        int index = builtinVs[i].index;
+		vertexShaders[index].name = builtinVs[i].name;
+		LoadVertexShader( index );
 	}
 
-	vertexShaders[builtinShaders[BUILTIN_SHADER_TEXTURE_VERTEXCOLOR_SKINNED]].usesJoints = true;
-	vertexShaders[builtinShaders[BUILTIN_SHADER_INTERACTION_SKINNED]].usesJoints = true;
-	vertexShaders[builtinShaders[BUILTIN_SHADER_ENVIRONMENT_SKINNED]].usesJoints = true;
-	vertexShaders[builtinShaders[BUILTIN_SHADER_BUMPY_ENVIRONMENT_SKINNED]].usesJoints = true;
-	vertexShaders[builtinShaders[BUILTIN_SHADER_DEPTH_SKINNED]].usesJoints = true;
+	for ( int i = 0; i < numBuiltinFs; i++ ) {
+        int index = builtinFs[i].index;
+		fragmentShaders[index].name = builtinFs[i].name;
+		LoadFragmentShader( index );
+	}
+
+    for ( int i = 0; i < _countof(builtinSkinned); ++i ) {
+        vertexShaders[builtinSkinned[i]].usesJoints = true;
+    }
 
 	cmdSystem->AddCommand( "reloadShaders", R_ReloadShaders, CMD_FL_RENDERER, "reloads shaders" );
 
@@ -244,8 +281,8 @@ void idRenderProgManager::LoadVertexShader( int index ) {
 
     vertexShader_t* vshader = &vertexShaders[index];
 
-	if ( vshader->pShader != NULL ) {
-		return; // Already loaded
+	if ( vshader->pShader != NULL || vshader->name.Size() == 0 ) {
+		return; // Already loaded or not enabled
 	}
 	
     void* blob = nullptr;
@@ -278,8 +315,8 @@ idRenderProgManager::LoadFragmentShader
 void idRenderProgManager::LoadFragmentShader( int index ) {
     fragmentShader_t* pshader = &fragmentShaders[index];
 
-	if ( fragmentShaders[index].pShader != NULL ) {
-		return; // Already loaded
+	if ( fragmentShaders[index].pShader != NULL || pshader->name.Size() == 0 ) {
+		return; // Already loaded or not enabled
 	}
 	
     void* blob = nullptr;

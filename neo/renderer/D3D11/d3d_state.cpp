@@ -9,6 +9,8 @@
 
 extern const float s_identityMatrix[16];
 
+static_assert( STENCILPACKAGE_COUNT == GLS_DEPTH_STENCIL_PACKAGE_COUNT, "Update the STENCILPACKAGE_COUNT constant in d3d_state.h" );
+
 //----------------------------------------------------------------------------
 // Locals
 //----------------------------------------------------------------------------
@@ -474,6 +476,7 @@ static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 ma
         dsd->StencilWriteMask = 255; // @pjb: todo: Never anything else right now.
 
         dsd->FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+        dsd->BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 
         switch ( stencilPackage )
         {

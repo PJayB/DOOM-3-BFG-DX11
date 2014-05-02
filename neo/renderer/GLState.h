@@ -92,7 +92,6 @@ static const uint64 GLS_STENCIL_FUNC_MASK_BITS			= 0xFFll << GLS_STENCIL_FUNC_MA
 // @pjb: NOTE: removed these because they caused a combinatorial explosion.
 // Instead we're going to use pre-baked depth-stencil combinations.
 
-static const uint64 GLS_DEPTH_STENCIL_PACKAGE_BITS		= 15ull << 36;
 static const uint64 GLS_DEPTH_STENCIL_PACKAGE_NONE      = 0ull << 36;
 
 // GLS_STENCIL_FUNC_EQUAL | GLS_STENCIL_MAKE_MASK( 255 );
@@ -118,6 +117,11 @@ static const uint64 GLS_DEPTH_STENCIL_PACKAGE_PRELOAD_Z = (5ull << 36);
 // Back:  GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_ZERO | GLS_STENCIL_OP_PASS_REPLACE
 static const uint64 GLS_DEPTH_STENCIL_PACKAGE_TWO_SIDED = (6ull << 36);
 
+
+
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_BITS		= 15ull << 36;
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_COUNT     = 7ull;
+// Update the constant in d3d_state.h!
 
 /*
 static const uint64 GLS_STENCIL_FUNC_ALWAYS				= 0ull << 36;

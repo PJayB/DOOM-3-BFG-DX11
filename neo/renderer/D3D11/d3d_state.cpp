@@ -93,7 +93,13 @@ void D3DDrv_SetRasterizerStateFromMask( ID3D11DeviceContext1* pContext, int cull
 //----------------------------------------------------------------------------
 void D3DDrv_SetScissor( ID3D11DeviceContext1* pContext, int left, int top, int width, int height )
 {
-    RECT r = { left, top, left + width, top + height };
+    RECT r = 
+    { 
+        left, 
+        (int)g_BufferState.backBufferDesc.Height - top - height ,
+        left + width, 
+        (int)g_BufferState.backBufferDesc.Height - top
+    };
     pContext->RSSetScissorRects( 1, &r );
 }
 

@@ -57,6 +57,8 @@ public:
     void                SwizzleLum8ToRGBA();
     void                SwizzleL8A8ToRGBA();
     void                SwizzleAlphaToRGBA();
+    void                SwizzleBGR565();
+    void                ByteSwap();
 
 	int					NumImages() { return images.Num(); }
 	const bimageImage_t &	GetImageHeader( int i ) const { return images[i]; }

@@ -168,6 +168,13 @@ void idBinaryImage::Load2DFromMemory( int width, int height, const byte * pic_co
 				img.data[ i * 2 + 0 ] = ( color >> 8 ) & 0xFF;
 				img.data[ i * 2 + 1 ] = color & 0xFF;
 			}
+		} else if ( textureFormat == FMT_BGR565 ) {
+			img.Alloc( scaledWidth * scaledHeight * 2 );
+			for ( int i = 0; i < img.dataSize / 2; i++ ) {
+				unsigned short color = ( ( pic[ i * 4 + 2 ] >> 3 ) << 11 ) | ( ( pic[ i * 4 + 1 ] >> 2 ) << 5 ) | ( pic[ i * 4 + 0 ] >> 3 );
+				img.data[ i * 2 + 1 ] = ( color >> 8 ) & 0xFF;
+				img.data[ i * 2 + 0 ] = color & 0xFF;
+			}
 		} else {
 			fileData.format = textureFormat = FMT_RGBA8;
 			img.Alloc( scaledWidth * scaledHeight * 4 );
@@ -571,4 +578,55 @@ void idBinaryImage::SwizzleAlphaToRGBA() {
 
     fileData.format = FMT_RGBA8;
     fileData.colorFormat = CFM_DEFAULT;
+}
+
+void idBinaryImage::SwizzleBGR565() {
+    assert( fileData.format == FMT_RGB565 );
+
+    for ( int i = 0; i < NumImages(); ++i ) {
+        idBinaryImageData* img = &images[i];
+
+        int size = img->dataSize / sizeof(short);
+        unsigned short* data = (unsigned short*) img->data;
+        
+        for ( int i = 0; i < size; ++i ) {
+            unsigned short r = ( data[i] >> 11 ) & 31;
+            unsigned short g = ( data[i] & ( 63 << 5 ) );
+            unsigned short b = ( data[i] & 31 ) << 11;
+            data[i] = r | g | b;
+        }
+    }
+
+    fileData.format = FMT_BGR565;
+}
+
+void idBinaryImage::ByteSwap() {
+
+    int bytesPP = BitsForFormat( (textureFormat_t) fileData.format ) / 8;
+    if (bytesPP <= 1) {
+        return;
+    }
+
+    for ( int i = 0; i < NumImages(); ++i ) {
+        idBinaryImageData* img = &images[i];
+
+        int size = img->dataSize;
+        byte* data = img->data;
+        
+        for ( int i = 0; i < size; i += bytesPP ) {
+            switch (bytesPP)
+            {
+            case 2:
+                Swap(data[i], data[i+1]);
+                break;
+            case 3:
+                Swap(data[i], data[i+2]);
+                break;
+            case 4:
+                Swap(data[i], data[i+3]);
+                Swap(data[i+1], data[i+2]);
+                break;
+            }
+        }
+    }
 }

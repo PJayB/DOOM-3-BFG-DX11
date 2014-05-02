@@ -42,6 +42,7 @@ int BitsForFormat( textureFormat_t format ) {
 		case FMT_RGBA8:		return 32;
 		case FMT_XRGB8:		return 32;
 		case FMT_RGB565:	return 16;
+        case FMT_BGR565:    return 16;
 		case FMT_L8A8:		return 16;
 		case FMT_ALPHA:		return 8;
 		case FMT_LUM8:		return 8;
@@ -102,7 +103,7 @@ ID_INLINE void idImage::DeriveOpts() {
 				opts.gammaMips = true;
 				break;
 			case TD_LIGHT:
-				opts.format = FMT_RGB565;
+				opts.format = FMT_BGR565;
 				opts.gammaMips = true;
 				break;
 			case TD_LOOKUP_TABLE_MONO:
@@ -358,6 +359,9 @@ void idImage::ActuallyLoadImage( bool fromBackEnd ) {
             im.SwizzleL8A8ToRGBA();
         } else if ( header.format == FMT_ALPHA ) {
             im.SwizzleAlphaToRGBA();
+        } else if ( header.format == FMT_RGB565 ) {
+            im.ByteSwap();
+            im.SwizzleBGR565();
         } else {
             requiresResave = false;
         }
@@ -752,6 +756,8 @@ DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt) const
         internalFormat = DXGI_FORMAT_B8G8R8X8_UNORM;
 		break;
 	case FMT_RGB565:
+        assert(0);
+    case FMT_BGR565:
         internalFormat = DXGI_FORMAT_B5G6R5_UNORM;
 		break;
 	case FMT_ALPHA:

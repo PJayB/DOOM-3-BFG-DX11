@@ -911,17 +911,19 @@ static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf
 		glState = GLS_DEPTHMASK | GLS_COLORMASK | GLS_ALPHAMASK | GLS_DEPTHFUNC_LESS;
 	}
 
-	GL_PolygonOffset( r_shadowPolygonFactor.GetFloat(), -r_shadowPolygonOffset.GetFloat() );
+    D3DDrv_SetBlendStateFromMask( pContext, glState );
+
+	// @pjb: todo:
+    // GL_PolygonOffset( r_shadowPolygonFactor.GetFloat(), -r_shadowPolygonOffset.GetFloat() );
 
 	// the actual stencil func will be set in the draw code, but we need to make sure it isn't
 	// disabled here, and that the value will get reset for the interactions without looking
 	// like a no-change-required
-	GL_State( glState | GLS_DEPTH_STENCIL_PACKAGE_INC | 
-		GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE ) | GLS_POLYGON_OFFSET );
+    glState |= GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE );
+    D3DDrv_SetDepthStateFromMask( pContext, glState | GLS_DEPTH_STENCIL_PACKAGE_INC );
 
 	// Two Sided Stencil reduces two draw calls to one for slightly faster shadows
-	GL_Cull( CT_TWO_SIDED );
-
+    D3DDrv_SetRasterizerStateFromMask( pContext, CT_TWO_SIDED, glState | GLS_POLYGON_OFFSET );
 
 	// process the chain of shadows with the current rendering state
 	backEnd.currentSpace = NULL;
@@ -1003,16 +1005,14 @@ static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf
 
 		if ( renderZPass ) {
 			// Z-pass
-			qglStencilOpSeparate( GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR );
-			qglStencilOpSeparate( GL_BACK, GL_KEEP, GL_KEEP, GL_DECR );
+		    D3DDrv_SetDepthStateFromMask( pContext, glState | GLS_DEPTH_STENCIL_PACKAGE_Z );
 		} else if ( r_useStencilShadowPreload.GetBool() ) {
 			// preload + Z-pass
-			qglStencilOpSeparate( GL_FRONT, GL_KEEP, GL_DECR, GL_DECR );
-			qglStencilOpSeparate( GL_BACK, GL_KEEP, GL_INCR, GL_INCR );
+		    D3DDrv_SetDepthStateFromMask( pContext, glState | GLS_DEPTH_STENCIL_PACKAGE_PRELOAD_Z );
 		} else {
 			// Z-fail
-		}
-
+		    D3DDrv_SetDepthStateFromMask( pContext, glState | GLS_DEPTH_STENCIL_PACKAGE_INC );
+        }
 
 		// get vertex buffer
 		const vertCacheHandle_t vbHandle = drawSurf->shadowCache;
@@ -1047,13 +1047,10 @@ static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf
 		RENDERLOG_PRINTF( "Binding Buffers: %p %p\n", vertexBuffer, indexBuffer );
 
 
-		if ( backEnd.glState.currentIndexBuffer != (GLuint)indexBuffer->GetAPIObject() || !r_useStateCaching.GetBool() ) {
-			qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, (GLuint)indexBuffer->GetAPIObject() );
-			backEnd.glState.currentIndexBuffer = (GLuint)indexBuffer->GetAPIObject();
-		}
+		qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, (GLuint)indexBuffer->GetAPIObject() );
 
 		if ( drawSurf->jointCache ) {
-			assert( renderProgManager.ShaderUsesJoints() );
+			// assert( renderProgManager.ShaderUsesJoints() ); @pjb: todo
 
 			idJointBuffer jointBuffer;
 			if ( !vertexCache.GetJointBuffer( drawSurf->jointCache, &jointBuffer ) ) {
@@ -1065,44 +1062,34 @@ static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf
 			const GLuint ubo = reinterpret_cast< GLuint >( jointBuffer.GetAPIObject() );
 			qglBindBufferRange( GL_UNIFORM_BUFFER, 0, ubo, jointBuffer.GetOffset(), jointBuffer.GetNumJoints() * sizeof( idJointMat ) );
 
-			if ( ( backEnd.glState.vertexLayout != LAYOUT_DRAW_SHADOW_VERT_SKINNED) || ( backEnd.glState.currentVertexBuffer != (GLuint)vertexBuffer->GetAPIObject() ) || !r_useStateCaching.GetBool() ) {
-				qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)vertexBuffer->GetAPIObject() );
-				backEnd.glState.currentVertexBuffer = (GLuint)vertexBuffer->GetAPIObject();
+			qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)vertexBuffer->GetAPIObject() );
 
-				qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_VERTEX );
-				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_NORMAL );
-				qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR );
-				qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR2 );
-				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_ST );
-				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_TANGENT );
+			qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_VERTEX );
+			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_NORMAL );
+			qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR );
+			qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR2 );
+			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_ST );
+			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_TANGENT );
 
-				qglVertexAttribPointerARB( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVertSkinned ), (void *)( SHADOWVERTSKINNED_XYZW_OFFSET ) );
-				qglVertexAttribPointerARB( PC_ATTRIB_INDEX_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), (void *)( SHADOWVERTSKINNED_COLOR_OFFSET ) );
-				qglVertexAttribPointerARB( PC_ATTRIB_INDEX_COLOR2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), (void *)( SHADOWVERTSKINNED_COLOR2_OFFSET ) );
-
-				backEnd.glState.vertexLayout = LAYOUT_DRAW_SHADOW_VERT_SKINNED;
-			}
+			qglVertexAttribPointerARB( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVertSkinned ), (void *)( SHADOWVERTSKINNED_XYZW_OFFSET ) );
+			qglVertexAttribPointerARB( PC_ATTRIB_INDEX_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), (void *)( SHADOWVERTSKINNED_COLOR_OFFSET ) );
+			qglVertexAttribPointerARB( PC_ATTRIB_INDEX_COLOR2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), (void *)( SHADOWVERTSKINNED_COLOR2_OFFSET ) );
 
 		} else {
 
-			if ( ( backEnd.glState.vertexLayout != LAYOUT_DRAW_SHADOW_VERT ) || ( backEnd.glState.currentVertexBuffer != (GLuint)vertexBuffer->GetAPIObject() ) || !r_useStateCaching.GetBool() ) {
-				qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)vertexBuffer->GetAPIObject() );
-				backEnd.glState.currentVertexBuffer = (GLuint)vertexBuffer->GetAPIObject();
+			qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)vertexBuffer->GetAPIObject() );
 
-				qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_VERTEX );
-				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_NORMAL );
-				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR );
-				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR2 );
-				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_ST );
-				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_TANGENT );
+			qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_VERTEX );
+			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_NORMAL );
+			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR );
+			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR2 );
+			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_ST );
+			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_TANGENT );
 
-				qglVertexAttribPointerARB( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVert ), (void *)( SHADOWVERT_XYZW_OFFSET ) );
-
-				backEnd.glState.vertexLayout = LAYOUT_DRAW_SHADOW_VERT;
-			}
+			qglVertexAttribPointerARB( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVert ), (void *)( SHADOWVERT_XYZW_OFFSET ) );
 		}
 
-		renderProgManager.CommitUniforms();
+		renderProgManager.UpdateConstantBuffers( pContext );
 
 		if ( drawSurf->jointCache ) {
 			qglDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, (triIndex_t *)indexOffset, vertOffset / sizeof( idShadowVertSkinned ) );
@@ -1112,8 +1099,7 @@ static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf
 
 		if ( !renderZPass && r_useStencilShadowPreload.GetBool() ) {
 			// render again with Z-pass
-			qglStencilOpSeparate( GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR );
-			qglStencilOpSeparate( GL_BACK, GL_KEEP, GL_KEEP, GL_DECR );
+		    D3DDrv_SetDepthStateFromMask( pContext, glState | GLS_DEPTH_STENCIL_PACKAGE_Z );
 
 			if ( drawSurf->jointCache ) {
 				qglDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, (triIndex_t *)indexOffset, vertOffset / sizeof ( idShadowVertSkinned ) );
@@ -1122,10 +1108,6 @@ static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf
 			}
 		}
 	}
-
-	// cleanup the shadow specific rendering state
-
-	GL_Cull( CT_FRONT_SIDED );
 }
 
 /*

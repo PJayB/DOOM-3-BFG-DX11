@@ -467,12 +467,6 @@ static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 ma
         dsd->StencilReadMask = 255; // @pjb: todo: Never anything else right now.
         dsd->StencilWriteMask = 255; // @pjb: todo: Never anything else right now.
 
-        // @pjb: todo: we may want more control here
-        dsd->BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-        dsd->BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
-        dsd->BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-        dsd->BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-
         dsd->FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 
         switch ( stencilPackage )
@@ -484,6 +478,7 @@ static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 ma
             dsd->FrontFace.StencilFunc = D3D11_COMPARISON_EQUAL;
             break;
         case GLS_DEPTH_STENCIL_PACKAGE_INC:
+        case GLS_DEPTH_STENCIL_PACKAGE_Z:
             dsd->FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
             dsd->FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
             dsd->FrontFace.StencilPassOp = D3D11_STENCIL_OP_INCR;
@@ -492,6 +487,28 @@ static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 ma
             dsd->FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
             dsd->FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
             dsd->FrontFace.StencilPassOp = D3D11_STENCIL_OP_DECR;
+            break;
+        case GLS_DEPTH_STENCIL_PACKAGE_PRELOAD_Z:
+            dsd->FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+            dsd->FrontFace.StencilFailOp = D3D11_STENCIL_OP_DECR;
+            dsd->FrontFace.StencilPassOp = D3D11_STENCIL_OP_DECR;
+            break;
+        }
+
+        switch ( stencilPackage ) 
+        {
+        case GLS_DEPTH_STENCIL_PACKAGE_Z:
+            dsd->BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+            dsd->BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+            dsd->BackFace.StencilPassOp = D3D11_STENCIL_OP_DECR;
+            break;
+        case GLS_DEPTH_STENCIL_PACKAGE_PRELOAD_Z:
+            dsd->BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+            dsd->BackFace.StencilFailOp = D3D11_STENCIL_OP_INCR;
+            dsd->BackFace.StencilPassOp = D3D11_STENCIL_OP_INCR;
+            break;
+        default:
+            dsd->BackFace = dsd->FrontFace;
             break;
         }
     }

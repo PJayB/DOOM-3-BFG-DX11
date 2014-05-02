@@ -732,7 +732,7 @@ public:
 	idVec4			xyzw;
 	byte			color[4];
 	byte			color2[4];
-	byte			pad[8];		// pad to multiple of 32-byte for glDrawElementsBaseVertex
+	// @pjb: todo? byte			pad[8];		// pad to multiple of 32-byte for glDrawElementsBaseVertex
 
 	void			Clear();
 	static int		CreateShadowCache( idShadowVertSkinned * vertexCache, const idDrawVert *verts, const int numVerts );

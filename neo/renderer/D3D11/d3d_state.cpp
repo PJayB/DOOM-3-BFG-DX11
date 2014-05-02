@@ -493,6 +493,11 @@ static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 ma
             dsd->FrontFace.StencilFailOp = D3D11_STENCIL_OP_DECR;
             dsd->FrontFace.StencilPassOp = D3D11_STENCIL_OP_DECR;
             break;
+        case GLS_DEPTH_STENCIL_PACKAGE_TWO_SIDED:
+            dsd->FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+            dsd->FrontFace.StencilFailOp = D3D11_STENCIL_OP_REPLACE;
+            dsd->FrontFace.StencilPassOp = D3D11_STENCIL_OP_ZERO;
+            break;
         }
 
         switch ( stencilPackage ) 
@@ -506,6 +511,11 @@ static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 ma
             dsd->BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
             dsd->BackFace.StencilFailOp = D3D11_STENCIL_OP_INCR;
             dsd->BackFace.StencilPassOp = D3D11_STENCIL_OP_INCR;
+            break;
+        case GLS_DEPTH_STENCIL_PACKAGE_TWO_SIDED:
+            dsd->BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+            dsd->BackFace.StencilFailOp = D3D11_STENCIL_OP_ZERO;
+            dsd->BackFace.StencilPassOp = D3D11_STENCIL_OP_REPLACE;
             break;
         default:
             dsd->BackFace = dsd->FrontFace;

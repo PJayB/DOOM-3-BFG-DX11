@@ -1046,9 +1046,16 @@ static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf
 
 		RENDERLOG_PRINTF( "Binding Buffers: %p %p\n", vertexBuffer, indexBuffer );
 
+        UINT numCBuffers = 2;
+        ID3D11Buffer* constantBuffers[] = {
+            renderProgManager.GetRenderParmConstantBuffer(),
+            renderProgManager.GetUserParmConstantBuffer(),
+            nullptr
+        };
 
-		qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, (GLuint)indexBuffer->GetAPIObject() );
-
+        size_t vertSize = sizeof( idShadowVert );
+        ID3D11InputLayout* pLayout = idLayoutManager::GetLayout<idShadowVert>();
+    
 		if ( drawSurf->jointCache ) {
 			// assert( renderProgManager.ShaderUsesJoints() ); @pjb: todo
 
@@ -1059,53 +1066,43 @@ static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf
 			}
 			assert( ( jointBuffer.GetOffset() & ( glConfig.uniformBufferOffsetAlignment - 1 ) ) == 0 );
 
-			const GLuint ubo = reinterpret_cast< GLuint >( jointBuffer.GetAPIObject() );
-			qglBindBufferRange( GL_UNIFORM_BUFFER, 0, ubo, jointBuffer.GetOffset(), jointBuffer.GetNumJoints() * sizeof( idJointMat ) );
+            ID3D11Buffer* pJointBuffer = jointBuffer.GetBuffer();
+            constantBuffers[numCBuffers++] = pJointBuffer;
 
-			qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)vertexBuffer->GetAPIObject() );
+            uint offset[4] = { jointBuffer.GetOffset() / ( sizeof( float ) * 4 ), 0, 0, 0 };
+            renderProgManager.SetRenderParm( RENDERPARM_JOINT_OFFSET, (float*) offset );
 
-			qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_VERTEX );
-			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_NORMAL );
-			qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR );
-			qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR2 );
-			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_ST );
-			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_TANGENT );
-
-			qglVertexAttribPointerARB( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVertSkinned ), (void *)( SHADOWVERTSKINNED_XYZW_OFFSET ) );
-			qglVertexAttribPointerARB( PC_ATTRIB_INDEX_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), (void *)( SHADOWVERTSKINNED_COLOR_OFFSET ) );
-			qglVertexAttribPointerARB( PC_ATTRIB_INDEX_COLOR2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), (void *)( SHADOWVERTSKINNED_COLOR2_OFFSET ) );
-
-		} else {
-
-			qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)vertexBuffer->GetAPIObject() );
-
-			qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_VERTEX );
-			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_NORMAL );
-			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR );
-			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_COLOR2 );
-			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_ST );
-			qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_TANGENT );
-
-			qglVertexAttribPointerARB( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVert ), (void *)( SHADOWVERT_XYZW_OFFSET ) );
+            pLayout = idLayoutManager::GetLayout<idShadowVertSkinned>();
+            vertSize = sizeof( idShadowVertSkinned );
 		}
 
 		renderProgManager.UpdateConstantBuffers( pContext );
 
-		if ( drawSurf->jointCache ) {
-			qglDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, (triIndex_t *)indexOffset, vertOffset / sizeof( idShadowVertSkinned ) );
-		} else {
-			qglDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, (triIndex_t *)indexOffset, vertOffset / sizeof( idShadowVert ) );
-		}
+        pContext->VSSetConstantBuffers( 0, numCBuffers, constantBuffers );
+        pContext->PSSetConstantBuffers( 0, numCBuffers, constantBuffers );
+
+        ID3D11Buffer* pVertexBuffer = vertexBuffer->GetBuffer();
+        UINT vbOffset = 0;
+        UINT vbStride = (UINT) vertSize;
+
+        pContext->IASetInputLayout( pLayout );
+        pContext->IASetIndexBuffer( indexBuffer->GetBuffer(), DXGI_FORMAT_R16_UINT, 0 );
+        pContext->IASetVertexBuffers( 0, 1, &pVertexBuffer, &vbStride, &vbOffset );
+        pContext->IASetPrimitiveTopology( D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+    
+        pContext->DrawIndexed(
+		    r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes,
+            indexOffset / sizeof( triIndex_t ),
+            vertOffset / vertSize );
 
 		if ( !renderZPass && r_useStencilShadowPreload.GetBool() ) {
 			// render again with Z-pass
 		    D3DDrv_SetDepthStateFromMask( pContext, glState | GLS_DEPTH_STENCIL_PACKAGE_Z );
-
-			if ( drawSurf->jointCache ) {
-				qglDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, (triIndex_t *)indexOffset, vertOffset / sizeof ( idShadowVertSkinned ) );
-			} else {
-				qglDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, (triIndex_t *)indexOffset, vertOffset / sizeof ( idShadowVert ) );
-			}
+    
+            pContext->DrawIndexed(
+		        r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes,
+                indexOffset / sizeof( triIndex_t ),
+                vertOffset / vertSize );
 		}
 	}
 }
@@ -1124,7 +1121,8 @@ static void RB_StencilSelectLight( ID3D11DeviceContext1* pContext, const viewLig
 
 	// enable the light scissor
 	if ( !backEnd.currentScissor.Equals( vLight->scissorRect ) && r_useScissor.GetBool() ) {
-		GL_Scissor( backEnd.viewDef->viewport.x1 + vLight->scissorRect.x1, 
+		D3DDrv_SetScissor( pContext,
+                    backEnd.viewDef->viewport.x1 + vLight->scissorRect.x1, 
 					backEnd.viewDef->viewport.y1 + vLight->scissorRect.y1,
 					vLight->scissorRect.x2 + 1 - vLight->scissorRect.x1,
 					vLight->scissorRect.y2 + 1 - vLight->scissorRect.y1 );
@@ -1132,30 +1130,26 @@ static void RB_StencilSelectLight( ID3D11DeviceContext1* pContext, const viewLig
 	}
 
 	// clear stencil buffer to 0 (not drawable)
-	uint64 glStateMinusStencil = GL_GetCurrentStateMinusStencil();
-	GL_State( glStateMinusStencil | GLS_STENCIL_FUNC_ALWAYS | GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE ) | GLS_STENCIL_MAKE_MASK( STENCIL_SHADOW_MASK_VALUE ) );	// make sure stencil mask passes for the clear
-	GL_Clear( false, false, true, 0, 0.0f, 0.0f, 0.0f, 0.0f );	// clear to 0 for stencil select
+    D3DDrv_SetBlendStateFromMask( pContext, 0 );
+    D3DDrv_SetDepthStateFromMask( pContext, 0 );
+    D3DDrv_SetRasterizerStateFromMask( pContext, CT_TWO_SIDED, 0 );
+    D3DDrv_Clear( pContext, CLEAR_STENCIL, nullptr, 0, 0 );
 
-	GL_State( GLS_COLORMASK | GLS_ALPHAMASK | GLS_DEPTHMASK | GLS_DEPTHFUNC_LESS | GLS_STENCIL_FUNC_ALWAYS | GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE ) | GLS_STENCIL_MAKE_MASK( STENCIL_SHADOW_MASK_VALUE ) );
-	GL_Cull( CT_TWO_SIDED );
+	// two-sided stencil test
+    D3DDrv_SetBlendStateFromMask( pContext, GLS_COLORMASK | GLS_ALPHAMASK );
+    D3DDrv_SetDepthStateFromMask( pContext, GLS_DEPTHMASK | GLS_DEPTHFUNC_LESS | GLS_DEPTH_STENCIL_PACKAGE_TWO_SIDED | GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE ) );
 
     pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_SHADOW ), nullptr, 0 );
-    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader(  BUILTIN_SHADER_SHADOW ), nullptr, 0 );
+    // pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader(  BUILTIN_SHADER_SHADOW ), nullptr, 0 );
+    // No pixel shader because no color writes.
+    pContext->PSSetShader( nullptr, nullptr, 0 );
 
 	// set the matrix for deforming the 'zeroOneCubeModel' into the frustum to exactly cover the light volume
 	idRenderMatrix invProjectMVPMatrix;
 	idRenderMatrix::Multiply( backEnd.viewDef->worldSpace.mvp, vLight->inverseBaseLightProject, invProjectMVPMatrix );
 	RB_SetMVP( invProjectMVPMatrix );
 
-	// two-sided stencil test
-	qglStencilOpSeparate( GL_FRONT, GL_KEEP, GL_REPLACE, GL_ZERO );
-	qglStencilOpSeparate( GL_BACK, GL_KEEP, GL_ZERO, GL_REPLACE );
-
 	RB_DrawElementsWithCounters( pContext, &backEnd.zeroOneCubeSurface );
-
-	// reset stencil state
-
-	GL_Cull( CT_FRONT_SIDED );
 
 	renderLog.CloseBlock();
 }

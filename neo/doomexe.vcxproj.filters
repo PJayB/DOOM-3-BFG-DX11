@@ -1177,12 +1177,6 @@
     <None Include="renderer\hlsl\global.inc">
       <Filter>Renderer\Shaders</Filter>
     </None>
-    <None Include="renderer\hlsl\shadow.vertex">
-      <Filter>Renderer\Shaders\Vertex</Filter>
-    </None>
-    <None Include="renderer\hlsl\shadow.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="sys\win32\rc\doom.rc">
@@ -1354,5 +1348,14 @@
     </FxCompile>
     <FxCompile Include="renderer\hlsl\interaction.pixel" />
     <FxCompile Include="renderer\hlsl\interactionAmbient.pixel" />
+    <FxCompile Include="renderer\hlsl\shadow.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\shadow.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\shadow_skinned.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

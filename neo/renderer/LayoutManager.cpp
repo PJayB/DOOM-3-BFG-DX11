@@ -79,7 +79,7 @@ ID3D11InputLayout* CreateShadowVertSkinnedInputLayout()
     const void* pBlob = nullptr;
     uint blobSize = 0;
     renderProgManager.GetBuiltInVertexShaderByteCode( 
-        BUILTIN_SHADER_BUMPY_ENVIRONMENT_SKINNED, 
+        BUILTIN_SHADER_SHADOW_SKINNED, 
         &pBlob, 
         &blobSize );
     assert( pBlob );

@@ -191,7 +191,7 @@ void RB_DrawElementsWithCounters( ID3D11DeviceContext1* pContext, const drawSurf
     pContext->IASetInputLayout( idLayoutManager::GetLayout<idDrawVert>() );
     pContext->IASetIndexBuffer( indexBuffer->GetBuffer(), DXGI_FORMAT_R16_UINT, 0 );
     pContext->IASetVertexBuffers( 0, 1, &pVertexBuffer, &vbStride, &vbOffset );
-    pContext->IASetPrimitiveTopology( D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+    pContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
     
     pContext->DrawIndexed(
 		r_singleTriangle.GetBool() ? 3 : surf->numIndexes,
@@ -1088,7 +1088,7 @@ static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf
         pContext->IASetInputLayout( pLayout );
         pContext->IASetIndexBuffer( indexBuffer->GetBuffer(), DXGI_FORMAT_R16_UINT, 0 );
         pContext->IASetVertexBuffers( 0, 1, &pVertexBuffer, &vbStride, &vbOffset );
-        pContext->IASetPrimitiveTopology( D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+        pContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
     
         pContext->DrawIndexed(
 		    r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes,

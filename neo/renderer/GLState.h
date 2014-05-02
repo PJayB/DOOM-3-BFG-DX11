@@ -92,7 +92,7 @@ static const uint64 GLS_STENCIL_FUNC_MASK_BITS			= 0xFFll << GLS_STENCIL_FUNC_MA
 // @pjb: NOTE: removed these because they caused a combinatorial explosion.
 // Instead we're going to use pre-baked depth-stencil combinations.
 
-static const uint64 GLS_DEPTH_STENCIL_PACKAGE_BITS		= 7ull << 36;
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_BITS		= 15ull << 36;
 static const uint64 GLS_DEPTH_STENCIL_PACKAGE_NONE      = 0ull << 36;
 
 // GLS_STENCIL_FUNC_EQUAL | GLS_STENCIL_MAKE_MASK( 255 );

@@ -44,6 +44,17 @@ backEndState_t	backEnd;
 
 /*
 ================
+RB_ResetColor
+================
+*/
+void RB_ResetColor()
+{
+    static const float c[] = { 1, 1, 1, 1 };
+    renderProgManager.SetRenderParm( RENDERPARM_COLOR, c );
+}
+
+/*
+================
 RB_BindImages
 ================
 */
@@ -621,6 +632,8 @@ static void RB_DrawStageBuiltInVFP(
 	// draw it
 	RB_DrawElementsWithCounters( pContext, surf );
 
+    RB_ResetColor();
+
 	renderLog.CloseBlock();
 }
 
@@ -771,6 +784,8 @@ static void RB_FillDepthBufferGeneric( ID3D11DeviceContext1* pContext, const dra
 
 				// draw it
 				RB_DrawElementsWithCounters( pContext, drawSurf );
+
+                RB_ResetColor();
 			}
 
 			if ( !didDraw ) {
@@ -804,6 +819,8 @@ static void RB_FillDepthBufferGeneric( ID3D11DeviceContext1* pContext, const dra
 
 			// draw it
 			RB_DrawElementsWithCounters( pContext, drawSurf );
+
+            RB_ResetColor();
 		}
 
 		renderLog.CloseBlock();
@@ -1147,6 +1164,8 @@ static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf
                 vertOffset / vertSize );
 		}
 	}
+
+    RB_ResetColor();
 }
 
 /*

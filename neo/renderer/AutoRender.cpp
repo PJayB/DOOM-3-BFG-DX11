@@ -31,6 +31,8 @@ If you have questions concerning this license or the applicable additional terms
 
 const int AUTO_RENDER_STACK_SIZE = 256 * 1024;
 
+void RB_BindImages( ID3D11DeviceContext1* pContext, idImage** pImages, int offset, int numImages );
+
 idAutoRender rAutoRender;
 
 /*
@@ -115,10 +117,6 @@ void idAutoRender::RenderFrame() {
 
     ID3D11DeviceContext1* pContext = D3DDrv_GetImmediateContext();
 
-    /*
-    @pjb: todo: reset state, set cull to CT_TWO_SIDED
-    */
-	
 	const bool stereoRender = false;
 
 	const int width = renderSystem->GetWidth();
@@ -148,17 +146,18 @@ idAutoRender::RenderBackground
 ============================
 */
 void idAutoRender::RenderBackground() {
-	/*
-
-    @pjb: todo
-
-    GL_SelectTexture( 0 );
 
     auto pIC = D3DDrv_GetImmediateContext();
-    auto pSRV = globalImages->currentRenderImage->GetSRV();
-    pIC->PSSetShaderResources( 0, 1, &pSRV );
 
-	GL_State( GLS_DEPTHFUNC_ALWAYS | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO );
+    idImage* pImages[] = { 
+        globalImages->currentRenderImage
+    };
+
+    RB_BindImages( pIC, pImages, 0, _countof(pImages) );
+
+    D3DDrv_SetRasterizerStateFromMask( pIC, CT_TWO_SIDED, 0 );
+    D3DDrv_SetBlendStateFromMask( pIC, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO );
+    D3DDrv_SetDepthStateFromMask( pIC, GLS_DEPTHFUNC_ALWAYS );
 
 	float mvpMatrix[16] = { 0 };
 	mvpMatrix[0] = 1;
@@ -179,10 +178,10 @@ void idAutoRender::RenderBackground() {
 	// set matrix
 	renderProgManager.SetRenderParms( RENDERPARM_MVPMATRIX_X, mvpMatrix, 4 );
 
-	renderProgManager.BindShader_TextureVertexColor();
+    pIC->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_TEXTURE_VERTEXCOLOR ), nullptr, 0 );
+    pIC->PSSetShader( renderProgManager.GetBuiltInPixelShader( BUILTIN_SHADER_TEXTURE_VERTEXCOLOR ), nullptr, 0 );
 
-	RB_DrawElementsWithCounters( &backEnd.unitSquareSurface );
-    */
+	RB_DrawElementsWithCounters( pIC, &backEnd.unitSquareSurface );
 }
 
 /*
@@ -191,11 +190,8 @@ idAutoRender::RenderLoadingIcon
 ============================
 */
 void idAutoRender::RenderLoadingIcon( float fracX, float fracY, float size, float speed ) {
-    /*
 	float s = 0.0f; 
 	float c = 1.0f;
-
-    @pjb: todo
 
     if ( autoRenderIcon != AUTORENDER_HELLICON ) {
 		if ( Sys_Milliseconds() >= nextRotateTime ) {
@@ -252,15 +248,19 @@ void idAutoRender::RenderLoadingIcon( float fracX, float fracY, float size, floa
 		a = 0.35f + ( 0.65f * idMath::Fabs( a ) );
 	}
 
-	GL_SelectTexture( 0 );
+    auto pIC = D3DDrv_GetImmediateContext();
 
+    idImage* pImage = nullptr;
 	if ( autoRenderIcon == AUTORENDER_HELLICON ) {
-		globalImages->hellLoadingIconImage->Bind();
+		pImage = globalImages->hellLoadingIconImage;
 	} else {
-		globalImages->loadingIconImage->Bind();
+		pImage = globalImages->loadingIconImage;
 	}
+    RB_BindImages( pIC, &pImage, 0, 1 );
 
-	GL_State( GLS_DEPTHFUNC_ALWAYS | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
+    D3DDrv_SetRasterizerStateFromMask( pIC, CT_TWO_SIDED, 0 );
+    D3DDrv_SetBlendStateFromMask( pIC, GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
+    D3DDrv_SetDepthStateFromMask( pIC, GLS_DEPTHFUNC_ALWAYS );
 
 	// Set Parms
 	float texS[4] = { 1.0f, 0.0f, 0.0f, 0.0f };
@@ -269,15 +269,21 @@ void idAutoRender::RenderLoadingIcon( float fracX, float fracY, float size, floa
 	renderProgManager.SetRenderParm( RENDERPARM_TEXTUREMATRIX_T, texT );
 
 	if ( autoRenderIcon == AUTORENDER_HELLICON ) {
-		GL_Color( 1.0f, 1.0f, 1.0f, a );
+        const float c[] = { 1, 1, 1, a };
+        renderProgManager.SetRenderParm( RENDERPARM_COLOR, c );
 	}
 
 	// disable texgen
 	float texGenEnabled[4] = { 0, 0, 0, 0 };
 	renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_ENABLED, texGenEnabled );
 
-	renderProgManager.BindShader_TextureVertexColor();
+    pIC->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_TEXTURE_VERTEXCOLOR ), nullptr, 0 );
+    pIC->PSSetShader( renderProgManager.GetBuiltInPixelShader( BUILTIN_SHADER_TEXTURE_VERTEXCOLOR ), nullptr, 0 );
 
-	RB_DrawElementsWithCounters( &backEnd.unitSquareSurface );
-    */
+	RB_DrawElementsWithCounters( pIC, &backEnd.unitSquareSurface );
+
+	if ( autoRenderIcon == AUTORENDER_HELLICON ) {
+        const float c[] = { 1, 1, 1, 1 };
+        renderProgManager.SetRenderParm( RENDERPARM_COLOR, c );
+	}
 }

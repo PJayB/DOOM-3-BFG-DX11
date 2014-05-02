@@ -269,6 +269,48 @@ static void RB_LoadShaderTextureMatrix( const float *shaderRegisters, const text
 }
 
 /*
+=====================
+RB_BakeTextureMatrixIntoTexgen
+=====================
+*/
+static void RB_BakeTextureMatrixIntoTexgen( idPlane lightProject[3], const float *textureMatrix ) {
+	float genMatrix[16];
+	float final[16];
+
+	genMatrix[0*4+0] = lightProject[0][0];
+	genMatrix[1*4+0] = lightProject[0][1];
+	genMatrix[2*4+0] = lightProject[0][2];
+	genMatrix[3*4+0] = lightProject[0][3];
+
+	genMatrix[0*4+1] = lightProject[1][0];
+	genMatrix[1*4+1] = lightProject[1][1];
+	genMatrix[2*4+1] = lightProject[1][2];
+	genMatrix[3*4+1] = lightProject[1][3];
+
+	genMatrix[0*4+2] = 0.0f;
+	genMatrix[1*4+2] = 0.0f;
+	genMatrix[2*4+2] = 0.0f;
+	genMatrix[3*4+2] = 0.0f;
+
+	genMatrix[0*4+3] = lightProject[2][0];
+	genMatrix[1*4+3] = lightProject[2][1];
+	genMatrix[2*4+3] = lightProject[2][2];
+	genMatrix[3*4+3] = lightProject[2][3];
+
+	R_MatrixMultiply( genMatrix, textureMatrix, final );
+
+	lightProject[0][0] = final[0*4+0];
+	lightProject[0][1] = final[1*4+0];
+	lightProject[0][2] = final[2*4+0];
+	lightProject[0][3] = final[3*4+0];
+
+	lightProject[1][0] = final[0*4+1];
+	lightProject[1][1] = final[1*4+1];
+	lightProject[1][2] = final[2*4+1];
+	lightProject[1][3] = final[3*4+1];
+}
+
+/*
 ================
 RB_PrepareStageTexturing
 ================
@@ -1167,48 +1209,6 @@ const int INTERACTION_TEXUNIT_PROJECTION	= 1;
 const int INTERACTION_TEXUNIT_BUMP			= 2;
 const int INTERACTION_TEXUNIT_DIFFUSE		= 3;
 const int INTERACTION_TEXUNIT_SPECULAR		= 4;
-
-/*
-=====================
-RB_BakeTextureMatrixIntoTexgen
-=====================
-*/
-static void RB_BakeTextureMatrixIntoTexgen( idPlane lightProject[3], const float *textureMatrix ) {
-	float genMatrix[16];
-	float final[16];
-
-	genMatrix[0*4+0] = lightProject[0][0];
-	genMatrix[1*4+0] = lightProject[0][1];
-	genMatrix[2*4+0] = lightProject[0][2];
-	genMatrix[3*4+0] = lightProject[0][3];
-
-	genMatrix[0*4+1] = lightProject[1][0];
-	genMatrix[1*4+1] = lightProject[1][1];
-	genMatrix[2*4+1] = lightProject[1][2];
-	genMatrix[3*4+1] = lightProject[1][3];
-
-	genMatrix[0*4+2] = 0.0f;
-	genMatrix[1*4+2] = 0.0f;
-	genMatrix[2*4+2] = 0.0f;
-	genMatrix[3*4+2] = 0.0f;
-
-	genMatrix[0*4+3] = lightProject[2][0];
-	genMatrix[1*4+3] = lightProject[2][1];
-	genMatrix[2*4+3] = lightProject[2][2];
-	genMatrix[3*4+3] = lightProject[2][3];
-
-	R_MatrixMultiply( genMatrix, textureMatrix, final );
-
-	lightProject[0][0] = final[0*4+0];
-	lightProject[0][1] = final[1*4+0];
-	lightProject[0][2] = final[2*4+0];
-	lightProject[0][3] = final[3*4+0];
-
-	lightProject[1][0] = final[0*4+1];
-	lightProject[1][1] = final[1*4+1];
-	lightProject[1][2] = final[2*4+1];
-	lightProject[1][3] = final[3*4+1];
-}
 
 /*
 ==================

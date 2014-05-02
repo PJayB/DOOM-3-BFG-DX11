@@ -98,6 +98,8 @@ void idRenderProgManager::Init() {
 
 		{ BUILTIN_SHADER_DEPTH, "depth.vfp" },
 		{ BUILTIN_SHADER_DEPTH_SKINNED, "depth_skinned.vfp" },
+        { BUILTIN_SHADER_SHADOW, "shadow.vfp" },
+        { BUILTIN_SHADER_SHADOW_SKINNED, "shadow_skinned.vfp" },
 
 		{ BUILTIN_SHADER_SKYBOX, "skybox.vfp" },
 		{ BUILTIN_SHADER_WOBBLESKY, "wobblesky.vfp" },
@@ -118,6 +120,7 @@ void idRenderProgManager::Init() {
 		{ BUILTIN_SHADER_ENVIRONMENT, "environment.vfp" },
 		{ BUILTIN_SHADER_BUMPY_ENVIRONMENT, "bumpyEnvironment.vfp" },
 		{ BUILTIN_SHADER_DEPTH, "depth.vfp" },
+        { BUILTIN_SHADER_SHADOW, "shadow.vfp" },
 		{ BUILTIN_SHADER_SKYBOX, "skybox.vfp" },
 		{ BUILTIN_SHADER_WOBBLESKY, "wobblesky.vfp" },
 		{ BUILTIN_SHADER_POSTPROCESS, "postprocess.vfp" },
@@ -132,7 +135,8 @@ void idRenderProgManager::Init() {
         BUILTIN_SHADER_INTERACTION_AMBIENT_SKINNED,
         BUILTIN_SHADER_ENVIRONMENT_SKINNED,
         BUILTIN_SHADER_BUMPY_ENVIRONMENT_SKINNED,
-        BUILTIN_SHADER_DEPTH_SKINNED
+        BUILTIN_SHADER_DEPTH_SKINNED,
+        BUILTIN_SHADER_SHADOW_SKINNED
     };
 
 	int numBuiltinVs = sizeof( builtinVs ) / sizeof( builtinVs[0] );

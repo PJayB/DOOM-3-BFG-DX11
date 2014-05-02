@@ -871,7 +871,7 @@ STENCIL SHADOW RENDERING
 
 ==============================================================================================
 */
-#if 0
+
 /*
 =====================
 RB_StencilShadowPass
@@ -879,7 +879,7 @@ RB_StencilShadowPass
 The stencil buffer should have been set to 128 on any surfaces that might receive shadows.
 =====================
 */
-static void RB_StencilShadowPass( const drawSurf_t *drawSurfs, const viewLight_t * vLight ) {
+static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf_t *drawSurfs, const viewLight_t * vLight ) {
 	if ( r_skipShadows.GetBool() ) {
 		return;
 	}
@@ -890,17 +890,15 @@ static void RB_StencilShadowPass( const drawSurf_t *drawSurfs, const viewLight_t
 
 	RENDERLOG_PRINTF( "---------- RB_StencilShadowPass ----------\n" );
 
-	renderProgManager.BindShader_Shadow();
-
-	GL_SelectTexture( 0 );
-	globalImages->BindNull();
+    pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_SHADOW ), nullptr, 0 );
+    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader(  BUILTIN_SHADER_SHADOW ), nullptr, 0 );
 
 	uint64 glState = 0;
 
 	// for visualizing the shadows
 	if ( r_showShadows.GetInteger() ) {
 		// set the debug shadow color
-		SetFragmentParm( RENDERPARM_COLOR, colorMagenta.ToFloatPtr() );
+		renderProgManager.SetRenderParm( RENDERPARM_COLOR, colorMagenta.ToFloatPtr() );
 		if ( r_showShadows.GetInteger() == 2 ) {
 			// draw filled in
 			glState = GLS_DEPTHMASK | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_LESS;
@@ -918,8 +916,8 @@ static void RB_StencilShadowPass( const drawSurf_t *drawSurfs, const viewLight_t
 	// the actual stencil func will be set in the draw code, but we need to make sure it isn't
 	// disabled here, and that the value will get reset for the interactions without looking
 	// like a no-change-required
-	GL_State( glState | GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_KEEP | GLS_STENCIL_OP_PASS_INCR | 
-		GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE ) | GLS_STENCIL_MAKE_MASK( STENCIL_SHADOW_MASK_VALUE ) | GLS_POLYGON_OFFSET );
+	GL_State( glState | GLS_DEPTH_STENCIL_PACKAGE_INC | 
+		GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE ) | GLS_POLYGON_OFFSET );
 
 	// Two Sided Stencil reduces two draw calls to one for slightly faster shadows
 	GL_Cull( CT_TWO_SIDED );
@@ -953,7 +951,8 @@ static void RB_StencilShadowPass( const drawSurf_t *drawSurfs, const viewLight_t
 
 		if ( !backEnd.currentScissor.Equals( drawSurf->scissorRect ) && r_useScissor.GetBool() ) {
 			// change the scissor
-			GL_Scissor( backEnd.viewDef->viewport.x1 + drawSurf->scissorRect.x1,
+			D3DDrv_SetScissor( pContext,
+                        backEnd.viewDef->viewport.x1 + drawSurf->scissorRect.x1,
 						backEnd.viewDef->viewport.y1 + drawSurf->scissorRect.y1,
 						drawSurf->scissorRect.x2 + 1 - drawSurf->scissorRect.x1,
 						drawSurf->scissorRect.y2 + 1 - drawSurf->scissorRect.y1 );
@@ -967,29 +966,24 @@ static void RB_StencilShadowPass( const drawSurf_t *drawSurfs, const viewLight_t
 			// set the local light position to allow the vertex program to project the shadow volume end cap to infinity
 			idVec4 localLight( 0.0f );
 			R_GlobalPointToLocal( drawSurf->space->modelMatrix, vLight->globalLightOrigin, localLight.ToVec3() );
-			SetVertexParm( RENDERPARM_LOCALLIGHTORIGIN, localLight.ToFloatPtr() );
+			renderProgManager.SetRenderParm( RENDERPARM_LOCALLIGHTORIGIN, localLight.ToFloatPtr() );
 
 			backEnd.currentSpace = drawSurf->space;
 		}
 
-		if ( r_showShadows.GetInteger() == 0 ) {
+		// if ( r_showShadows.GetInteger() == 0 ) { // @pjb: todo
 			if ( drawSurf->jointCache ) {
-				renderProgManager.BindShader_ShadowSkinned();
+                pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_SHADOW_SKINNED ), nullptr, 0 );
 			} else {
-				renderProgManager.BindShader_Shadow();
+                pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_SHADOW ), nullptr, 0 );
 			}
-		} else {
-			if ( drawSurf->jointCache ) {
-				renderProgManager.BindShader_ShadowDebugSkinned();
-			} else {
-				renderProgManager.BindShader_ShadowDebug();
-			}
-		}
-
-		// set depth bounds per shadow
-		if ( r_useShadowDepthBounds.GetBool() ) {
-			GL_DepthBoundsTest( drawSurf->scissorRect.zmin, drawSurf->scissorRect.zmax );
-		}
+		//} else {
+		//	if ( drawSurf->jointCache ) {
+		//		renderProgManager.BindShader_ShadowDebugSkinned();
+		//	} else {
+		//		renderProgManager.BindShader_ShadowDebug();
+		//	}
+		//}
 
 		// Determine whether or not the shadow volume needs to be rendered with Z-pass or
 		// Z-fail. It is worthwhile to spend significant resources to reduce the number of
@@ -1132,15 +1126,6 @@ static void RB_StencilShadowPass( const drawSurf_t *drawSurfs, const viewLight_t
 	// cleanup the shadow specific rendering state
 
 	GL_Cull( CT_FRONT_SIDED );
-
-	// reset depth bounds
-	if ( r_useShadowDepthBounds.GetBool() ) {
-		if ( r_useLightDepthBounds.GetBool() ) {
-			GL_DepthBoundsTest( vLight->scissorRect.zmin, vLight->scissorRect.zmax );
-		} else {
-			GL_DepthBoundsTest( 0.0f, 0.0f );
-		}
-	}
 }
 
 /*
@@ -1152,7 +1137,7 @@ such a way that only fragments that are directly visible and contained within th
 mask to be used by the following stencil shadow and draw interaction passes.
 ==================
 */
-static void RB_StencilSelectLight( const viewLight_t * vLight ) {
+static void RB_StencilSelectLight( ID3D11DeviceContext1* pContext, const viewLight_t * vLight ) {
 	renderLog.OpenBlock( "Stencil Select" );
 
 	// enable the light scissor
@@ -1169,14 +1154,11 @@ static void RB_StencilSelectLight( const viewLight_t * vLight ) {
 	GL_State( glStateMinusStencil | GLS_STENCIL_FUNC_ALWAYS | GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE ) | GLS_STENCIL_MAKE_MASK( STENCIL_SHADOW_MASK_VALUE ) );	// make sure stencil mask passes for the clear
 	GL_Clear( false, false, true, 0, 0.0f, 0.0f, 0.0f, 0.0f );	// clear to 0 for stencil select
 
-	// set the depthbounds
-	GL_DepthBoundsTest( vLight->scissorRect.zmin, vLight->scissorRect.zmax );
-
-
 	GL_State( GLS_COLORMASK | GLS_ALPHAMASK | GLS_DEPTHMASK | GLS_DEPTHFUNC_LESS | GLS_STENCIL_FUNC_ALWAYS | GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE ) | GLS_STENCIL_MAKE_MASK( STENCIL_SHADOW_MASK_VALUE ) );
 	GL_Cull( CT_TWO_SIDED );
 
-	renderProgManager.BindShader_Depth();
+    pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_SHADOW ), nullptr, 0 );
+    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader(  BUILTIN_SHADER_SHADOW ), nullptr, 0 );
 
 	// set the matrix for deforming the 'zeroOneCubeModel' into the frustum to exactly cover the light volume
 	idRenderMatrix invProjectMVPMatrix;
@@ -1187,21 +1169,14 @@ static void RB_StencilSelectLight( const viewLight_t * vLight ) {
 	qglStencilOpSeparate( GL_FRONT, GL_KEEP, GL_REPLACE, GL_ZERO );
 	qglStencilOpSeparate( GL_BACK, GL_KEEP, GL_ZERO, GL_REPLACE );
 
-	RB_DrawElementsWithCounters( &backEnd.zeroOneCubeSurface );
+	RB_DrawElementsWithCounters( pContext, &backEnd.zeroOneCubeSurface );
 
 	// reset stencil state
 
 	GL_Cull( CT_FRONT_SIDED );
 
-	renderProgManager.Unbind();
-
-
-	// unset the depthbounds
-	GL_DepthBoundsTest( 0.0f, 0.0f );
-
 	renderLog.CloseBlock();
 }
-#endif
 
 /*
 =========================================================================================
@@ -1720,7 +1695,7 @@ static void RB_DrawInteractions( ID3D11DeviceContext1* pContext ) {
 		if ( performStencilTest ) {
 			if ( useLightStencilSelect ) {
 				// write a stencil mask for the visible light bounds to hi-stencil
-// @pjb: todo				RB_StencilSelectLight( pContext, vLight );
+				RB_StencilSelectLight( pContext, vLight );
 			} else {
 				// always clear whole S-Cull tiles
 				idScreenRect rect;
@@ -1746,7 +1721,7 @@ static void RB_DrawInteractions( ID3D11DeviceContext1* pContext ) {
 
 		if ( vLight->globalShadows != NULL ) {
 			renderLog.OpenBlock( "Global Light Shadows" );
-// @pjb: todo			RB_StencilShadowPass( pContext, vLight->globalShadows, vLight );
+			RB_StencilShadowPass( pContext, vLight->globalShadows, vLight );
 			renderLog.CloseBlock();
 		}
 
@@ -1758,7 +1733,7 @@ static void RB_DrawInteractions( ID3D11DeviceContext1* pContext ) {
 
 		if ( vLight->localShadows != NULL ) {
 			renderLog.OpenBlock( "Local Light Shadows" );
-// @pjb: todo			RB_StencilShadowPass( pContext, vLight->localShadows, vLight );
+			RB_StencilShadowPass( pContext, vLight->localShadows, vLight );
 			renderLog.CloseBlock();
 		}
 

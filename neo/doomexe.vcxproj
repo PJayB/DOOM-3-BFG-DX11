@@ -892,6 +892,8 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Retail|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
     </FxCompile>
+    <None Include="renderer\hlsl\shadow.pixel" />
+    <None Include="renderer\hlsl\shadow.vertex" />
     <None Include="renderer\hlsl\skinning.inc" />
     <None Include="sys\win32\rc\res\doom.ico" />
     <None Include="sys\win32\rc\res\doom3bfg.bin" />

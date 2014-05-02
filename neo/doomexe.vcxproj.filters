@@ -1177,10 +1177,10 @@
     <None Include="renderer\hlsl\global.inc">
       <Filter>Renderer\Shaders</Filter>
     </None>
-    <None Include="renderer\hlsl\interactionAmbient.pixel">
-      <Filter>Renderer\Shaders\Pixel</Filter>
+    <None Include="renderer\hlsl\shadow.vertex">
+      <Filter>Renderer\Shaders\Vertex</Filter>
     </None>
-    <None Include="renderer\hlsl\interaction.pixel">
+    <None Include="renderer\hlsl\shadow.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </None>
   </ItemGroup>
@@ -1352,5 +1352,7 @@
     <FxCompile Include="renderer\hlsl\interactionAmbient.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
+    <FxCompile Include="renderer\hlsl\interaction.pixel" />
+    <FxCompile Include="renderer\hlsl\interactionAmbient.pixel" />
   </ItemGroup>
 </Project>

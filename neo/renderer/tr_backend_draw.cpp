@@ -906,7 +906,7 @@ static void RB_FillDepthBufferFast( ID3D11DeviceContext1* pContext, drawSurf_t *
 
         // bind the shaders
         pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( shaderToUse ), nullptr, 0 );
-        pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( shaderToUse ), nullptr, 0 );
+        pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( BUILTIN_SHADER_DEPTH ), nullptr, 0 );
 
 		// draw it solid
 		RB_DrawElementsWithCounters( pContext, surf );

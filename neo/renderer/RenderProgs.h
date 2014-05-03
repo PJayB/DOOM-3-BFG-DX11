@@ -190,11 +190,13 @@ public:
     
     ID3D11VertexShader* GetBuiltInVertexShader( int vshader ) const { 
         assert( vshader < MAX_BUILTIN_SHADERS );
+        assert( vertexShaders[vshader].pShader );
         return vertexShaders[vshader].pShader; 
     }
 
     ID3D11PixelShader* GetBuiltInPixelShader( int pshader ) const { 
         assert( pshader < MAX_BUILTIN_SHADERS );
+        assert( fragmentShaders[pshader].pShader );
         return fragmentShaders[pshader].pShader; 
     }
 

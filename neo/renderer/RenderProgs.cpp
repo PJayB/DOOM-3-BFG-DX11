@@ -129,14 +129,19 @@ void idRenderProgManager::Init() {
 		{ BUILTIN_SHADER_MOTION_BLUR, "motionBlur.vfp" },
 	};
 
-    BUILTIN_SHADER builtinSkinned[] = {
-        BUILTIN_SHADER_TEXTURE_VERTEXCOLOR_SKINNED,
-        BUILTIN_SHADER_INTERACTION_SKINNED,
-        BUILTIN_SHADER_INTERACTION_AMBIENT_SKINNED,
-        BUILTIN_SHADER_ENVIRONMENT_SKINNED,
-        BUILTIN_SHADER_BUMPY_ENVIRONMENT_SKINNED,
-        BUILTIN_SHADER_DEPTH_SKINNED,
-        BUILTIN_SHADER_SHADOW_SKINNED
+    struct shaderMapping_t {
+        int skinned;
+        int base;
+    };
+
+    shaderMapping_t builtinSkinned[] = {
+        { BUILTIN_SHADER_TEXTURE_VERTEXCOLOR_SKINNED, BUILTIN_SHADER_TEXTURE_VERTEXCOLOR },
+        { BUILTIN_SHADER_INTERACTION_SKINNED,         BUILTIN_SHADER_INTERACTION },        
+        { BUILTIN_SHADER_INTERACTION_AMBIENT_SKINNED, BUILTIN_SHADER_INTERACTION_AMBIENT },
+        { BUILTIN_SHADER_ENVIRONMENT_SKINNED,         BUILTIN_SHADER_ENVIRONMENT },        
+        { BUILTIN_SHADER_BUMPY_ENVIRONMENT_SKINNED,   BUILTIN_SHADER_BUMPY_ENVIRONMENT },  
+        { BUILTIN_SHADER_DEPTH_SKINNED,               BUILTIN_SHADER_DEPTH },              
+        { BUILTIN_SHADER_SHADOW_SKINNED,              BUILTIN_SHADER_SHADOW }             
     };
 
 	int numBuiltinVs = sizeof( builtinVs ) / sizeof( builtinVs[0] );
@@ -154,7 +159,22 @@ void idRenderProgManager::Init() {
 	}
 
     for ( int i = 0; i < _countof(builtinSkinned); ++i ) {
-        vertexShaders[builtinSkinned[i]].usesJoints = true;
+        int index = builtinSkinned[i].skinned;
+
+        // Set up to use skinning
+        vertexShaders[index].usesJoints = true;
+
+        // Might be using the base version's pixel shader...
+        // This is a bit kludgy.
+        if ( fragmentShaders[index].pShader == nullptr ) {
+            const fragmentShader_t* src = &fragmentShaders[builtinSkinned[i].base];
+            if ( src->pShader ) {
+                src->pShader->AddRef();
+                fragmentShaders[index].pShader = src->pShader;
+                fragmentShaders[index].name = src->name;
+                fragmentShaders[index].uniforms = src->uniforms;
+            }
+        }
     }
 
 	cmdSystem->AddCommand( "reloadShaders", R_ReloadShaders, CMD_FL_RENDERER, "reloads shaders" );

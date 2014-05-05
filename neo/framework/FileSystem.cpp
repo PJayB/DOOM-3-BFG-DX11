@@ -656,11 +656,13 @@ idFileSystemLocal::AddPerPlatformResources
 void idFileSystemLocal::AddRenderProgs( idStrList &files ) {
 	idStrList work;
 
+    static const idStr shaderPath("compiled_shaders/" _CONFIGURATION "/");
+
 	// grab all the renderprogs
-	idStr path = RelativePathToOSPath( "compiled_shaders", "fs_basepath" );
+	idStr path = RelativePathToOSPath( shaderPath.c_str(), "fs_basepath" );
 	ListOSFiles( path, "*.cso", work );
 	for ( int i = 0; i < work.Num(); i++ ) {
-		files.Append( idStr( "compiled_shaders/" ) + work[i] );
+		files.Append( shaderPath + work[i] );
 	}
 }
 

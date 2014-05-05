@@ -1098,6 +1098,10 @@ static void TransformJoints( idJointMat *__restrict outJoints, const int numJoin
 	assert_16_byte_aligned( inFloats1 );
 	assert_16_byte_aligned( inFloats2 );
 
+    (void)( outFloats );
+    (void)( inFloats1 );
+    (void)( inFloats2 );
+
 #ifdef ID_WIN_X86_SSE2_INTRIN
 
 	const __m128 mask_keep_last = __m128c( _mm_set_epi32( 0xFFFFFFFF, 0x00000000, 0x00000000, 0x00000000 ) );

@@ -1346,8 +1346,6 @@
     <FxCompile Include="renderer\hlsl\interactionAmbient.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
     </FxCompile>
-    <FxCompile Include="renderer\hlsl\interaction.pixel" />
-    <FxCompile Include="renderer\hlsl\interactionAmbient.pixel" />
     <FxCompile Include="renderer\hlsl\shadow.pixel">
       <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
@@ -1356,6 +1354,12 @@
     </FxCompile>
     <FxCompile Include="renderer\hlsl\shadow_skinned.vertex">
       <Filter>Renderer\Shaders\Vertex</Filter>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\interaction.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
+    </FxCompile>
+    <FxCompile Include="renderer\hlsl\interactionAmbient.pixel">
+      <Filter>Renderer\Shaders\Pixel</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

@@ -189,7 +189,7 @@ float3 _float3( float x ) { return x.xxx; }
 float2 _float2( float x ) { return x.xx; }
 
 #define VPOS WPOS
-static float4 idtex2Dproj( Texture2D tex, SamplerState samp, float4 texCoords ) { return tex.Sample( samp, 0.5f * (texCoords.xy / texCoords.w + 1) ); }
+static float4 idtex2Dproj( Texture2D tex, SamplerState samp, float4 texCoords ) { return tex.Sample( samp, texCoords.xy / texCoords.w ); }
 static float4 swizzleColor( float4 c ) { return c; }
 static float2 vposToScreenPosTexCoord( float2 vpos ) { return vpos.xy * rpWindowCoord.xy; }
 

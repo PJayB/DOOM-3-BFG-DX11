@@ -972,9 +972,6 @@ static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf
 
     D3DDrv_SetBlendStateFromMask( pContext, glState );
 
-	// @pjb: todo:
-    // GL_PolygonOffset( r_shadowPolygonFactor.GetFloat(), -r_shadowPolygonOffset.GetFloat() );
-
 	// the actual stencil func will be set in the draw code, but we need to make sure it isn't
 	// disabled here, and that the value will get reset for the interactions without looking
 	// like a no-change-required

@@ -660,6 +660,17 @@ void DestroyBlendStates( d3dBlendStates_t* bs )
     memset( bs, 0, sizeof( d3dBlendStates_t ) );
 }
 
+void D3DDrv_RegenerateStateBlocks()
+{
+    DestroyRasterStates( &g_DrawState.rasterStates );
+    DestroyDepthStates( &g_DrawState.depthStates );
+    DestroyBlendStates( &g_DrawState.blendStates );
+    InitRasterStates( &g_DrawState.rasterStates );
+    InitDepthStates( &g_DrawState.depthStates );
+    InitBlendStates( &g_DrawState.blendStates );
+}
+
+
 //----------------------------------------------------------------------------
 //
 // ENTRY POINTS
@@ -705,4 +716,3 @@ void DestroyDrawState()
 
     memset( &g_DrawState, 0, sizeof( g_DrawState ) );
 }
-

@@ -281,7 +281,7 @@ idRenderProgManager::LoadShaderBlob
 */
 int idRenderProgManager::LoadShaderBlob( const char* name, void** ppOut, shaderType_t shaderType ) const {
     idStr inFile;
-    inFile.Format( "compiled_shaders\\%s", name );
+    inFile.Format( "compiled_shaders\\%s\\%s", _CONFIGURATION, name );
     inFile.StripFileExtension();
     
     switch (shaderType) {

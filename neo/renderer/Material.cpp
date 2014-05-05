@@ -2416,7 +2416,7 @@ bool idMaterial::Parse( const char *text, const int textLength, bool allowBinary
     if ( TestMaterialFlag(MF_POLYGONOFFSET) ) {
         rasterizerState = D3DDrv_CreateRasterizerState(
             cullType,
-            GLS_POLYGON_OFFSET,
+            GLS_POLYGON_OFFSET_DECAL,
             0,
             GetPolygonOffset() );
 
@@ -2425,7 +2425,7 @@ bool idMaterial::Parse( const char *text, const int textLength, bool allowBinary
 			if ( pStage->privatePolygonOffset != 0 ) {
                 pStage->rasterizerState = D3DDrv_CreateRasterizerState(
                     cullType,
-                    GLS_POLYGON_OFFSET,
+                    GLS_POLYGON_OFFSET_DECAL,
                     0,
                     pStage->privatePolygonOffset );
             }

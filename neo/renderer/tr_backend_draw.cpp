@@ -982,7 +982,7 @@ static void RB_StencilShadowPass( ID3D11DeviceContext1* pContext, const drawSurf
     D3DDrv_SetDepthStateFromMask( pContext, glState | GLS_DEPTH_STENCIL_PACKAGE_INC );
 
 	// Two Sided Stencil reduces two draw calls to one for slightly faster shadows
-    D3DDrv_SetRasterizerStateFromMask( pContext, CT_TWO_SIDED, glState | GLS_POLYGON_OFFSET );
+    D3DDrv_SetRasterizerStateFromMask( pContext, CT_TWO_SIDED, glState | GLS_POLYGON_OFFSET_SHADOW );
 
 	// process the chain of shadows with the current rendering state
 	backEnd.currentSpace = NULL;

@@ -63,25 +63,27 @@ static const uint64 GLS_COLORMASK						= (GLS_REDMASK|GLS_GREENMASK|GLS_BLUEMASK
 static const uint64 GLS_COLORALPHAMASK					= (GLS_COLORMASK|GLS_ALPHAMASK);
 
 static const uint64 GLS_POLYMODE_LINE					= 1 << 11;
-static const uint64 GLS_POLYGON_OFFSET					= 1 << 12;
+static const uint64 GLS_POLYGON_OFFSET_DECAL			= 1 << 12;
+static const uint64 GLS_POLYGON_OFFSET_SHADOW           = 1 << 13;
+static const uint64 GLS_POLYGON_OFFSET_MASK             = GLS_POLYGON_OFFSET_DECAL | GLS_POLYGON_OFFSET_SHADOW;
 
-static const uint64 GLS_DEPTHFUNC_LESS					= 0 << 13;
-static const uint64 GLS_DEPTHFUNC_ALWAYS				= 1 << 13;
-static const uint64 GLS_DEPTHFUNC_GREATER				= 2 << 13;
-static const uint64 GLS_DEPTHFUNC_EQUAL					= 3 << 13;
-static const uint64 GLS_DEPTHFUNC_BITS					= 3 << 13;
+static const uint64 GLS_DEPTHFUNC_LESS					= 0 << 14;
+static const uint64 GLS_DEPTHFUNC_ALWAYS				= 1 << 14;
+static const uint64 GLS_DEPTHFUNC_GREATER				= 2 << 14;
+static const uint64 GLS_DEPTHFUNC_EQUAL					= 3 << 14;
+static const uint64 GLS_DEPTHFUNC_BITS					= 3 << 14;
 
-static const uint64 GLS_BLENDOP_ADD						= 0 << 18;
-static const uint64 GLS_BLENDOP_SUB						= 1 << 18;
-static const uint64 GLS_BLENDOP_MIN						= 2 << 18;
-static const uint64 GLS_BLENDOP_MAX						= 3 << 18;
-static const uint64 GLS_BLENDOP_BITS					= 3 << 18;
+static const uint64 GLS_BLENDOP_ADD						= 0 << 19;
+static const uint64 GLS_BLENDOP_SUB						= 1 << 19;
+static const uint64 GLS_BLENDOP_MIN						= 2 << 19;
+static const uint64 GLS_BLENDOP_MAX						= 3 << 19;
+static const uint64 GLS_BLENDOP_BITS					= 3 << 19;
 
 // stencil bits
-static const uint64 GLS_STENCIL_FUNC_REF_SHIFT			= 20;
+static const uint64 GLS_STENCIL_FUNC_REF_SHIFT			= 21;
 static const uint64 GLS_STENCIL_FUNC_REF_BITS			= 0xFFll << GLS_STENCIL_FUNC_REF_SHIFT;
 
-static const uint64 GLS_STENCIL_FUNC_MASK_SHIFT			= 28;
+static const uint64 GLS_STENCIL_FUNC_MASK_SHIFT			= 29;
 static const uint64 GLS_STENCIL_FUNC_MASK_BITS			= 0xFFll << GLS_STENCIL_FUNC_MASK_SHIFT;
 
 #define GLS_STENCIL_MAKE_REF( x ) ( ( (uint64)(x) << GLS_STENCIL_FUNC_REF_SHIFT ) & GLS_STENCIL_FUNC_REF_BITS )
@@ -92,34 +94,34 @@ static const uint64 GLS_STENCIL_FUNC_MASK_BITS			= 0xFFll << GLS_STENCIL_FUNC_MA
 // @pjb: NOTE: removed these because they caused a combinatorial explosion.
 // Instead we're going to use pre-baked depth-stencil combinations.
 
-static const uint64 GLS_DEPTH_STENCIL_PACKAGE_NONE      = 0ull << 36;
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_NONE      = 0ull << 37;
 
 // GLS_STENCIL_FUNC_EQUAL | GLS_STENCIL_MAKE_MASK( 255 );
-static const uint64 GLS_DEPTH_STENCIL_PACKAGE_REF_EQUAL = (1ull << 36);
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_REF_EQUAL = (1ull << 37);
 
 // GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_KEEP | GLS_STENCIL_OP_PASS_INCR;
-static const uint64 GLS_DEPTH_STENCIL_PACKAGE_INC       = (2ull << 36);
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_INC       = (2ull << 37);
 
 // GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_KEEP | GLS_STENCIL_OP_PASS_DECR;
-static const uint64 GLS_DEPTH_STENCIL_PACKAGE_DEC       = (3ull << 36);
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_DEC       = (3ull << 37);
 
 // Asymmetrical modes:
 
 // Front: GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_KEEP | GLS_STENCIL_OP_PASS_INCR
 // Back:  GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_KEEP | GLS_STENCIL_OP_PASS_DECR
-static const uint64 GLS_DEPTH_STENCIL_PACKAGE_Z         = (4ull << 36);
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_Z         = (4ull << 37);
 
 // Front: GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_DECR | GLS_STENCIL_OP_PASS_DECR
 // Back:  GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_INCR | GLS_STENCIL_OP_PASS_INCR
-static const uint64 GLS_DEPTH_STENCIL_PACKAGE_PRELOAD_Z = (5ull << 36);
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_PRELOAD_Z = (5ull << 37);
 
 // Front: GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_REPLACE | GLS_STENCIL_OP_PASS_ZERO
 // Back:  GLS_STENCIL_OP_FAIL_KEEP | GLS_STENCIL_OP_ZFAIL_ZERO | GLS_STENCIL_OP_PASS_REPLACE
-static const uint64 GLS_DEPTH_STENCIL_PACKAGE_TWO_SIDED = (6ull << 36);
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_TWO_SIDED = (6ull << 37);
 
 
 
-static const uint64 GLS_DEPTH_STENCIL_PACKAGE_BITS		= 15ull << 36;
+static const uint64 GLS_DEPTH_STENCIL_PACKAGE_BITS		= 15ull << 37;
 static const uint64 GLS_DEPTH_STENCIL_PACKAGE_COUNT     = 7ull;
 // Update the constant in d3d_state.h!
 

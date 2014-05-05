@@ -148,9 +148,6 @@ ID3D11BlendState* D3DDrv_GetBlendState( uint64 stateBits )
 //----------------------------------------------------------------------------
 ID3D11RasterizerState* D3DDrv_GetRasterizerState( int cullType, uint64 stateBits )
 {
-    bool outline = ( stateBits & GLS_POLYMODE_LINE ) != 0;
-    bool polyOffset = ( stateBits & GLS_POLYGON_OFFSET ) != 0;
-
     // Resolve which direction we're culling in
     D3D11_CULL_MODE cullMode = D3D11_CULL_NONE;
 	if ( cullType != CT_TWO_SIDED ) 
@@ -164,8 +161,23 @@ ID3D11RasterizerState* D3DDrv_GetRasterizerState( int cullType, uint64 stateBits
 	}
 
     int rasterFlags = 0;
-    if ( polyOffset ) { rasterFlags |= RASTERIZERSTATE_FLAG_POLY_OFFSET; }
-    if ( outline ) { rasterFlags |= RASTERIZERSTATE_FLAG_POLY_OUTLINE; }
+    switch ( stateBits & GLS_POLYGON_OFFSET_MASK )
+    {
+    case 0:
+        break;
+    case GLS_POLYGON_OFFSET_DECAL:
+        rasterFlags |= RASTERIZERSTATE_FLAG_POLY_OFFSET_DECAL;
+        break;
+    case GLS_POLYGON_OFFSET_SHADOW:
+        rasterFlags |= RASTERIZERSTATE_FLAG_POLY_OFFSET_SHADOW;
+        break;
+    default:
+        assert(0);
+    }    
+
+    if ( stateBits & GLS_POLYMODE_LINE ) { 
+        rasterFlags |= RASTERIZERSTATE_FLAG_POLY_OUTLINE; 
+    }
 
     return GetRasterizerState( cullMode, rasterFlags );
 }
@@ -222,10 +234,18 @@ ID3D11RasterizerState* D3DDrv_CreateRasterizerState( int cullType, uint64 stateB
         rd.FillMode = D3D11_FILL_SOLID;
     }
 
-    if ( stateBits & GLS_POLYGON_OFFSET )
+    switch ( stateBits & GLS_POLYGON_OFFSET_MASK )
     {
+    case GLS_POLYGON_OFFSET_DECAL:
         rd.DepthBias = r_offsetFactor.GetFloat() + polyOffsetBias;
         rd.SlopeScaledDepthBias = r_offsetUnits.GetFloat() + polyOffsetSlopeBias;
+        break;
+    case GLS_POLYGON_OFFSET_SHADOW:
+        rd.DepthBias = r_shadowPolygonFactor.GetFloat() + polyOffsetBias;
+        rd.SlopeScaledDepthBias = -r_shadowPolygonOffset.GetFloat() + polyOffsetSlopeBias;
+        break;
+    default:
+        break;
     }
 
     ID3D11RasterizerState* pRS = nullptr;
@@ -238,16 +258,16 @@ ID3D11RasterizerState* D3DDrv_CreateRasterizerState( int cullType, uint64 stateB
 //----------------------------------------------------------------------------
 ID3D11DepthStencilState* GetDepthState( uint64 mask )
 {
-    uint64 stencilPackage = ( mask & GLS_DEPTH_STENCIL_PACKAGE_BITS ) >> 36;
-
-    uint64 rmask = ( mask & GLS_DEPTHFUNC_BITS ) >> 13;
-
-    assert( rmask <= DEPTHSTATE_FUNC_MASK );
+    uint64 stencilPackage = ( mask & GLS_DEPTH_STENCIL_PACKAGE_BITS ) >> 37;
+    uint64 rmask = ( mask & GLS_DEPTHFUNC_BITS ) >> 14;
 
     if ( !( mask & GLS_DEPTHMASK ) )
     {
         rmask |= DEPTHSTATE_FLAG_MASK;
     }
+
+    assert( rmask < DEPTHSTATE_COUNT );
+    assert( stencilPackage < STENCILPACKAGE_COUNT );
 
     return g_DrawState.depthStates.states[stencilPackage][rmask];
 }
@@ -408,9 +428,13 @@ void InitRasterStates( d3dRasterStates_t* rs )
 
         for ( int rasterMode = 0; rasterMode < RASTERIZERSTATE_COUNT; ++rasterMode )
         {
-            if ( rasterMode & RASTERIZERSTATE_FLAG_POLY_OFFSET ) {
+            uint64 polyOffsetMode = rasterMode & RASTERIZERSTATE_FLAG_POLY_OFFSET_MASK;
+            if ( polyOffsetMode == RASTERIZERSTATE_FLAG_POLY_OFFSET_DECAL ) {
                 rd.DepthBias = r_offsetFactor.GetFloat();
                 rd.SlopeScaledDepthBias = r_offsetUnits.GetFloat();
+            } else if ( polyOffsetMode == RASTERIZERSTATE_FLAG_POLY_OFFSET_SHADOW ) {
+                rd.DepthBias = r_shadowPolygonFactor.GetFloat();
+                rd.SlopeScaledDepthBias = -r_shadowPolygonOffset.GetFloat();
             } else {
                 rd.DepthBias = 0;
                 rd.SlopeScaledDepthBias = 0;
@@ -542,8 +566,8 @@ static ID3D11DepthStencilState* CreateDepthStencilStateFromMask( uint64 stencilB
 
     // Convert the mask to a GLS code
     uint64 gls = 
-        ( stencilBits << 36 ) |
-        ( depthBits & DEPTHSTATE_FUNC_MASK ) << 13;
+        ( stencilBits << 37 ) |
+        ( depthBits & DEPTHSTATE_FUNC_MASK ) << 14;
 
     if ( !( depthBits & DEPTHSTATE_FLAG_MASK ) ) {
         gls |= GLS_DEPTHMASK; 

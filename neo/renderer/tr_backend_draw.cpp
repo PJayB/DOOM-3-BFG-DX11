@@ -2243,7 +2243,7 @@ RB_CopyRender
 Copy part of the current framebuffer to an image
 ==================
 */
-void RB_CopyRender( const void *data ) {
+void RB_CopyRender( ID3D11DeviceContext1* pContext, const void *data ) {
 	const copyRenderCommand_t * cmd = (const copyRenderCommand_t *)data;
 
 	if ( r_skipCopyTexture.GetBool() ) {
@@ -2257,7 +2257,7 @@ void RB_CopyRender( const void *data ) {
 	}
 
 	if ( cmd->clearColorAfterCopy ) {
-		D3DDrv_Clear( D3DDrv_GetImmediateContext(), CLEAR_COLOR, nullptr, STENCIL_SHADOW_TEST_VALUE, 0 );
+		D3DDrv_Clear( pContext, CLEAR_COLOR, nullptr, STENCIL_SHADOW_TEST_VALUE, 0 );
 	}
 }
 
@@ -2268,7 +2268,7 @@ RB_PostProcess
 ==================
 */
 extern idCVar rs_enable;
-void RB_PostProcess( const void * data ) {
+void RB_PostProcess( ID3D11DeviceContext1* pContext, const void * data ) {
 
 	// only do the post process step if resolution scaling is enabled. Prevents the unnecessary copying of the framebuffer and
 	// corresponding full screen quad pass.
@@ -2276,7 +2276,28 @@ void RB_PostProcess( const void * data ) {
 		return;
 	}
 
-	// @pjb: todo
+	// resolve the scaled rendering to a temporary texture
+	postProcessCommand_t * cmd = (postProcessCommand_t *)data;
+	const idScreenRect & viewport = cmd->viewDef->viewport;
+	globalImages->currentRenderImage->CopyFramebuffer( viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight() );
+
+    D3DDrv_SetBlendStateFromMask( pContext, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO );
+    D3DDrv_SetDepthStateFromMask( pContext, GLS_DEPTHMASK | GLS_DEPTHFUNC_ALWAYS );
+    D3DDrv_SetRasterizerStateFromMask( pContext, CT_TWO_SIDED, 0 );
+
+	int screenWidth = renderSystem->GetWidth();
+	int screenHeight = renderSystem->GetHeight();
+
+	// set the window clipping
+	D3DDrv_SetViewport( pContext, 0, 0, screenWidth, screenHeight );
+	D3DDrv_SetScissor( pContext, 0, 0, screenWidth, screenHeight );
+
+    RB_BindImages( pContext, &globalImages->currentRenderImage, 0, 1 );
+
+	// Draw
+	RB_DrawElementsWithCounters( pContext, &backEnd.unitSquareSurface );
+
+	renderLog.CloseBlock();
 }
 
 /*
@@ -2332,11 +2353,11 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 			c_setBuffers++;
 			break;
 		case RC_COPY_RENDER:
-			RB_CopyRender( cmds );
+			RB_CopyRender( pContext, cmds );
 			c_copyRenders++;
 			break;
 		case RC_POST_PROCESS:
-			RB_PostProcess( cmds );
+			RB_PostProcess( pContext, cmds );
 			break;
 		default:
 			common->Error( "RB_ExecuteBackEndCommands: bad commandId" );
@@ -2344,7 +2365,7 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 		}
 	}
 
-	D3DDrv_Flush( D3DDrv_GetImmediateContext() );
+	D3DDrv_Flush( pContext );
 
 	// stop rendering on this thread
 	uint64 backEndFinishTime = Sys_Microseconds();

@@ -28,7 +28,7 @@ enum
     RASTERIZERSTATE_FLAG_POLY_OFFSET_SHADOW = 2,
     RASTERIZERSTATE_FLAG_POLY_OFFSET_MASK = 3,
     RASTERIZERSTATE_FLAG_POLY_OUTLINE = 4,
-    RASTERIZERSTATE_COUNT = 4
+    RASTERIZERSTATE_COUNT = 8
 };
 
 //----------------------------------------------------------------------------

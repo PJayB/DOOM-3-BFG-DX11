@@ -428,6 +428,10 @@ void InitRasterStates( d3dRasterStates_t* rs )
 
         for ( int rasterMode = 0; rasterMode < RASTERIZERSTATE_COUNT; ++rasterMode )
         {
+            // Skip invalid poly offset modes
+            if ((rasterMode & RASTERIZERSTATE_FLAG_POLY_OFFSET_MASK) == RASTERIZERSTATE_FLAG_POLY_OFFSET_MASK)
+                continue;
+
             uint64 polyOffsetMode = rasterMode & RASTERIZERSTATE_FLAG_POLY_OFFSET_MASK;
             if ( polyOffsetMode == RASTERIZERSTATE_FLAG_POLY_OFFSET_DECAL ) {
                 rd.DepthBias = r_offsetFactor.GetFloat();

@@ -681,8 +681,7 @@ const emptyCommand_t * idRenderSystemLocal::SwapCommandBuffers_FinishCommandBuff
 	guiModel->EmitFullScreen();
 	guiModel->Clear();
 
-	// unmap the buffer objects so they can be used by the GPU
-    vertexCache.EndBackEnd();
+    // re-lock the vertex cache buffers
 	vertexCache.BeginBackEnd();
 
 	// save off this command buffer

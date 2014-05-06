@@ -2129,15 +2129,6 @@ RB_DrawView
 void RB_DrawView( const void *data ) {
 	const drawSurfsCommand_t * cmd = (const drawSurfsCommand_t *)data;
 
-    // Do we need to restart the state?
-    if ( r_shadowPolygonFactor.IsModified() ||
-         r_shadowPolygonOffset.IsModified() ||
-         r_offsetFactor.IsModified() ||
-         r_offsetUnits.IsModified() ) {
-        // The user changed a cvar that affects our state blocks
-        D3DDrv_RegenerateStateBlocks();
-    }
-
 	backEnd.viewDef = cmd->viewDef;
 
 	// we will need to do a new copyTexSubImage of the screen
@@ -2228,6 +2219,15 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 	if ( cmds->commandId == RC_NOP && !cmds->next ) {
 		return;
 	}
+
+    // Do we need to restart the state?
+    if ( r_shadowPolygonFactor.IsModified() ||
+         r_shadowPolygonOffset.IsModified() ||
+         r_offsetFactor.IsModified() ||
+         r_offsetUnits.IsModified() ) {
+        // The user changed a cvar that affects our state blocks
+        D3DDrv_RegenerateStateBlocks();
+    }
 
 	uint64 backEndStartTime = Sys_Microseconds();
 

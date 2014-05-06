@@ -311,6 +311,9 @@ void idVertexCache::BeginBackEnd() {
 			mostUsedIndex / 1024,
 			mostUsedJoint / 1024 );
 	}
+
+    EndBackEnd();
+
 	drawListNum = listNum;
 
 	// prepare the next frame for writing to by the CPU

@@ -1992,7 +1992,7 @@ BACKEND COMMANDS
 RB_DrawViewInternal
 ==================
 */
-void RB_DrawViewInternal( const viewDef_t * viewDef ) {
+void RB_DrawViewInternal( ID3D11DeviceContext1* pContext, const viewDef_t * viewDef ) {
 	renderLog.OpenBlock( "RB_DrawViewInternal" );
 
 	//-------------------------------------------------
@@ -2009,8 +2009,6 @@ void RB_DrawViewInternal( const viewDef_t * viewDef ) {
 			const_cast<idMaterial *>( ds->material )->EnsureNotPurged();
 		}
 	}
-
-    ID3D11DeviceContext1* pContext = D3DDrv_GetImmediateContext();
 
 	//-------------------------------------------------
 	// RB_BeginDrawingView
@@ -2106,7 +2104,7 @@ RB_MotionBlur
 Experimental feature
 ==================
 */
-void RB_MotionBlur() {
+void RB_MotionBlur( ID3D11DeviceContext1* pContext ) {
 	if ( !backEnd.viewDef->viewEntitys ) {
 		// 3D views only
 		return;
@@ -2118,7 +2116,91 @@ void RB_MotionBlur() {
 		return;
 	}
 
-	// @pjb: todo
+	// clear the alpha buffer and draw only the hands + weapon into it so
+	// we can avoid blurring them
+    float clearCol[] = { 0, 0, 0, 1 };
+    D3DDrv_Clear( pContext, CLEAR_COLOR, clearCol, 0, 0 );
+
+    float renderCol[] = { 0, 0, 0, 0 };
+    renderProgManager.SetRenderParm( RENDERPARM_COLOR, renderCol );
+
+    RB_BindImages( pContext, &globalImages->blackImage, 0, 1 );
+
+    backEnd.currentSpace = NULL;
+
+	drawSurf_t **drawSurfs = (drawSurf_t **)&backEnd.viewDef->drawSurfs[0];
+	for ( int surfNum = 0; surfNum < backEnd.viewDef->numDrawSurfs; surfNum++ ) {
+		const drawSurf_t * surf = drawSurfs[ surfNum ];
+
+		if ( !surf->space->weaponDepthHack && !surf->space->skipMotionBlur && !surf->material->HasSubview() ) {
+			// Apply motion blur to this object
+			continue;
+		}
+
+		const idMaterial * shader = surf->material;
+		if ( shader->Coverage() == MC_TRANSLUCENT ) {
+			// muzzle flash, etc
+			continue;
+		}
+
+		// set mvp matrix
+		if ( surf->space != backEnd.currentSpace ) {
+			RB_SetMVP( surf->space->mvp );
+			backEnd.currentSpace = surf->space;
+		}
+
+        pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( BUILTIN_SHADER_TEXTURE_VERTEXCOLOR ), nullptr, 0 );
+
+		// this could just be a color, but we don't have a skinned color-only prog
+		if ( surf->jointCache ) {
+            pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_TEXTURE_VERTEXCOLOR_SKINNED ), nullptr, 0 );
+		} else {
+            pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_TEXTURE_VERTEXCOLOR ), nullptr, 0 );
+		}
+
+		// draw it solid
+		RB_DrawElementsWithCounters( pContext, surf );
+	}
+
+    D3DDrv_SetDepthStateFromMask( pContext, GLS_DEPTHFUNC_ALWAYS );
+
+	// copy off the color buffer and the depth buffer for the motion blur prog
+	// we use the viewport dimensions for copying the buffers in case resolution scaling is enabled.
+	const idScreenRect & viewport = backEnd.viewDef->viewport;
+	globalImages->currentRenderImage->CopyFramebuffer( viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight() );
+
+	// in stereo rendering, each eye needs to get a separate previous frame mvp
+	int mvpIndex = ( backEnd.viewDef->renderView.viewEyeBuffer == 1 ) ? 1 : 0;
+
+	// derive the matrix to go from current pixels to previous frame pixels
+	idRenderMatrix	inverseMVP;
+	idRenderMatrix::Inverse( backEnd.viewDef->worldSpace.mvp, inverseMVP );
+
+	idRenderMatrix	motionMatrix;
+	idRenderMatrix::Multiply( backEnd.prevMVP[mvpIndex], inverseMVP, motionMatrix );
+
+	backEnd.prevMVP[mvpIndex] = backEnd.viewDef->worldSpace.mvp;
+
+	RB_SetMVP( motionMatrix );
+
+    D3DDrv_SetDepthStateFromMask( pContext, GLS_DEPTHFUNC_ALWAYS );
+    D3DDrv_SetRasterizerStateFromMask( pContext, CT_TWO_SIDED, 0 );
+
+    pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_MOTION_BLUR ), nullptr, 0 );
+    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( BUILTIN_SHADER_MOTION_BLUR ), nullptr, 0 );
+
+	// let the fragment program know how many samples we are going to use
+	idVec4 samples( (float)( 1 << r_motionBlur.GetInteger() ) );
+	renderProgManager.SetRenderParm( RENDERPARM_OVERBRIGHT, samples.ToFloatPtr() );
+
+    idImage* pImages[] = { 
+        globalImages->currentRenderImage,
+        globalImages->currentDepthImage
+    };
+
+    RB_BindImages( pContext, pImages, 0, _countof( pImages ) );
+
+	RB_DrawElementsWithCounters( pContext, &backEnd.unitSquareSurface );
 }
 
 /*
@@ -2126,7 +2208,7 @@ void RB_MotionBlur() {
 RB_DrawView
 ==================
 */
-void RB_DrawView( const void *data ) {
+void RB_DrawView( ID3D11DeviceContext1* pContext, const void *data ) {
 	const drawSurfsCommand_t * cmd = (const drawSurfsCommand_t *)data;
 
 	backEnd.viewDef = cmd->viewDef;
@@ -2149,9 +2231,9 @@ void RB_DrawView( const void *data ) {
 	backEnd.pc.c_surfaces += backEnd.viewDef->numDrawSurfs;
 
 	// render the scene
-	RB_DrawViewInternal( cmd->viewDef );
+	RB_DrawViewInternal( pContext, cmd->viewDef );
 
-	RB_MotionBlur();
+	RB_MotionBlur( pContext );
 }
 
 /*
@@ -2229,6 +2311,8 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
         D3DDrv_RegenerateStateBlocks();
     }
 
+    ID3D11DeviceContext1* pContext = D3DDrv_GetImmediateContext();
+
 	uint64 backEndStartTime = Sys_Microseconds();
 
 	for ( ; cmds != NULL; cmds = (const emptyCommand_t *)cmds->next ) {
@@ -2237,7 +2321,7 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 			break;
 		case RC_DRAW_VIEW_3D:
 		case RC_DRAW_VIEW_GUI:
-			RB_DrawView( cmds );
+			RB_DrawView( pContext, cmds );
 			if ( ((const drawSurfsCommand_t *)cmds)->viewDef->viewEntitys ) {
 				c_draw3d++;
 			} else {

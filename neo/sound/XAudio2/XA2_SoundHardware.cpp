@@ -216,56 +216,168 @@ void idSoundHardware_XAudio2::Init() {
 	// Register the sound engine callback
 	pXAudio2->RegisterForCallbacks( &soundEngineCallback );
 	soundEngineCallback.hardware = this;
+    UINT32 deviceCount = 0;
+    DWORD outputSampleRate = 44100; // Max( (DWORD)XAUDIO2FX_REVERB_MIN_FRAMERATE, Min( (DWORD)XAUDIO2FX_REVERB_MAX_FRAMERATE, deviceDetails.OutputFormat.Format.nSamplesPerSec ) );
 
-// RB: not available on Windows 8 SDK
-#if (_WIN32_WINNT >= 0x0602 /*_WIN32_WINNT_WIN8*/)
-	
-	// FIXME
-	
-	idLib::Warning( "No audio devices found" );
-	pXAudio2->Release();
-	pXAudio2 = NULL;
-	return;
-#else
-	UINT32 deviceCount = 0;
-	if ( pXAudio2->GetDeviceCount( &deviceCount ) != S_OK || deviceCount == 0 )
+    // RB: not available on Windows 8 SDK
+#if defined(USE_WINRT) //(_WIN32_WINNT >= 0x0602 /*_WIN32_WINNT_WIN8*/)
+
+    IMMDeviceEnumerator     *immDevEnum       = nullptr;
+    IMMDeviceCollection     *immDevCollection = nullptr;
+    IMMDevice               *immDev           = nullptr;
+    std::vector<AudioDevice> vAudioDevices;
+
+    HRESULT hResult = CoCreateInstance(
+    __uuidof(MMDeviceEnumerator), NULL,
+     CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**) &immDevEnum);
+
+     if (FAILED(hResult)) {
+         idLib::Warning( "Failed to get audio enumerator" );
+         pXAudio2->Release();
+         pXAudio2 = NULL;
+         return;
+     }
+
+     hResult = immDevEnum->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &immDevCollection);
+     if (FAILED(hResult)) {
+         idLib::Warning( "Failed to get audio endpoints" );
+         pXAudio2->Release();
+         pXAudio2 = NULL;
+         return;
+     }
+
+     hResult = immDevCollection->GetCount(&deviceCount);
+     if (FAILED(hResult)) {
+         idLib::Warning( "No audio devices found" );
+         pXAudio2->Release();
+         pXAudio2 = NULL;
+         return;
+     }
+
+     for (UINT i = 0; i < deviceCount; i++) {
+        IPropertyStore *propStore = nullptr;
+        PROPVARIANT     varName;
+        PROPVARIANT     varId;
+
+        PropVariantInit(&varId);
+        PropVariantInit(&varName);
+
+        hResult = immDevCollection->Item(i, &immDev);
+        if (SUCCEEDED(hResult)) {
+          hResult = immDev->OpenPropertyStore(STGM_READ, &propStore);
+        }
+        if (SUCCEEDED(hResult)) {
+          hResult = propStore->GetValue(PKEY_AudioEndpoint_Path, &varId);
+        }
+
+        if (SUCCEEDED(hResult)) {
+           hResult = propStore->GetValue(PKEY_Device_FriendlyName, &varName);
+        }
+
+        if (SUCCEEDED(hResult)) {
+          assert(varId.vt == VT_LPWSTR);
+          assert(varName.vt == VT_LPWSTR);
+
+          // Now save somewhere the device display name & id
+          AudioDevice ad;
+          ad.name = varName.pwszVal;
+          ad.id   = varId.pwszVal;
+
+          vAudioDevices.push_back(ad);
+        }
+
+        PropVariantClear(&varName);
+        PropVariantClear(&varId);
+
+        if (propStore != nullptr) {
+          propStore->Release();
+        }
+
+        if (immDev != nullptr) {
+          immDev->Release();
+        }
+      }
+
+
+    immDevCollection->Release();
+    immDevEnum->Release();
+
+    int preferredDevice = s_device.GetInteger();
+    if (!vAudioDevices.empty()) {
+        if (SUCCEEDED(pXAudio2->CreateMasteringVoice(&pMasterVoice,
+                                                     XAUDIO2_DEFAULT_CHANNELS,
+                                                     outputSampleRate,
+                                                     0,
+                                                     vAudioDevices.at(0).id.c_str(),
+                                                     NULL,
+                                                     AudioCategory_GameEffects)))
+        {
+            XAUDIO2_VOICE_DETAILS deviceDetails;
+            pMasterVoice->GetVoiceDetails(&deviceDetails);
+
+            pMasterVoice->SetVolume(DBtoLinear(s_volume_dB.GetFloat()));
+
+            outputChannels = deviceDetails.InputChannels;
+            DWORD win8_channelMask;
+            pMasterVoice->GetChannelMask(&win8_channelMask);
+
+            channelMask = (unsigned int)win8_channelMask;
+            idLib::Printf( "Using device %s\n", vAudioDevices.at(0).name );
+
+        }
+        else {
+            idLib::Warning("Failed to create master voice");
+            pXAudio2->Release();
+            pXAudio2 = NULL;
+            return;
+        }
+     }
+
+#else	
+	if( pXAudio2->GetDeviceCount( &deviceCount ) != S_OK || deviceCount == 0 )
 	{
 		idLib::Warning( "No audio devices found" );
 		pXAudio2->Release();
 		pXAudio2 = NULL;
 		return;
 	}
-
+	
 	idCmdArgs args;
 	listDevices_f( args );
-
+	
 	int preferredDevice = s_device.GetInteger();
-	if ( preferredDevice < 0 || preferredDevice >= (int)deviceCount ) {
+	if( preferredDevice < 0 || preferredDevice >= ( int )deviceCount )
+	{
 		int preferredChannels = 0;
-		for ( unsigned int i = 0; i < deviceCount; i++ ) {
+		for( unsigned int i = 0; i < deviceCount; i++ )
+		{
 			XAUDIO2_DEVICE_DETAILS deviceDetails;
-			if ( pXAudio2->GetDeviceDetails( i, &deviceDetails ) != S_OK ) {
+			if( pXAudio2->GetDeviceDetails( i, &deviceDetails ) != S_OK )
+			{
 				continue;
 			}
-
-			if ( deviceDetails.Role & DefaultGameDevice ) {
+	
+			if( deviceDetails.Role & DefaultGameDevice )
+			{
 				// if we find a device the user marked as their preferred 'game' device, then always use that
 				preferredDevice = i;
 				preferredChannels = deviceDetails.OutputFormat.Format.nChannels;
 				break;
 			}
-
-			if ( deviceDetails.OutputFormat.Format.nChannels > preferredChannels ) {
+	
+			if( deviceDetails.OutputFormat.Format.nChannels > preferredChannels )
+			{
 				preferredDevice = i;
 				preferredChannels = deviceDetails.OutputFormat.Format.nChannels;
 			}
 		}
 	}
-
+	
 	idLib::Printf( "Using device %d\n", preferredDevice );
-
+	
 	XAUDIO2_DEVICE_DETAILS deviceDetails;
-	if ( pXAudio2->GetDeviceDetails( preferredDevice, &deviceDetails ) != S_OK ) {
+	if( pXAudio2->GetDeviceDetails( preferredDevice, &deviceDetails ) != S_OK )
+	{
 		// One way this could happen is if a device is removed between the loop and this line of code
 		// Highly unlikely but possible
 		idLib::Warning( "Failed to get device details" );
@@ -273,19 +385,21 @@ void idSoundHardware_XAudio2::Init() {
 		pXAudio2 = NULL;
 		return;
 	}
+	
 
-	DWORD outputSampleRate = 44100; // Max( (DWORD)XAUDIO2FX_REVERB_MIN_FRAMERATE, Min( (DWORD)XAUDIO2FX_REVERB_MAX_FRAMERATE, deviceDetails.OutputFormat.Format.nSamplesPerSec ) );
-
-	if ( FAILED( pXAudio2->CreateMasteringVoice( &pMasterVoice, XAUDIO2_DEFAULT_CHANNELS, outputSampleRate, 0, preferredDevice, NULL ) ) ) {
+	if( FAILED( pXAudio2->CreateMasteringVoice( &pMasterVoice, XAUDIO2_DEFAULT_CHANNELS, outputSampleRate, 0, preferredDevice, NULL ) ) )
+	{
 		idLib::Warning( "Failed to create master voice" );
 		pXAudio2->Release();
 		pXAudio2 = NULL;
 		return;
 	}
 	pMasterVoice->SetVolume( DBtoLinear( s_volume_dB.GetFloat() ) );
-
+	
 	outputChannels = deviceDetails.OutputFormat.Format.nChannels;
 	channelMask = deviceDetails.OutputFormat.dwChannelMask;
+
+#endif // #if (_WIN32_WINNT < 0x0602 /*_WIN32_WINNT_WIN8*/)
 
 	idSoundVoice::InitSurround( outputChannels, channelMask );
 
@@ -354,7 +468,6 @@ void idSoundHardware_XAudio2::Init() {
 	for ( int i = 0; i < voices.Num(); i++ ) {
 		freeVoices[i] = &voices[i];
 	}
-#endif // #if (_WIN32_WINNT < 0x0602 /*_WIN32_WINNT_WIN8*/)
 // RB end
 }
 

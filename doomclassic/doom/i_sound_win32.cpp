@@ -818,7 +818,7 @@ void I_InitMusic(void)
 		voiceFormat.cbSize = 0;
 
 // RB: XAUDIO2_VOICE_MUSIC not available on Windows 8 SDK
-#if (_WIN32_WINNT < 0x0602 /*_WIN32_WINNT_WIN8*/)
+#if !defined(USE_WINRT)
 		soundSystemLocal.hardware.GetIXAudio2()->CreateSourceVoice( &pMusicSourceVoice, (WAVEFORMATEX *)&voiceFormat, XAUDIO2_VOICE_MUSIC );
 #endif
 // RB end

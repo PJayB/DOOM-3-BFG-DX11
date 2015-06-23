@@ -122,6 +122,10 @@ If you have questions concerning this license or the applicable additional terms
 	#define WIN32
 #endif
 
+#if (_WIN32_WINNT >= _WIN32_WINNT_WIN8)
+#   define USE_WINRT
+#endif
+
 #endif
 
 /*

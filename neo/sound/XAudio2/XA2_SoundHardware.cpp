@@ -70,7 +70,7 @@ void listDevices_f( const idCmdArgs & args ) {
 	}
 
 // RB: not available on Windows 8 SDK
-#if (_WIN32_WINNT >= 0x0602 /*_WIN32_WINNT_WIN8*/)
+#if defined(USE_WINRT)
 	
 	// FIXME
 	
@@ -181,7 +181,7 @@ void idSoundHardware_XAudio2::Init() {
 	DWORD xAudioCreateFlags = 0;
 
 // RB: not available on Windows 8 SDK
-#if (_WIN32_WINNT < 0x0602 /*_WIN32_WINNT_WIN8*/) && defined(_DEBUG)
+#if !defined(USE_WINRT) && defined(_DEBUG)
 	xAudioCreateFlags |= XAUDIO2_DEBUG_ENGINE;
 #endif
 // RB end
@@ -190,7 +190,7 @@ void idSoundHardware_XAudio2::Init() {
 
 // RB: not available on Windows 8 SDK
 	if ( FAILED( XAudio2Create( &pXAudio2, xAudioCreateFlags, xAudioProcessor ) ) ){
-#if (_WIN32_WINNT < 0x0602 /*_WIN32_WINNT_WIN8*/) && defined(_DEBUG)
+#if !defined(USE_WINRT) && defined(_DEBUG)
 		if ( xAudioCreateFlags & XAUDIO2_DEBUG_ENGINE ) {
 			// in case the debug engine isn't installed
 			xAudioCreateFlags &= ~XAUDIO2_DEBUG_ENGINE;
@@ -302,7 +302,6 @@ void idSoundHardware_XAudio2::Init() {
     immDevCollection->Release();
     immDevEnum->Release();
 
-    int preferredDevice = s_device.GetInteger();
     if (!vAudioDevices.empty()) {
         if (SUCCEEDED(pXAudio2->CreateMasteringVoice(&pMasterVoice,
                                                      XAUDIO2_DEFAULT_CHANNELS,

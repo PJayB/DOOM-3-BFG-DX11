@@ -106,18 +106,10 @@ QD3D11Device* GetDevice()
     return g_pDevice;
 }
 
-static idCVar d3d_multisamples( "d3d_multisamples", "0", CVAR_ARCHIVE | CVAR_INTEGER | CVAR_RENDERER, "the number of multisamples to use");
-
-void GetSwapChainDescFromConfig( DXGI_SWAP_CHAIN_DESC1* scDesc )
+void GetSwapChainDescFromConfig( DXGI_SWAP_CHAIN_DESC1* scDesc, UINT maxMultisamples )
 {
     // Get best possible swapchain first
-    QD3D::GetBestQualitySwapChainDesc( g_pDevice, scDesc );
-
-#ifndef _ARM_
-    // Clamp the max MSAA to user settings
-    if ( d3d_multisamples.GetInteger() > 0 && scDesc->SampleDesc.Count > (UINT) d3d_multisamples.GetInteger() )
-        scDesc->SampleDesc.Count = d3d_multisamples.GetInteger();
-#endif
+    QD3D::GetBestQualitySwapChainDesc( g_pDevice, maxMultisamples, scDesc );
 }
 
 void SetupVideoConfig()

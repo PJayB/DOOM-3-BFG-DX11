@@ -143,20 +143,29 @@ namespace QD3D
 	void 
 	GetBestQualitySwapChainDesc(
 		_In_ QD3D11Device* device,
+        _In_ UINT maxMultisamples,
 		_Out_ DXGI_SWAP_CHAIN_DESC1* scd)
 	{
-		const UINT multiSampleLevels[] = {16, 8, 4, 2, 0};
-		UINT multiSampleIndex = 0;
-		while (multiSampleLevels[multiSampleIndex] != 0)
-		{
-			if (SUCCEEDED(GetMultiSampledSwapChainDesc(device, multiSampleLevels[multiSampleIndex], scd)))
-			{
-				break;
-			}
-			multiSampleIndex++;
-		}
+        if (maxMultisamples != 0)
+        {
+		    const UINT multiSampleLevels[] = {16, 8, 4, 2, 0};
+		    UINT multiSampleIndex = 0;
+		    while (multiSampleLevels[multiSampleIndex] != 0)
+		    {
+                if (multiSampleLevels[multiSampleIndex] <= maxMultisamples &&
+                    SUCCEEDED(GetMultiSampledSwapChainDesc(device, multiSampleLevels[multiSampleIndex], scd)))
+			    {
+				    break;
+			    }
+			    multiSampleIndex++;
+		    }
 
-		if (multiSampleLevels[multiSampleIndex] == 0)
+		    if (multiSampleLevels[multiSampleIndex] == 0)
+		    {
+			    GetDefaultSwapChainDesc(scd);
+		    }
+        }
+        else
 		{
 			GetDefaultSwapChainDesc(scd);
 		}

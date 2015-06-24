@@ -114,7 +114,7 @@ static IDXGISwapChain1* CreateSwapChain( QD3D11Device* device, const glimpParms_
     scDesc.Width = parms->width;
     scDesc.Height = parms->height;
     
-    GetSwapChainDescFromConfig( &scDesc );
+    GetSwapChainDescFromConfig( &scDesc, parms->multiSamples );
     
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsd;
     ZeroMemory( &fsd, sizeof(fsd) );

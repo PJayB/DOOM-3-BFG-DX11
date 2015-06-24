@@ -129,6 +129,7 @@ namespace QD3D
 	void 
 	GetBestQualitySwapChainDesc(
 		_In_ QD3D11Device* device,
+        _In_ UINT maxMultisamples,
 		_Out_ DXGI_SWAP_CHAIN_DESC1* swapChainDesc);
 	
     //----------------------------------------------------------------------------

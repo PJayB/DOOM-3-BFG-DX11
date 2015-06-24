@@ -502,7 +502,7 @@ void idImage::CopyFramebuffer( int x, int y, int imageWidth, int imageHeight ) {
     ID3D11Resource* pBackBuffer = nullptr;
 
     D3D11_BOX box;
-    box.back = 0;
+    box.back = 1;
     box.bottom = y + imageHeight;
     box.front = 0;
     box.left = x;

@@ -46,6 +46,15 @@ ID3D11DeviceContext1* D3DDrv_GetImmediateContext()
     return g_pImmediateContext;
 }
 
+void D3DDrv_GetBackBufferTexture(ID3D11Resource** ppResource)
+{
+    assert(idLib::IsMainThread());
+    assert(g_pImmediateContext);
+    assert(g_BufferState.backBufferView);
+
+    g_BufferState.backBufferView->GetResource(ppResource);
+}
+
 
 //----------------------------------------------------------------------------
 // Clear the back buffers

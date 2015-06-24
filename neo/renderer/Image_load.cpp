@@ -477,26 +477,53 @@ CopyFramebuffer
 */
 void idImage::CopyFramebuffer( int x, int y, int imageWidth, int imageHeight ) {
 
-    /*
-    @pjb: todo: copy contents of backbuffer into this?
+    if (opts.width != imageWidth || opts.height != imageHeight || opts.numLevels != 1) 
+    {
+        // Recreate the image buffer
+        assert(opts.textureType == TT_2D);
+        assert(!IsCompressed());
 
-	qglBindTexture( ( opts.textureType == TT_CUBIC ) ? GL_TEXTURE_CUBE_MAP_EXT : GL_TEXTURE_2D, texnum );
+        opts.numLevels = 1;
+        opts.width = imageWidth;
+        opts.height = imageHeight;
+        filter = TF_LINEAR;
+        repeat = TR_CLAMP;
 
-	qglReadBuffer( GL_BACK );
+        AllocImage();
+    }
 
-	opts.width = imageWidth;
-	opts.height = imageHeight;
-	qglCopyTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, x, y, imageWidth, imageHeight, 0 );
+    if (filter != TF_LINEAR || repeat != TR_CLAMP)
+    {
+        filter = TF_LINEAR;
+        repeat = TR_CLAMP;
+        RegenerateSamplerState();
+    }
 
-	// these shouldn't be necessary if the image was initialized properly
-	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    ID3D11Resource* pBackBuffer = nullptr;
 
-	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+    D3D11_BOX box;
+    box.back = 0;
+    box.bottom = y + imageHeight;
+    box.front = 0;
+    box.left = x;
+    box.right = x + imageWidth;
+    box.top = y;
+    
+    // @pjb: surely there's a better way?
+    D3DDrv_GetBackBufferTexture(&pBackBuffer);
+    D3DDrv_GetImmediateContext()->CopySubresourceRegion1(
+        pTexture, // Dst
+        0, // DstSubResource
+        0, // DstX,
+        0, // DstY,
+        0, // DstZ,
+        pBackBuffer, // Src
+        0, // SrcSubResource
+        &box,
+        D3D11_COPY_DISCARD );
+    SAFE_RELEASE(pBackBuffer);
 
 	backEnd.pc.c_copyFrameBuffer++;
-    */
 }
 
 /*

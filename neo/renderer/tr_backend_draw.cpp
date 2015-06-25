@@ -2118,8 +2118,17 @@ void RB_MotionBlur( ID3D11DeviceContext1* pContext ) {
 
 	// clear the alpha buffer and draw only the hands + weapon into it so
 	// we can avoid blurring them
-    float clearCol[] = { 0, 0, 0, 1 };
-    D3DDrv_Clear( pContext, CLEAR_COLOR, clearCol, 0, 0 );
+    D3DDrv_SetDepthStateFromMask( pContext, GLS_DEPTHMASK );
+    D3DDrv_SetBlendStateFromMask( pContext, GLS_COLORMASK );
+
+    // @pjb: D3D doesn't support clear with color mask, so we have to clear manually using a fullscreen quad
+    pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_MOTION_BLUR ), nullptr, 0 );
+    pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( BUILTIN_SHADER_COLOR ), nullptr, 0 );
+
+    float clearCol[] = { 1, 1, 1, 0 }; // rgb is masked off but set to 255 for debugging purposes
+	renderProgManager.SetRenderParm( RENDERPARM_COLOR, clearCol );
+	RB_DrawElementsWithCounters( pContext, &backEnd.unitSquareSurface );
+    // @pjb - end
 
     float renderCol[] = { 0, 0, 0, 0 };
     renderProgManager.SetRenderParm( RENDERPARM_COLOR, renderCol );
@@ -2161,9 +2170,6 @@ void RB_MotionBlur( ID3D11DeviceContext1* pContext ) {
 		// draw it solid
 		RB_DrawElementsWithCounters( pContext, surf );
 	}
-
-    D3DDrv_SetDepthStateFromMask( pContext, GLS_DEPTHFUNC_ALWAYS );
-
 	// copy off the color buffer and the depth buffer for the motion blur prog
 	// we use the viewport dimensions for copying the buffers in case resolution scaling is enabled.
 	const idScreenRect & viewport = backEnd.viewDef->viewport;
@@ -2183,8 +2189,9 @@ void RB_MotionBlur( ID3D11DeviceContext1* pContext ) {
 
 	RB_SetMVP( motionMatrix );
 
+    D3DDrv_SetBlendStateFromMask( pContext, GLS_DEFAULT );
     D3DDrv_SetDepthStateFromMask( pContext, GLS_DEPTHFUNC_ALWAYS );
-    D3DDrv_SetRasterizerStateFromMask( pContext, CT_TWO_SIDED, 0 );
+    D3DDrv_SetRasterizerStateFromMask( pContext, CT_TWO_SIDED, GLS_DEFAULT );
 
     pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_MOTION_BLUR ), nullptr, 0 );
     pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( BUILTIN_SHADER_MOTION_BLUR ), nullptr, 0 );

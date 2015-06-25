@@ -203,7 +203,7 @@ void RB_DrawElementsWithCounters( ID3D11DeviceContext1* pContext, const drawSurf
     pContext->IASetIndexBuffer( indexBuffer->GetBuffer(), DXGI_FORMAT_R16_UINT, 0 );
     pContext->IASetVertexBuffers( 0, 1, &pVertexBuffer, &vbStride, &vbOffset );
     pContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-    
+
     pContext->DrawIndexed(
 		r_singleTriangle.GetBool() ? 3 : surf->numIndexes,
         indexOffset / sizeof( triIndex_t ),
@@ -2105,7 +2105,7 @@ Experimental feature
 ==================
 */
 void RB_MotionBlur( ID3D11DeviceContext1* pContext ) {
-	if ( !backEnd.viewDef->viewEntitys ) {
+    if ( !backEnd.viewDef->viewEntitys ) {
 		// 3D views only
 		return;
 	}
@@ -2174,7 +2174,7 @@ void RB_MotionBlur( ID3D11DeviceContext1* pContext ) {
     // copy off the color buffer and the depth buffer for the motion blur prog
 	// we use the viewport dimensions for copying the buffers in case resolution scaling is enabled.
 	const idScreenRect & viewport = backEnd.viewDef->viewport;
-	globalImages->currentRenderImage->CopyFramebuffer( viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight() );
+    globalImages->currentRenderImage->CopyFramebuffer( viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight() );
 
 	// in stereo rendering, each eye needs to get a separate previous frame mvp
 	int mvpIndex = ( backEnd.viewDef->renderView.viewEyeBuffer == 1 ) ? 1 : 0;
@@ -2201,7 +2201,7 @@ void RB_MotionBlur( ID3D11DeviceContext1* pContext ) {
 	idVec4 samples( (float)( 1 << r_motionBlur.GetInteger() ) );
 	renderProgManager.SetRenderParm( RENDERPARM_OVERBRIGHT, samples.ToFloatPtr() );
 
-    idImage* pImages[] = { 
+    idImage* pImages[] = {
         globalImages->currentRenderImage,
         globalImages->currentDepthImage
     };
@@ -2277,6 +2277,8 @@ RB_PostProcess
 */
 extern idCVar rs_enable;
 void RB_PostProcess( ID3D11DeviceContext1* pContext, const void * data ) {
+    /* @pjb: todo: post processing
+
 
 	// only do the post process step if resolution scaling is enabled. Prevents the unnecessary copying of the framebuffer and
 	// corresponding full screen quad pass.
@@ -2306,6 +2308,8 @@ void RB_PostProcess( ID3D11DeviceContext1* pContext, const void * data ) {
 	RB_DrawElementsWithCounters( pContext, &backEnd.unitSquareSurface );
 
 	renderLog.CloseBlock();
+
+     */
 }
 
 /*

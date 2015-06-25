@@ -1220,11 +1220,11 @@ GENERAL INTERACTION RENDERING
 =========================================================================================
 */
 
-const int INTERACTION_TEXUNIT_FALLOFF		= 0;
-const int INTERACTION_TEXUNIT_PROJECTION	= 1;
-const int INTERACTION_TEXUNIT_BUMP			= 2;
-const int INTERACTION_TEXUNIT_DIFFUSE		= 3;
-const int INTERACTION_TEXUNIT_SPECULAR		= 4;
+const int INTERACTION_TEXUNIT_BUMP			= 0;
+//const int INTERACTION_TEXUNIT_DIFFUSE		= 1;
+//const int INTERACTION_TEXUNIT_SPECULAR	= 2;
+const int INTERACTION_TEXUNIT_FALLOFF		= 3;
+//const int INTERACTION_TEXUNIT_PROJECTION	= 4;
 
 /*
 ==================

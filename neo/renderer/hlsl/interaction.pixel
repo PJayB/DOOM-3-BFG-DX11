@@ -28,17 +28,17 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "global.inc"
 
-SamplerState samp0 : register(s0); // texture 0 is the light falloff texture
-SamplerState samp1 : register(s1); // texture 1 is the light projection texture
-SamplerState samp2 : register(s2); // texture 2 is the per-surface bump map
-SamplerState samp3 : register(s3); // texture 4 is the per-surface diffuse map
-SamplerState samp4 : register(s4); // texture 5 is the per-surface specular map
+SamplerState sampBump         : register(s0);
+SamplerState sampDiffuse      : register(s1);
+SamplerState sampSpec         : register(s2);
+SamplerState sampLightFalloff : register(s3);
+SamplerState sampLightProj    : register(s4);
 
-Texture2D tex0 : register(t0); 
-Texture2D tex1 : register(t1); 
-Texture2D tex2 : register(t2); 
-Texture2D tex3 : register(t3); 
-Texture2D tex4 : register(t4); 
+Texture2D texBump             : register(t0); // per-surface bump map 
+Texture2D texDiffuse          : register(t1); // per-surface diffuse map 
+Texture2D texSpec             : register(t2); // per-surface specular map 
+Texture2D texLightFalloff     : register(t3); // light falloff texture 
+Texture2D texLightProj        : register(t4); // light projection texture 
 
 struct PS_IN {
 	half4 position	: SV_Position;
@@ -57,12 +57,12 @@ struct PS_OUT {
 };
 
 void main( PS_IN fragment, out PS_OUT result ) {
-	half4 lightFalloff =	idtex2Dproj( tex0, samp0, fragment.texcoord2 );
-	half4 lightProj	=		idtex2Dproj( tex1, samp1, fragment.texcoord3 );
+	half4 lightFalloff =	idtex2Dproj( texLightFalloff, sampLightFalloff, fragment.texcoord2 );
+	half4 lightProj	=		idtex2Dproj( texLightProj   , sampLightProj   , fragment.texcoord3 );
 
-	half4 bumpMap =			tex2.Sample( samp2, fragment.texcoord1.xy );
-	half4 YCoCG =			tex3.Sample( samp3, fragment.texcoord4.xy );
-	half4 specMap =			tex4.Sample( samp4, fragment.texcoord5.xy );
+	half4 bumpMap =			texBump     .Sample( sampBump   , fragment.texcoord1.xy );
+	half4 YCoCG =			texDiffuse  .Sample( sampDiffuse, fragment.texcoord4.xy );
+	half4 specMap =			texSpec     .Sample( sampSpec   , fragment.texcoord5.xy );
 
 	half3 lightVector = normalize( fragment.texcoord0.xyz );
 	half3 diffuseMap = ConvertYCoCgToRGB( YCoCG );

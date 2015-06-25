@@ -47,12 +47,11 @@ void idImage::MakeDefault() {
 	byte	data[DEFAULT_SIZE][DEFAULT_SIZE][4];
 
 	if ( com_developer.GetBool() ) {
-		// grey center
 		for ( y = 0 ; y < DEFAULT_SIZE ; y++ ) {
 			for ( x = 0 ; x < DEFAULT_SIZE ; x++ ) {
-				data[y][x][0] = 32;
-				data[y][x][1] = 32;
-				data[y][x][2] = 32;
+				data[y][x][0] = (byte)( 255 * y / (float) DEFAULT_SIZE );
+				data[y][x][1] = (byte)( 255 * x / (float) DEFAULT_SIZE );
+				data[y][x][2] = 0;
 				data[y][x][3] = 255;
 			}
 		}

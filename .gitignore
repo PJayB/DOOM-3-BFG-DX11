@@ -27,3 +27,4 @@ base/renderprogs/hlsl
 *.PAT
 compiled_shaders
 base/generated
+x64

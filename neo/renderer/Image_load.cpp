@@ -993,15 +993,18 @@ HRESULT idImage::RegenerateSamplerState()
 		// only do aniso filtering on mip mapped images
 		if ( filter == TF_DEFAULT ) {
 			int aniso = r_maxAnisotropicFiltering.GetInteger();
-			if ( aniso > glConfig.maxTextureAnisotropy ) {
-				aniso = glConfig.maxTextureAnisotropy;
-			}
-			if ( aniso < 0 ) {
-				aniso = 0;
-			}
+            if (aniso != 0)
+            {
+			    if ( aniso > glConfig.maxTextureAnisotropy ) {
+				    aniso = glConfig.maxTextureAnisotropy;
+			    }
+			    if ( aniso < 0 ) {
+				    aniso = 0;
+			    }
 
-            desc.MaxAnisotropy = aniso;
-            desc.Filter = D3D11_FILTER_ANISOTROPIC;
+                desc.MaxAnisotropy = aniso;
+                desc.Filter = D3D11_FILTER_ANISOTROPIC;
+            }
 		} else {
             desc.MaxAnisotropy = 1;
 		}

@@ -2170,7 +2170,8 @@ void RB_MotionBlur( ID3D11DeviceContext1* pContext ) {
 		// draw it solid
 		RB_DrawElementsWithCounters( pContext, surf );
 	}
-	// copy off the color buffer and the depth buffer for the motion blur prog
+
+    // copy off the color buffer and the depth buffer for the motion blur prog
 	// we use the viewport dimensions for copying the buffers in case resolution scaling is enabled.
 	const idScreenRect & viewport = backEnd.viewDef->viewport;
 	globalImages->currentRenderImage->CopyFramebuffer( viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight() );

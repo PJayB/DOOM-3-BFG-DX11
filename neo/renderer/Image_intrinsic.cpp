@@ -127,7 +127,7 @@ static void R_RGBA8Image( idImage *image ) {
 	data[0][0][2] = 48;
 	data[0][0][3] = 96;
 
-	image->GenerateImage( (byte *)data, DEFAULT_SIZE, DEFAULT_SIZE, FMT_RGBA8, TF_DEFAULT, TR_REPEAT, TD_LOOKUP_TABLE_RGBA );
+	image->GenerateImage( (byte *)data, DEFAULT_SIZE, DEFAULT_SIZE, FMT_RGBA8, TF_LINEAR, TR_REPEAT, TD_LOOKUP_TABLE_RGBA );
 }
 
 static void R_DepthImage( idImage *image ) {

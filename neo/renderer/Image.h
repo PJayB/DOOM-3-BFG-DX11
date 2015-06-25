@@ -88,7 +88,8 @@ public:
 	// These perform an implicit Bind() on the current texture unit
 	// FIXME: should we implement cinematics this way, instead of with explicit calls?
 	void		GenerateImage( const byte *pic, int width, int height, 
-					   textureFilter_t filter, textureRepeat_t repeat, textureUsage_t usage );
+					   textureFormat_t format, textureFilter_t filter, 
+                       textureRepeat_t repeat, textureUsage_t usage );
 	void		GenerateCubeImage( const byte *pic[6], int size, 
 						textureFilter_t filter, textureUsage_t usage );
 

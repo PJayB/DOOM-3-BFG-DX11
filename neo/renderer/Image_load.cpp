@@ -161,7 +161,7 @@ void idImage::AllocImage( const idImageOpts &imgOpts, textureFilter_t tf, textur
 GenerateImage
 ================
 */
-void idImage::GenerateImage( const byte *pic, int width, int height, textureFilter_t filterParm, textureRepeat_t repeatParm, textureUsage_t usageParm ) {
+void idImage::GenerateImage( const byte *pic, int width, int height, textureFormat_t format, textureFilter_t filterParm, textureRepeat_t repeatParm, textureUsage_t usageParm ) {
 	PurgeImage();
 
 	filter = filterParm;
@@ -173,6 +173,7 @@ void idImage::GenerateImage( const byte *pic, int width, int height, textureFilt
 	opts.width = width;
 	opts.height = height;
 	opts.numLevels = 0;
+    opts.format = format;
 	DeriveOpts();
 
 	// if we don't have a rendering context, just return after we
@@ -580,7 +581,7 @@ void idImage::UploadScratch( const byte * data, int cols, int rows ) {
 
 	} else {
 		if ( opts.textureType != TT_2D || usage != TD_LOOKUP_TABLE_RGBA ) {
-			GenerateImage( data, cols, rows, TF_LINEAR, TR_REPEAT, TD_LOOKUP_TABLE_RGBA );
+			GenerateImage( data, cols, rows, FMT_NONE, TF_LINEAR, TR_REPEAT, TD_LOOKUP_TABLE_RGBA );
 			return;
 		}
 		if ( opts.width != cols || opts.height != rows ) {

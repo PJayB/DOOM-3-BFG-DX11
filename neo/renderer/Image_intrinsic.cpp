@@ -92,7 +92,7 @@ void idImage::MakeDefault() {
 
 	GenerateImage( (byte *)data, 
 		DEFAULT_SIZE, DEFAULT_SIZE, 
-		TF_DEFAULT, TR_REPEAT, TD_DEFAULT );
+		FMT_RGBA8, TF_DEFAULT, TR_REPEAT, TD_DEFAULT );
 
 	defaulted = true;
 }
@@ -107,7 +107,7 @@ static void R_WhiteImage( idImage *image ) {
 	// solid white texture
 	memset( data, 255, sizeof( data ) );
 	image->GenerateImage( (byte *)data, DEFAULT_SIZE, DEFAULT_SIZE, 
-		TF_DEFAULT, TR_REPEAT, TD_DEFAULT );
+		FMT_RGBA8, TF_DEFAULT, TR_REPEAT, TD_DEFAULT );
 }
 
 static void R_BlackImage( idImage *image ) {
@@ -116,7 +116,7 @@ static void R_BlackImage( idImage *image ) {
 	// solid black texture
 	memset( data, 0, sizeof( data ) );
 	image->GenerateImage( (byte *)data, DEFAULT_SIZE, DEFAULT_SIZE, 
-		TF_DEFAULT, TR_REPEAT, TD_DEFAULT );
+		FMT_RGBA8, TF_DEFAULT, TR_REPEAT, TD_DEFAULT );
 }
 
 static void R_RGBA8Image( idImage *image ) {
@@ -128,7 +128,7 @@ static void R_RGBA8Image( idImage *image ) {
 	data[0][0][2] = 48;
 	data[0][0][3] = 96;
 
-	image->GenerateImage( (byte *)data, DEFAULT_SIZE, DEFAULT_SIZE, TF_DEFAULT, TR_REPEAT, TD_LOOKUP_TABLE_RGBA );
+	image->GenerateImage( (byte *)data, DEFAULT_SIZE, DEFAULT_SIZE, FMT_RGBA8, TF_DEFAULT, TR_REPEAT, TD_LOOKUP_TABLE_RGBA );
 }
 
 static void R_DepthImage( idImage *image ) {
@@ -140,7 +140,7 @@ static void R_DepthImage( idImage *image ) {
 	data[0][0][2] = 48;
 	data[0][0][3] = 96;
 
-	image->GenerateImage( (byte *)data, DEFAULT_SIZE, DEFAULT_SIZE, TF_NEAREST, TR_CLAMP, TD_DEPTH );
+	image->GenerateImage( (byte *)data, DEFAULT_SIZE, DEFAULT_SIZE, FMT_RGBA8, TF_NEAREST, TR_CLAMP, TD_DEPTH );
 }
 
 static void R_AlphaNotchImage( idImage *image ) {
@@ -153,7 +153,7 @@ static void R_AlphaNotchImage( idImage *image ) {
 	data[1][0] = data[1][1] = data[1][2] = 255;
 	data[1][3] = 255;
 
-	image->GenerateImage( (byte *)data, 2, 1, TF_NEAREST, TR_CLAMP, TD_LOOKUP_TABLE_ALPHA );
+	image->GenerateImage( (byte *)data, 2, 1, FMT_RGBA8, TF_NEAREST, TR_CLAMP, TD_LOOKUP_TABLE_ALPHA );
 }
 
 static void R_FlatNormalImage( idImage *image ) {
@@ -166,7 +166,7 @@ static void R_FlatNormalImage( idImage *image ) {
 		data[0][i][2] = 255;
 		data[0][i][3] = 255;
 	}
-	image->GenerateImage( (byte *)data, 2, 2, TF_DEFAULT, TR_REPEAT, TD_BUMP );
+	image->GenerateImage( (byte *)data, 2, 2, FMT_RGBA8, TF_DEFAULT, TR_REPEAT, TD_BUMP );
 }
 
 /*
@@ -189,7 +189,7 @@ static void R_CreateNoFalloffImage( idImage *image ) {
 			data[y][x][3] = 255;
 		}
 	}
-	image->GenerateImage( (byte *)data, FALLOFF_TEXTURE_SIZE, 16, TF_DEFAULT, TR_CLAMP_TO_ZERO, TD_LOOKUP_TABLE_MONO );
+	image->GenerateImage( (byte *)data, FALLOFF_TEXTURE_SIZE, 16, FMT_RGBA8, TF_DEFAULT, TR_CLAMP_TO_ZERO, TD_LOOKUP_TABLE_MONO );
 }
 
 /*
@@ -240,7 +240,7 @@ void R_FogImage( idImage *image ) {
 		}
 	}
 
-	image->GenerateImage( (byte *)data, FOG_SIZE, FOG_SIZE, TF_LINEAR, TR_CLAMP, TD_LOOKUP_TABLE_ALPHA );
+	image->GenerateImage( (byte *)data, FOG_SIZE, FOG_SIZE, FMT_RGBA8, TF_LINEAR, TR_CLAMP, TD_LOOKUP_TABLE_ALPHA );
 }
 
 
@@ -347,7 +347,7 @@ void R_FogEnterImage( idImage *image ) {
 	}
 
 	// if mipmapped, acutely viewed surfaces fade wrong
-	image->GenerateImage( (byte *)data, FOG_ENTER_SIZE, FOG_ENTER_SIZE, TF_LINEAR, TR_CLAMP, TD_LOOKUP_TABLE_ALPHA );
+	image->GenerateImage( (byte *)data, FOG_ENTER_SIZE, FOG_ENTER_SIZE, FMT_RGBA8, TF_LINEAR, TR_CLAMP, TD_LOOKUP_TABLE_ALPHA );
 }
 
 
@@ -391,7 +391,7 @@ void R_QuadraticImage( idImage *image ) {
 		}
 	}
 
-	image->GenerateImage( (byte *)data, QUADRATIC_WIDTH, QUADRATIC_HEIGHT, TF_DEFAULT, TR_CLAMP, TD_LOOKUP_TABLE_RGB1 );
+	image->GenerateImage( (byte *)data, QUADRATIC_WIDTH, QUADRATIC_HEIGHT, FMT_RGBA8, TF_DEFAULT, TR_CLAMP, TD_LOOKUP_TABLE_RGB1 );
 }
 
 /*

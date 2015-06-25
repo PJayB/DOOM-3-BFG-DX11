@@ -1048,6 +1048,8 @@ HRESULT idImage::RegenerateSamplerState()
     desc.MaxLOD = opts.numLevels - 1;
 #endif
 
+    desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+
     // create sampler
     return pDevice->CreateSamplerState( &desc, &pSampler );
 }

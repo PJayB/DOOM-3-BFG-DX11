@@ -44,7 +44,7 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef _D3SDK
 #ifndef GAME_DLL
 
-#define WINVER				0x501
+#define WINVER				0x600
 
 #include <winsock2.h>
 #include <mmsystem.h>

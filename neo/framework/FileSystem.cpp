@@ -286,6 +286,7 @@ idCVar	idFileSystemLocal::fs_game( "fs_game", "", CVAR_SYSTEM | CVAR_INIT | CVAR
 idCVar  idFileSystemLocal::fs_game_base( "fs_game_base", "", CVAR_SYSTEM | CVAR_INIT | CVAR_SERVERINFO, "alternate mod path, searched after the main fs_game path, before the basedir" );
 
 idCVar	fs_basepath( "fs_basepath", "", CVAR_SYSTEM | CVAR_INIT, "" );
+idCVar  fs_devpath("fs_devpath", "", CVAR_SYSTEM | CVAR_INIT, "");
 idCVar	fs_savepath( "fs_savepath", "", CVAR_SYSTEM | CVAR_INIT, "" );
 idCVar	fs_resourceLoadPriority( "fs_resourceLoadPriority", "0", CVAR_SYSTEM , "if 1, open requests will be honored from resource files first; if 0, the resource files are checked after normal search paths" );
 idCVar	fs_enableBackgroundCaching( "fs_enableBackgroundCaching", "1", CVAR_SYSTEM , "if 1 allow the 360 to precache game files in the background" );
@@ -2466,6 +2467,12 @@ void idFileSystemLocal::SetupGameDirectories( const char *gameName ) {
 	if ( fs_basepath.GetString()[0] ) {
 		AddGameDirectory( fs_basepath.GetString(), gameName );
 	}
+    // setup devpath
+#ifndef ID_RETAIL
+    if (fs_devpath.GetString()[0]) {
+        AddGameDirectory(fs_devpath.GetString(), gameName);
+    }
+#endif
 	// setup savepath
 	if ( fs_savepath.GetString()[0] ) {
 		AddGameDirectory( fs_savepath.GetString(), gameName );
@@ -2584,11 +2591,24 @@ void idFileSystemLocal::Init() {
 	// line variable sets don't happen until after the filesystem
 	// has already been initialized
 	common->StartupVariable( "fs_basepath" );
+#ifndef ID_RETAIL
+    common->StartupVariable( "fs_devpath" );
+#endif
 	common->StartupVariable( "fs_savepath" );
 	common->StartupVariable( "fs_game" );
 	common->StartupVariable( "fs_game_base" );
 	common->StartupVariable( "fs_copyfiles" );
 
+#ifndef ID_RETAIL
+    if (fs_devpath.GetString()[0] == '\0') {
+        fs_devpath.SetString(Sys_DefaultBasePath());
+    }
+    // If the environment variable is set, take our base path from that.
+    const char* doom3InstallDir = getenv("DOOM3INSTALLDIR");
+    if (doom3InstallDir != nullptr && fs_basepath.GetString()[0] == '\0') {
+        fs_basepath.SetString(doom3InstallDir);
+    } else
+#endif
 	if ( fs_basepath.GetString()[0] == '\0' ) {
 		fs_basepath.SetString( Sys_DefaultBasePath() );
 	}

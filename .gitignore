@@ -28,3 +28,4 @@ base/renderprogs/hlsl
 compiled_shaders
 base/generated
 x64
+*.opendb

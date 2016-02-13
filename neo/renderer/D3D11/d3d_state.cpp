@@ -212,7 +212,7 @@ void SetupPolygonOffset(D3D11_RASTERIZER_DESC* desc, float factor, float units)
 {
     desc->DepthBiasClamp = 0;
     desc->SlopeScaledDepthBias = factor;
-    desc->DepthBias = -units;
+    desc->DepthBias = units;
 }
 
 //----------------------------------------------------------------------------

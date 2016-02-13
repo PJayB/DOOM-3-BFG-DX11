@@ -138,31 +138,37 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <PreprocessorDefinitions>ID_WIN_X86_SSE_INTRIN;ID_WIN_X86_SSE2_INTRIN;_INLINEDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <PreprocessorDefinitions>ID_WIN_X86_SSE_INTRIN;ID_WIN_X86_SSE2_INTRIN;_INLINEDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <PreprocessorDefinitions>ID_WIN_X86_SSE_INTRIN;ID_WIN_X86_SSE2_INTRIN;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <PreprocessorDefinitions>ID_WIN_X86_SSE_INTRIN;ID_WIN_X86_SSE2_INTRIN;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Retail|Win32'">
     <ClCompile>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <PreprocessorDefinitions>ID_WIN_X86_SSE_INTRIN;ID_WIN_X86_SSE2_INTRIN;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Retail|x64'">
     <ClCompile>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <PreprocessorDefinitions>ID_WIN_X86_SSE_INTRIN;ID_WIN_X86_SSE2_INTRIN;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

@@ -456,6 +456,7 @@ void InitRasterStates( d3dRasterStates_t* rs )
             } else {
                 rd.DepthBias = 0;
                 rd.SlopeScaledDepthBias = 0;
+                rd.DepthBiasClamp = 0;
             }
 
             if ( rasterMode & RASTERIZERSTATE_FLAG_POLY_OUTLINE ) {

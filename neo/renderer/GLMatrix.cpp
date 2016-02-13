@@ -445,7 +445,11 @@ void R_SetupProjectionMatrix( viewDef_t *viewDef ) {
 	viewDef->projectionMatrix[0*4+2] = 0.0f;
 	viewDef->projectionMatrix[1*4+2] = 0.0f;
 	viewDef->projectionMatrix[2*4+2] = -0.999f; // adjust value to prevent imprecision issues
+#if !defined(CLIP_SPACE_D3D)
 	viewDef->projectionMatrix[3*4+2] = -2.0f * zNear;
+#else
+    viewDef->projectionMatrix[3 * 4 + 2] = -zNear;
+#endif
 
 	viewDef->projectionMatrix[0*4+3] = 0.0f;
 	viewDef->projectionMatrix[1*4+3] = 0.0f;

@@ -2342,6 +2342,12 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
          r_offsetUnits.IsModified() ) {
         // The user changed a cvar that affects our state blocks
         D3DDrv_RegenerateStateBlocks();
+
+        // Clear modified flag
+        r_shadowPolygonFactor.ClearModified();
+        r_shadowPolygonOffset.ClearModified();
+        r_offsetFactor.ClearModified();
+        r_offsetUnits.ClearModified();
     }
 
     ID3D11DeviceContext1* pContext = D3DDrv_GetImmediateContext();

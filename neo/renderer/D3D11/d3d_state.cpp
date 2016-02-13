@@ -198,7 +198,15 @@ ID3D11DepthStencilState* D3DDrv_CreateDepthStencilState( uint64 stateBits )
 }
 
 //----------------------------------------------------------------------------
-// Fills the correct values for polygon offset
+// Fills the correct values for polygon offset.
+// OpenGL spec says: bias = factor x dz + r x units
+// Where dz is change in depth and r is the smallest possible offset.
+// DirectX says: bias = DepthBias * r + SlopeScaledDepthBias * MaxDepthSlope
+// so we can (in theory) map that straight to OpenGL's version:
+// - units = DepthBias
+// - factor = SlopeScaledDepthBias
+// - r = r 
+// - dz = MaxDepthSlope
 //----------------------------------------------------------------------------
 void SetupPolygonOffset(D3D11_RASTERIZER_DESC* desc, float factor, float units)
 {

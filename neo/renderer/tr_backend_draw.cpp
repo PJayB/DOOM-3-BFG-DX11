@@ -985,8 +985,13 @@ static void RB_StencilShadowPass( ID3D11DeviceContext2* pContext, const drawSurf
 	// the actual stencil func will be set in the draw code, but we need to make sure it isn't
 	// disabled here, and that the value will get reset for the interactions without looking
 	// like a no-change-required
-    glState |= GLS_STENCIL_MAKE_REF( STENCIL_SHADOW_TEST_VALUE );
-    D3DDrv_SetDepthStateFromMask( pContext, glState | GLS_DEPTH_STENCIL_PACKAGE_INC );
+    // - GLS_STENCIL_OP_FAIL_KEEP
+    // - GLS_STENCIL_OP_ZFAIL_KEEP
+    // - GLS_STENCIL_OP_PASS_INCR
+    // - REF: SHADOW_TEST_VALUE (128)
+    // - MASK: SHADOW_MASK_VALUE (255) (implicit)
+    auto stencilRef = GLS_STENCIL_MAKE_REF(STENCIL_SHADOW_TEST_VALUE);
+    D3DDrv_SetDepthStateFromMask( pContext, glState | stencilRef | GLS_DEPTH_STENCIL_PACKAGE_INC );
 
 	// Two Sided Stencil reduces two draw calls to one for slightly faster shadows
     D3DDrv_SetRasterizerStateFromMask( pContext, CT_TWO_SIDED, glState | GLS_POLYGON_OFFSET_SHADOW );
@@ -1068,16 +1073,16 @@ static void RB_StencilShadowPass( ID3D11DeviceContext2* pContext, const drawSurf
 
 		const bool renderZPass = ( drawSurf->renderZFail == 0 ) || r_forceZPassStencilShadows.GetBool();
 
-
+        // glStencilOpSeparate(face, sfail, dpfail, dppass):
 		if ( renderZPass ) {
 			// Z-pass
-		    D3DDrv_SetDepthStateFromMask( pContext, glState | GLS_DEPTH_STENCIL_PACKAGE_Z );
+		    D3DDrv_SetDepthStateFromMask( pContext, glState | stencilRef | GLS_DEPTH_STENCIL_PACKAGE_Z );
 		} else if ( r_useStencilShadowPreload.GetBool() ) {
 			// preload + Z-pass
-		    D3DDrv_SetDepthStateFromMask( pContext, glState | GLS_DEPTH_STENCIL_PACKAGE_PRELOAD_Z );
+		    D3DDrv_SetDepthStateFromMask( pContext, glState | stencilRef | GLS_DEPTH_STENCIL_PACKAGE_PRELOAD_Z );
 		} else {
 			// Z-fail
-		    D3DDrv_SetDepthStateFromMask( pContext, glState | GLS_DEPTH_STENCIL_PACKAGE_INC );
+		    //D3DDrv_SetDepthStateFromMask( pContext, glState | stencilRef | GLS_DEPTH_STENCIL_PACKAGE_INC );
         }
 
 		// get vertex buffer
@@ -1163,7 +1168,7 @@ static void RB_StencilShadowPass( ID3D11DeviceContext2* pContext, const drawSurf
 
 		if ( !renderZPass && r_useStencilShadowPreload.GetBool() ) {
 			// render again with Z-pass
-		    D3DDrv_SetDepthStateFromMask( pContext, glState | GLS_DEPTH_STENCIL_PACKAGE_Z );
+		    D3DDrv_SetDepthStateFromMask( pContext, glState | stencilRef | GLS_DEPTH_STENCIL_PACKAGE_Z );
     
             pContext->DrawIndexed(
 		        r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes,

@@ -70,7 +70,7 @@ void DestroyBuffers()
 //----------------------------------------------------------------------------
 // Set state shortcuts
 //----------------------------------------------------------------------------
-void D3DDrv_SetBlendStateFromMask( ID3D11DeviceContext1* pContext, uint64 stateBits )
+void D3DDrv_SetBlendStateFromMask( ID3D11DeviceContext2* pContext, uint64 stateBits )
 {
     UINT mask = ~0U;
     pContext->OMSetBlendState( 
@@ -79,13 +79,13 @@ void D3DDrv_SetBlendStateFromMask( ID3D11DeviceContext1* pContext, uint64 stateB
         mask );
 }
 
-void D3DDrv_SetDepthStateFromMask( ID3D11DeviceContext1* pContext, uint64 stateBits )
+void D3DDrv_SetDepthStateFromMask( ID3D11DeviceContext2* pContext, uint64 stateBits )
 {
     uint stencilRef = GLS_STENCIL_GET_REF( stateBits );
     pContext->OMSetDepthStencilState( D3DDrv_GetDepthState( stateBits ), stencilRef );
 }
 
-void D3DDrv_SetRasterizerStateFromMask( ID3D11DeviceContext1* pContext, int cullMode, uint64 stateBits )
+void D3DDrv_SetRasterizerStateFromMask( ID3D11DeviceContext2* pContext, int cullMode, uint64 stateBits )
 {
     pContext->RSSetState( D3DDrv_GetRasterizerState( cullMode, stateBits ) );
 }
@@ -93,7 +93,7 @@ void D3DDrv_SetRasterizerStateFromMask( ID3D11DeviceContext1* pContext, int cull
 //----------------------------------------------------------------------------
 // Set the scissor rect
 //----------------------------------------------------------------------------
-void D3DDrv_SetScissor( ID3D11DeviceContext1* pContext, int left, int top, int width, int height )
+void D3DDrv_SetScissor( ID3D11DeviceContext2* pContext, int left, int top, int width, int height )
 {
     RECT r = 
     { 
@@ -108,7 +108,7 @@ void D3DDrv_SetScissor( ID3D11DeviceContext1* pContext, int left, int top, int w
 //----------------------------------------------------------------------------
 // Set the viewport
 //----------------------------------------------------------------------------
-void D3DDrv_SetViewport( ID3D11DeviceContext1* pContext, int left, int top, int width, int height )
+void D3DDrv_SetViewport( ID3D11DeviceContext2* pContext, int left, int top, int width, int height )
 {
     D3D11_VIEWPORT viewport;
     viewport.TopLeftX = __max( 0, left );
@@ -198,9 +198,19 @@ ID3D11DepthStencilState* D3DDrv_CreateDepthStencilState( uint64 stateBits )
 }
 
 //----------------------------------------------------------------------------
+// Fills the correct values for polygon offset
+//----------------------------------------------------------------------------
+void SetupPolygonOffset(D3D11_RASTERIZER_DESC* desc, float factor, float units)
+{
+    desc->DepthBiasClamp = 0;
+    desc->SlopeScaledDepthBias = factor;
+    desc->DepthBias = -units;
+}
+
+//----------------------------------------------------------------------------
 // Create a depth stencil with stencil parameters
 //----------------------------------------------------------------------------
-ID3D11RasterizerState* D3DDrv_CreateRasterizerState( int cullType, uint64 stateBits, float polyOffsetBias, float polyOffsetSlopeBias )
+ID3D11RasterizerState* D3DDrv_CreateRasterizerState( int cullType, uint64 stateBits, float polyOffsetFactor, float polyOffsetUnits )
 {
     D3D11_RASTERIZER_DESC rd;
     ZeroMemory( &rd, sizeof( rd ) );
@@ -237,12 +247,10 @@ ID3D11RasterizerState* D3DDrv_CreateRasterizerState( int cullType, uint64 stateB
     switch ( stateBits & GLS_POLYGON_OFFSET_MASK )
     {
     case GLS_POLYGON_OFFSET_DECAL:
-        rd.DepthBias = r_offsetFactor.GetFloat() + polyOffsetBias;
-        rd.SlopeScaledDepthBias = r_offsetUnits.GetFloat() + polyOffsetSlopeBias;
+        SetupPolygonOffset(&rd, r_offsetFactor.GetFloat() + polyOffsetFactor, r_offsetUnits.GetFloat() * polyOffsetUnits);
         break;
     case GLS_POLYGON_OFFSET_SHADOW:
-        rd.DepthBias = r_shadowPolygonFactor.GetFloat() + polyOffsetBias;
-        rd.SlopeScaledDepthBias = -r_shadowPolygonOffset.GetFloat() + polyOffsetSlopeBias;
+        SetupPolygonOffset(&rd, r_shadowPolygonFactor.GetFloat(), -r_shadowPolygonOffset.GetFloat());
         break;
     default:
         break;
@@ -434,11 +442,9 @@ void InitRasterStates( d3dRasterStates_t* rs )
 
             uint64 polyOffsetMode = rasterMode & RASTERIZERSTATE_FLAG_POLY_OFFSET_MASK;
             if ( polyOffsetMode == RASTERIZERSTATE_FLAG_POLY_OFFSET_DECAL ) {
-                rd.DepthBias = r_offsetFactor.GetFloat();
-                rd.SlopeScaledDepthBias = r_offsetUnits.GetFloat();
+                SetupPolygonOffset(&rd, r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat());
             } else if ( polyOffsetMode == RASTERIZERSTATE_FLAG_POLY_OFFSET_SHADOW ) {
-                rd.DepthBias = r_shadowPolygonFactor.GetFloat();
-                rd.SlopeScaledDepthBias = -r_shadowPolygonOffset.GetFloat();
+                SetupPolygonOffset(&rd, r_shadowPolygonFactor.GetFloat(), -r_shadowPolygonOffset.GetFloat());
             } else {
                 rd.DepthBias = 0;
                 rd.SlopeScaledDepthBias = 0;

@@ -39,7 +39,7 @@ QD3D11Device* D3DDrv_GetDevice()
     return g_pDevice;
 }
 
-ID3D11DeviceContext1* D3DDrv_GetImmediateContext()
+ID3D11DeviceContext2* D3DDrv_GetImmediateContext()
 {
     assert(idLib::IsMainThread());
     assert(g_pImmediateContext);
@@ -59,7 +59,7 @@ void D3DDrv_GetBackBufferTexture(ID3D11Resource** ppResource)
 //----------------------------------------------------------------------------
 // Clear the back buffers
 //----------------------------------------------------------------------------
-void D3DDrv_Clear( ID3D11DeviceContext1* pContext, unsigned long bits, const float* clearCol, unsigned long stencil, float depth )
+void D3DDrv_Clear( ID3D11DeviceContext2* pContext, unsigned long bits, const float* clearCol, unsigned long stencil, float depth )
 {
     if ( bits & CLEAR_COLOR )
     {
@@ -81,7 +81,7 @@ void D3DDrv_Clear( ID3D11DeviceContext1* pContext, unsigned long bits, const flo
 //----------------------------------------------------------------------------
 // Flush the command buffer
 //----------------------------------------------------------------------------
-void D3DDrv_Flush( ID3D11DeviceContext1* pContext )
+void D3DDrv_Flush( ID3D11DeviceContext2* pContext )
 {
     pContext->End( g_DrawState.frameQuery );
 

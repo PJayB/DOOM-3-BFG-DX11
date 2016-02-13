@@ -15,7 +15,7 @@
 #   define QDXGIDevice      IDXGIDevice3
 #else
 #   include <dxgi1_2.h>
-#   include <d3d11_1.h>
+#   include <d3d11_2.h>
 #   define QD3D11Device     ID3D11Device1
 #   define QDXGIDevice      IDXGIDevice2
 #endif
@@ -99,7 +99,7 @@ namespace QD3D
 	CreateDefaultDevice(
 		_In_ D3D_DRIVER_TYPE driver, 
 		_Out_ QD3D11Device** device,
-		_Out_ ID3D11DeviceContext1** context,
+		_Out_ ID3D11DeviceContext2** context,
 		_Out_ D3D_FEATURE_LEVEL* featureLevel);
 
 	//----------------------------------------------------------------------------
@@ -679,6 +679,28 @@ namespace QD3D
 		}
 	};
 
+    //----------------------------------------------------------------------------
+    // 
+    //----------------------------------------------------------------------------
+    class ScopedGpuPixMarker
+    {
+    private:
+        ID3D11DeviceContext2* m_pContext;
+    public:
+
+        inline ScopedGpuPixMarker(
+            _In_ ID3D11DeviceContext2* context,
+            _In_z_ const wchar_t* name)
+            : m_pContext(context)
+        {
+            context->BeginEventInt(name, 0);
+        }
+
+        inline ~ScopedGpuPixMarker()
+        {
+            m_pContext->EndEvent();
+        }
+    };
 }
 
 #endif

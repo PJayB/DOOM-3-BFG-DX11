@@ -524,6 +524,8 @@ void idImage::CopyFramebuffer( int x, int y, int imageWidth, int imageHeight ) {
         D3D11_COPY_DISCARD );
     SAFE_RELEASE(pBackBuffer);
 
+    D3DSetDebugObjectName(pBackBuffer, "BackBuffer");
+
 	backEnd.pc.c_copyFrameBuffer++;
 }
 
@@ -919,6 +921,9 @@ void idImage::AllocImage() {
         }
     }
 
+    D3DSetDebugObjectName(pTexture, GetName());
+    D3DSetDebugObjectName(pSRV, GetName());
+
     if ( FAILED( hr ) )
     {
         PurgeImage();
@@ -931,7 +936,7 @@ idImage::SubImageUpload
 ========================
 */
 void idImage::SubImageUpload( int mipLevel, int x, int y, int z, int width, int height, const void * pic, int pixelPitch ) const {
-    ID3D11DeviceContext1* pContext = D3DDrv_GetImmediateContext();
+    ID3D11DeviceContext2* pContext = D3DDrv_GetImmediateContext();
 
     if ( pTexture == nullptr )
         return;

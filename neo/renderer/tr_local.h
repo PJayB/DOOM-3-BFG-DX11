@@ -1269,11 +1269,11 @@ TR_BACKEND_DRAW
 ============================================================
 */
 
-void RB_DrawElementsWithCounters( ID3D11DeviceContext1* pContext, const drawSurf_t *surf );
-void RB_DrawViewInternal( ID3D11DeviceContext1* pContext, const viewDef_t * viewDef );
-void RB_DrawView( ID3D11DeviceContext1* pContext, const void *data );
-void RB_CopyRender( ID3D11DeviceContext1* pContext, const void *data );
-void RB_PostProcess( ID3D11DeviceContext1* pContext, const void *data );
+void RB_DrawElementsWithCounters( ID3D11DeviceContext2* pContext, const drawSurf_t *surf );
+void RB_DrawViewInternal( ID3D11DeviceContext2* pContext, const viewDef_t * viewDef );
+void RB_DrawView( ID3D11DeviceContext2* pContext, const void *data );
+void RB_CopyRender( ID3D11DeviceContext2* pContext, const void *data );
+void RB_PostProcess( ID3D11DeviceContext2* pContext, const void *data );
 
 /*
 =============================================================

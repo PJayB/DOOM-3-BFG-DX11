@@ -31,7 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 
 const int AUTO_RENDER_STACK_SIZE = 256 * 1024;
 
-void RB_BindImages( ID3D11DeviceContext1* pContext, idImage** pImages, int offset, int numImages );
+void RB_BindImages( ID3D11DeviceContext2* pContext, idImage** pImages, int offset, int numImages );
 
 idAutoRender rAutoRender;
 
@@ -115,7 +115,7 @@ void idAutoRender::RenderFrame() {
 		loadingIconPosY = 0.73f;
 	}
 
-    ID3D11DeviceContext1* pContext = D3DDrv_GetImmediateContext();
+    ID3D11DeviceContext2* pContext = D3DDrv_GetImmediateContext();
 
 	const bool stereoRender = false;
 

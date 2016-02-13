@@ -46,7 +46,7 @@ namespace QD3D
 	CreateDefaultDevice(
 		_In_ D3D_DRIVER_TYPE driver, 
 		_Out_ QD3D11Device** device,
-		_Out_ ID3D11DeviceContext1** context,
+		_Out_ ID3D11DeviceContext2** context,
 		_Out_ D3D_FEATURE_LEVEL* featureLevel)
 	{
 		*device = NULL;
@@ -79,7 +79,7 @@ namespace QD3D
             hr = device11->QueryInterface(__uuidof(QD3D11Device), (void **) device);
             if ( SUCCEEDED( hr ) )
             {
-                return context11->QueryInterface(__uuidof(ID3D11DeviceContext1), (void **) context);
+                return context11->QueryInterface(__uuidof(ID3D11DeviceContext2), (void **) context);
             }
         }
 

@@ -175,7 +175,7 @@ public:
 	int		FindVertexShader( const char * name );
 	int		FindFragmentShader( const char * name );
 
-    void    UpdateConstantBuffers( ID3D11DeviceContext1* pContext );
+    void    UpdateConstantBuffers( ID3D11DeviceContext2* pContext );
 
     ID3D11Buffer* GetRenderParmConstantBuffer() const { return builtinCbuffer.pBuffer; }
     ID3D11Buffer* GetUserParmConstantBuffer() const { return userCbuffer.pBuffer; }
@@ -245,7 +245,7 @@ protected:
 
     static void InitConstantBuffer( cbufferInfo_t* cbuffer, size_t size );
     static void DestroyConstantBuffer( cbufferInfo_t* cbuffer );
-    static void UpdateConstantBuffer( cbufferInfo_t* cbuffer, ID3D11DeviceContext1* pContext );
+    static void UpdateConstantBuffer( cbufferInfo_t* cbuffer, ID3D11DeviceContext2* pContext );
 
     cbufferInfo_t builtinCbuffer;
     cbufferInfo_t userCbuffer;

@@ -8,7 +8,7 @@
 #include "d3d_state.h"
 
 QD3D11Device* g_pDevice = nullptr;
-ID3D11DeviceContext1* g_pImmediateContext = nullptr;
+ID3D11DeviceContext2* g_pImmediateContext = nullptr;
 IDXGISwapChain1* g_pSwapChain = nullptr;
 
 bool DeviceStarted()

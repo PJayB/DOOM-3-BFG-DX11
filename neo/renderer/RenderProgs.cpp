@@ -329,6 +329,8 @@ void idRenderProgManager::LoadVertexShader( int index ) {
 
     vshader->pByteCode = blob;
     vshader->ByteCodeSize = blobLen;
+
+    D3DSetDebugObjectName(vshader->pShader, vshader->name);
 }
 
 /*
@@ -360,6 +362,8 @@ void idRenderProgManager::LoadFragmentShader( int index ) {
     if ( FAILED( hr ) ) {
         common->FatalError( "Failed to create pixel shader '%s': %08X", pshader->name, hr );
     }
+
+    D3DSetDebugObjectName(pshader->pShader, pshader->name);
 }
 
 /*
@@ -409,7 +413,7 @@ void idRenderProgManager::SetRenderParm( renderParm_t parm, const float * value 
 idRenderProgManager::UpdateConstantBuffer
 ================================================================================================
 */
-void idRenderProgManager::UpdateConstantBuffer( cbufferInfo_t* cbuffer, ID3D11DeviceContext1* pContext )
+void idRenderProgManager::UpdateConstantBuffer( cbufferInfo_t* cbuffer, ID3D11DeviceContext2* pContext )
 {
     D3D11_MAPPED_SUBRESOURCE map;
     pContext->Map( cbuffer->pBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &map );
@@ -453,7 +457,7 @@ void idRenderProgManager::DestroyConstantBuffer( cbufferInfo_t* cbuffer )
 idRenderProgManager::UpdateConstantBuffers
 ================================================================================================
 */
-void idRenderProgManager::UpdateConstantBuffers( ID3D11DeviceContext1* pContext )
+void idRenderProgManager::UpdateConstantBuffers( ID3D11DeviceContext2* pContext )
 {
     if ( builtinCbuffer.dirty )
         UpdateConstantBuffer( &builtinCbuffer, pContext );

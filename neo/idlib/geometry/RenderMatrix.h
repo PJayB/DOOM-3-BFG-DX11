@@ -28,6 +28,8 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __RENDERMATRIX_H__
 #define __RENDERMATRIX_H__
 
+#define CLIP_SPACE_D3D
+
 static const int NUM_FRUSTUM_CORNERS	= 8;
 
 struct frustumCorners_t {

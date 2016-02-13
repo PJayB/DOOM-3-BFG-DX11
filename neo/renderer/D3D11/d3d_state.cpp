@@ -230,10 +230,10 @@ ID3D11RasterizerState* D3DDrv_CreateRasterizerState( int cullType, uint64 stateB
     switch (cullType)
     {
     case CT_BACK_SIDED:
-        rd.CullMode = D3D11_CULL_FRONT;
+        rd.CullMode = D3D11_CULL_BACK;
         break;
     case CT_FRONT_SIDED:
-        rd.CullMode = D3D11_CULL_BACK;
+        rd.CullMode = D3D11_CULL_FRONT;
         break;
     case CT_TWO_SIDED:
         rd.CullMode = D3D11_CULL_NONE;

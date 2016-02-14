@@ -910,6 +910,8 @@ void idImage::AllocImage() {
     HRESULT hr = pDevice->CreateTexture2D( &desc, NULL, &pTexture );
     if ( SUCCEEDED( hr ) )
     {
+        D3DSetDebugObjectName(pTexture, GetName());
+
         // create SRV
         hr = pDevice->CreateShaderResourceView(
             pTexture,
@@ -918,11 +920,10 @@ void idImage::AllocImage() {
         if ( SUCCEEDED( hr ) )
         {
             hr = RegenerateSamplerState();
+
+            D3DSetDebugObjectName(pSRV, GetName());
         }
     }
-
-    D3DSetDebugObjectName(pTexture, GetName());
-    D3DSetDebugObjectName(pSRV, GetName());
 
     if ( FAILED( hr ) )
     {

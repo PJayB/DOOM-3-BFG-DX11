@@ -526,7 +526,7 @@ static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 ma
         case GLS_DEPTH_STENCIL_PACKAGE_REF_EQUAL:
             dsd->FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
             dsd->FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-            dsd->FrontFace.StencilPassOp = D3D11_STENCIL_OP_REPLACE;
+            dsd->FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
             dsd->FrontFace.StencilFunc = D3D11_COMPARISON_EQUAL;
             break;
         case GLS_DEPTH_STENCIL_PACKAGE_INC:

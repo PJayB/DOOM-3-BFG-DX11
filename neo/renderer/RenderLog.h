@@ -80,17 +80,10 @@ class idRenderLog {
 public:
 				idRenderLog();
 
-	void		StartFrame();
-	void		EndFrame();
+	void		StartFrame(ID3D11DeviceContext2* context);
+	void		EndFrame(ID3D11DeviceContext2* context);
 	void		Close();
 	int			Active() { return activeLevel; }	// returns greater than 1 for more detailed logging
-
-	// The label must be a constant string literal and may not point to a temporary.
-	void		OpenMainBlock( renderLogMainBlock_t block );
-	void		CloseMainBlock();
-
-	void		OpenBlock( const char * label );
-	void		CloseBlock();
 
 	void		Indent( renderLogIndentLabel_t label = RENDER_LOG_INDENT_DEFAULT );
 	void		Outdent( renderLogIndentLabel_t label = RENDER_LOG_INDENT_DEFAULT );
@@ -120,7 +113,61 @@ public:
 
 	void					LogOpenBlock( renderLogIndentLabel_t label, const char * fmt, va_list args );
 	void					LogCloseBlock( renderLogIndentLabel_t label );
+
+protected:
+    friend class idRenderLogMainBlock;
+
+    // The label must be a constant string literal and may not point to a temporary.
+    void		OpenMainBlock(renderLogMainBlock_t block);
+    void		CloseMainBlock();
+
+protected:
+    friend class idRenderLogBlock;
+
+    void		OpenBlock(ID3D11DeviceContext2* context, const char * label);
+    void		CloseBlock(ID3D11DeviceContext2* context);
 };
+
+
+class idRenderLogBlock
+{
+private:
+    idRenderLog& m_renderLog;
+    ID3D11DeviceContext2* m_context;
+public:
+    idRenderLogBlock(idRenderLog& renderLog, ID3D11DeviceContext2* context, const char* name)
+        : m_renderLog(renderLog)
+        , m_context(context)
+    {
+        renderLog.OpenBlock(context, name);
+    }
+    ~idRenderLogBlock()
+    {
+        m_renderLog.CloseBlock(m_context);
+    }
+};
+
+class idRenderLogMainBlock
+{
+private:
+    idRenderLog& m_renderLog;
+public:
+    idRenderLogMainBlock(idRenderLog& renderLog, renderLogMainBlock_t block)
+        : m_renderLog(renderLog)
+    {
+        renderLog.OpenMainBlock(block);
+    }
+    ~idRenderLogMainBlock()
+    {
+        m_renderLog.CloseMainBlock();
+    }
+};
+
+#define ID_RENDER_LOG_LINE_0(x, y) x##y
+#define ID_RENDER_LOG_LINE_1(x, y) ID_RENDER_LOG_LINE_0(x, y)
+#define ID_RENDER_LOG_VAR(x, y) ID_RENDER_LOG_LINE_1(x, y)
+#define ID_RENDER_LOG_BLOCK(log, context, x) idRenderLogBlock ID_RENDER_LOG_VAR(_renderLogBlock_, __LINE__)(log, context, x);
+#define ID_RENDER_LOG_MAIN_BLOCK(log, x) idRenderLogMainBlock ID_RENDER_LOG_VAR(_renderLogMainBlock_, __LINE__)(log, x);
 
 /*
 ========================

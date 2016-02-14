@@ -526,7 +526,7 @@ static void RB_DrawStageCustomVFP(
 	// get the expressions for conditionals / color / texcoords
 	const float	*regs = surf->shaderRegisters;
 
-	renderLog.OpenBlock( "New Shader Stage" );
+	ID_RENDER_LOG_BLOCK( renderLog, pContext, "New Shader Stage" );
 
     D3DDrv_SetBlendStateFromMask( pContext, stageGLState );
     D3DDrv_SetDepthStateFromMask( pContext, stageGLState );
@@ -572,7 +572,7 @@ static void RB_DrawStageCustomVFP(
 		renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
 	}
 
-	renderLog.CloseBlock();
+	
 }
 
 /*
@@ -611,7 +611,7 @@ static void RB_DrawStageBuiltInVFP(
 		return;
 	}
 
-	renderLog.OpenBlock( "Old Shader Stage" );
+	ID_RENDER_LOG_BLOCK( renderLog, pContext, "Old Shader Stage" );
 
     renderProgManager.SetRenderParm( RENDERPARM_COLOR, color );
 
@@ -634,7 +634,7 @@ static void RB_DrawStageBuiltInVFP(
 
     RB_ResetColor();
 
-	renderLog.CloseBlock();
+	
 }
 
 /*
@@ -712,7 +712,7 @@ static void RB_FillDepthBufferGeneric( ID3D11DeviceContext2* pContext, const dra
 			color[3] = 1.0f;
 		}
 
-		renderLog.OpenBlock( shader->GetName() );
+		ID_RENDER_LOG_BLOCK( renderLog, pContext, shader->GetName() );
 
 		bool drawSolid = false;
 		if ( shader->Coverage() == MC_OPAQUE ) {
@@ -823,7 +823,7 @@ static void RB_FillDepthBufferGeneric( ID3D11DeviceContext2* pContext, const dra
             RB_ResetColor();
 		}
 
-		renderLog.CloseBlock();
+		
 	}
 
     renderProgManager.SetRenderParm( RENDERPARM_ALPHA_TEST, vec4_zero.ToFloatPtr() );
@@ -848,8 +848,8 @@ on the 360.
 =====================
 */
 static void RB_FillDepthBufferFast( ID3D11DeviceContext2* pContext, drawSurf_t **drawSurfs, int numDrawSurfs ) {
-	renderLog.OpenMainBlock( MRB_FILL_DEPTH_BUFFER );
-	renderLog.OpenBlock( "RB_FillDepthBufferFast" );
+	ID_RENDER_LOG_MAIN_BLOCK( renderLog, MRB_FILL_DEPTH_BUFFER );
+	ID_RENDER_LOG_BLOCK( renderLog, pContext, "RB_FillDepthBufferFast" );
 
     // force MVP change on first surface
 	backEnd.currentSpace = NULL;
@@ -897,7 +897,7 @@ static void RB_FillDepthBufferFast( ID3D11DeviceContext2* pContext, drawSurf_t *
 			backEnd.currentSpace = surf->space;
 		}
 
-		renderLog.OpenBlock( shader->GetName() );
+		ID_RENDER_LOG_BLOCK( renderLog, pContext, shader->GetName() );
 
         BUILTIN_SHADER shaderToUse =
 		    ( surf->jointCache ) ?
@@ -911,7 +911,7 @@ static void RB_FillDepthBufferFast( ID3D11DeviceContext2* pContext, drawSurf_t *
 		// draw it solid
 		RB_DrawElementsWithCounters( pContext, surf );
 
-		renderLog.CloseBlock();
+		
 	}
 
 	// draw all perforated surfaces with the general code path
@@ -919,8 +919,8 @@ static void RB_FillDepthBufferFast( ID3D11DeviceContext2* pContext, drawSurf_t *
 		RB_FillDepthBufferGeneric( pContext, perforatedSurfaces, numPerforatedSurfaces );
 	}
 
-	renderLog.CloseBlock();
-	renderLog.CloseMainBlock();
+	
+	
 }
 
 /*
@@ -1180,7 +1180,7 @@ mask to be used by the following stencil shadow and draw interaction passes.
 ==================
 */
 static void RB_StencilSelectLight( ID3D11DeviceContext2* pContext, const viewLight_t * vLight ) {
-	renderLog.OpenBlock( "Stencil Select" );
+	ID_RENDER_LOG_BLOCK( renderLog, pContext, "Stencil Select" );
 
     // enable the light scissor
 	if ( !backEnd.currentScissor.Equals( vLight->scissorRect ) && r_useScissor.GetBool() ) {
@@ -1214,7 +1214,7 @@ static void RB_StencilSelectLight( ID3D11DeviceContext2* pContext, const viewLig
 
 	RB_DrawElementsWithCounters( pContext, &backEnd.zeroOneCubeSurface );
 
-	renderLog.CloseBlock();
+	
 }
 
 /*
@@ -1554,7 +1554,7 @@ static void RB_RenderInteractions( ID3D11DeviceContext2* pContext, const drawSur
 
 			// check for the fast path
 			if ( surfaceShader->GetFastPathBumpImage() && !r_skipInteractionFastPath.GetBool() ) {
-				renderLog.OpenBlock( surf->material->GetName() );
+				ID_RENDER_LOG_BLOCK( renderLog, pContext, surf->material->GetName() );
 
                 // Bind the images and draw
                 idImage* pMaterialImages[] = {
@@ -1566,11 +1566,11 @@ static void RB_RenderInteractions( ID3D11DeviceContext2* pContext, const drawSur
 
 				RB_DrawElementsWithCounters( pContext, surf );
 
-				renderLog.CloseBlock();
+				
 				continue;
 			}
 			
-			renderLog.OpenBlock( surf->material->GetName() );
+			ID_RENDER_LOG_BLOCK( renderLog, pContext, surf->material->GetName() );
 
 			inter.bumpImage = NULL;
 			inter.specularImage = NULL;
@@ -1650,7 +1650,7 @@ static void RB_RenderInteractions( ID3D11DeviceContext2* pContext, const drawSur
 			// draw the final interaction
 			RB_DrawSingleInteraction( pContext, &inter );
 
-			renderLog.CloseBlock();
+			
 		}
 	}
 }
@@ -1660,8 +1660,8 @@ static void RB_DrawInteractions( ID3D11DeviceContext2* pContext ) {
 		return;
 	}
 
-	renderLog.OpenMainBlock( MRB_DRAW_INTERACTIONS );
-	renderLog.OpenBlock( "RB_DrawInteractions" );
+	ID_RENDER_LOG_MAIN_BLOCK( renderLog, MRB_DRAW_INTERACTIONS );
+	ID_RENDER_LOG_BLOCK( renderLog, pContext, "RB_DrawInteractions" );
 
     //
 	// for each light, perform shadowing and adding
@@ -1680,7 +1680,7 @@ static void RB_DrawInteractions( ID3D11DeviceContext2* pContext ) {
 		}
 
 		const idMaterial * lightShader = vLight->lightShader;
-		renderLog.OpenBlock( lightShader->GetName() );
+		ID_RENDER_LOG_BLOCK( renderLog, pContext, lightShader->GetName() );
 
 		// only need to clear the stencil buffer and perform stencil testing if there are shadows
 		const bool performStencilTest = ( vLight->globalShadows != NULL || vLight->localShadows != NULL );
@@ -1717,32 +1717,32 @@ static void RB_DrawInteractions( ID3D11DeviceContext2* pContext ) {
 		}
 
 		if ( vLight->globalShadows != NULL ) {
-			renderLog.OpenBlock( "Global Light Shadows" );
+			ID_RENDER_LOG_BLOCK( renderLog, pContext, "Global Light Shadows" );
 			RB_StencilShadowPass( pContext, vLight->globalShadows, vLight );
-			renderLog.CloseBlock();
+			
 		}
 
 		if ( vLight->localInteractions != NULL ) {
-			renderLog.OpenBlock( "Local Light Interactions" );
+			ID_RENDER_LOG_BLOCK( renderLog, pContext, "Local Light Interactions" );
 			RB_RenderInteractions( pContext, vLight->localInteractions, vLight, GLS_DEPTHFUNC_EQUAL, performStencilTest );
-			renderLog.CloseBlock();
+			
 		}
 
 		if ( vLight->localShadows != NULL ) {
-			renderLog.OpenBlock( "Local Light Shadows" );
+			ID_RENDER_LOG_BLOCK( renderLog, pContext, "Local Light Shadows" );
 			RB_StencilShadowPass( pContext, vLight->localShadows, vLight );
-			renderLog.CloseBlock();
+			
 		}
 
 		if ( vLight->globalInteractions != NULL ) {
-			renderLog.OpenBlock( "Global Light Interactions" );
+			ID_RENDER_LOG_BLOCK( renderLog, pContext, "Global Light Interactions" );
 			RB_RenderInteractions( pContext, vLight->globalInteractions, vLight, GLS_DEPTHFUNC_EQUAL, performStencilTest );
-			renderLog.CloseBlock();
+			
 		}
 
 
 		if ( vLight->translucentInteractions != NULL && !r_skipTranslucent.GetBool() ) {
-			renderLog.OpenBlock( "Translucent Interactions" );
+			ID_RENDER_LOG_BLOCK( renderLog, pContext, "Translucent Interactions" );
 
 			// The depth buffer wasn't filled in for translucent surfaces, so they
 			// can never be constrained to perforated surfaces with the depthfunc equal.
@@ -1754,18 +1754,18 @@ static void RB_DrawInteractions( ID3D11DeviceContext2* pContext ) {
 
 			RB_RenderInteractions( pContext, vLight->translucentInteractions, vLight, GLS_DEPTHFUNC_LESS, false );
 
-			renderLog.CloseBlock();
+			
 		}
 
-		renderLog.CloseBlock();
+		
 	}
 
 	// disable stencil shadow test
     D3DDrv_SetBlendStateFromMask( pContext, 0 );
     D3DDrv_SetDepthStateFromMask( pContext, 0 );
 
-	renderLog.CloseBlock();
-	renderLog.CloseMainBlock();
+	
+	
 }
 
 /*
@@ -1834,7 +1834,7 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext2* pContext, const drawSurf_t
 		return numDrawSurfs;
 	}
 
-    renderLog.OpenBlock( "RB_DrawShaderPasses" );
+    ID_RENDER_LOG_BLOCK( renderLog, pContext, "RB_DrawShaderPasses" );
 
 	backEnd.currentSpace = (const viewEntity_t *)1;	// using NULL makes /analyze think surf->space needs to be checked...
 
@@ -1873,7 +1873,7 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext2* pContext, const drawSurf_t
 			break;
 		}
 
-		renderLog.OpenBlock( shader->GetName() );
+		ID_RENDER_LOG_BLOCK( renderLog, pContext, shader->GetName() );
 
 		// change the matrix and other space related vars if needed
 		if ( surf->space != backEnd.currentSpace ) {
@@ -1978,10 +1978,10 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext2* pContext, const drawSurf_t
             }
 		}
 
-		renderLog.CloseBlock();
+		
 	}
 
-	renderLog.CloseBlock();
+	
 	return i;
 }
 
@@ -1998,7 +1998,7 @@ RB_DrawViewInternal
 ==================
 */
 void RB_DrawViewInternal( ID3D11DeviceContext2* pContext, const viewDef_t * viewDef ) {
-    renderLog.OpenBlock( "RB_DrawViewInternal" );
+    ID_RENDER_LOG_BLOCK( renderLog, pContext, "RB_DrawViewInternal" );
 
 	//-------------------------------------------------
 	// guis can wind up referencing purged images that need to be loaded.
@@ -2094,12 +2094,12 @@ void RB_DrawViewInternal( ID3D11DeviceContext2* pContext, const viewDef_t * view
 	//-------------------------------------------------
 	int processed = 0;
 	if ( !r_skipShaderPasses.GetBool() ) {
-		renderLog.OpenMainBlock( MRB_DRAW_SHADER_PASSES );
+		ID_RENDER_LOG_MAIN_BLOCK( renderLog, MRB_DRAW_SHADER_PASSES );
 		processed = RB_DrawShaderPasses( pContext, drawSurfs, numDrawSurfs );
-		renderLog.CloseMainBlock();
+		
 	}
 
-	renderLog.CloseBlock();
+	
 }
 
 /*
@@ -2312,7 +2312,7 @@ void RB_PostProcess( ID3D11DeviceContext2* pContext, const void * data ) {
 	// Draw
 	RB_DrawElementsWithCounters( pContext, &backEnd.unitSquareSurface );
 
-	renderLog.CloseBlock();
+	
 
      */
 }
@@ -2335,7 +2335,8 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 
 	resolutionScale.SetCurrentGPUFrameTime( commonLocal.GetRendererGPUMicroseconds() );
 
-	renderLog.StartFrame();
+    ID3D11DeviceContext2* pContext = D3DDrv_GetImmediateContext();
+    renderLog.StartFrame(pContext);
 
 	if ( cmds->commandId == RC_NOP && !cmds->next ) {
 		return;
@@ -2355,8 +2356,6 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
         r_offsetFactor.ClearModified();
         r_offsetUnits.ClearModified();
     }
-
-    ID3D11DeviceContext2* pContext = D3DDrv_GetImmediateContext();
 
 	uint64 backEndStartTime = Sys_Microseconds();
 
@@ -2399,5 +2398,5 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 		common->Printf( "3d: %i, 2d: %i, SetBuf: %i, CpyRenders: %i, CpyFrameBuf: %i\n", c_draw3d, c_draw2d, c_setBuffers, c_copyRenders, backEnd.pc.c_copyFrameBuffer );
 		backEnd.pc.c_copyFrameBuffer = 0;
 	}
-	renderLog.EndFrame();
+	renderLog.EndFrame(pContext);
 }

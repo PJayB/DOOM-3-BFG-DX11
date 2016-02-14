@@ -81,12 +81,12 @@ PC_BeginNamedEvent
 FIXME: this is not thread safe on the PC
 ========================
 */
-template<typename... TArgs> void PC_BeginNamedEvent( const char *szName, TArgs... args ) {
+template<typename... TArgs> void PC_BeginNamedEvent(ID3D11DeviceContext2* context, const char *szName, TArgs... args ) {
 	if ( !r_pix.GetBool() ) {
 		return;
 	}
 
-    PIXBeginEvent(D3DDrv_GetImmediateContext(), 0, szName, args...);
+    PIXBeginEvent(context, 0, szName, args...);
 }
 
 /*
@@ -94,12 +94,12 @@ template<typename... TArgs> void PC_BeginNamedEvent( const char *szName, TArgs..
 PC_EndNamedEvent
 ========================
 */
-void PC_EndNamedEvent() {
+void PC_EndNamedEvent(ID3D11DeviceContext2* context) {
 	if ( !r_pix.GetBool() ) {
 		return;
 	}
 
-    PIXEndEvent();
+    PIXEndEvent(context);
 }
 
 /*
@@ -107,7 +107,7 @@ void PC_EndNamedEvent() {
 PC_EndFrame
 ========================
 */
-void PC_EndFrame() {
+void PC_EndFrame(ID3D11DeviceContext2* context) {
 #if 0
 	if ( !r_pix.GetBool() ) {
 		return;
@@ -170,7 +170,7 @@ idRenderLog::idRenderLog() {
 idRenderLog::StartFrame
 ========================
 */
-void idRenderLog::StartFrame() {
+void idRenderLog::StartFrame(ID3D11DeviceContext2* context) {
 	if ( r_logFile.GetInteger() == 0 ) {
 		return;
 	}
@@ -224,7 +224,7 @@ void idRenderLog::StartFrame() {
 
 	frameStartTime = Sys_Microseconds();
 	closeBlockTime = frameStartTime;
-	OpenBlock( "Frame" );
+	OpenBlock( context, "Frame" );
 }
 
 /*
@@ -232,8 +232,8 @@ void idRenderLog::StartFrame() {
 idRenderLog::EndFrame
 ========================
 */
-void idRenderLog::EndFrame() {
-	PC_EndFrame();
+void idRenderLog::EndFrame(ID3D11DeviceContext2* context) {
+	PC_EndFrame(context);
 
 	if ( logFile != NULL ) {
 		if ( r_logFile.GetInteger() == 1 ) {
@@ -253,7 +253,6 @@ idRenderLog::Close
 */
 void idRenderLog::Close() {
 	if ( logFile != NULL ) {
-		CloseBlock();
 		idLib::Printf( "Closing logfile\n" );
 		fileSystem->CloseFile( logFile );
 		logFile = NULL;
@@ -282,9 +281,9 @@ void idRenderLog::CloseMainBlock() {
 idRenderLog::OpenBlock
 ========================
 */
-void idRenderLog::OpenBlock( const char *label ) {
+void idRenderLog::OpenBlock(ID3D11DeviceContext2* context, const char *label) {
 	// Allow the PIX functionality even when logFile is not running.
-	PC_BeginNamedEvent( label );
+	PC_BeginNamedEvent( context, label );
 
 	if ( logFile != NULL ) {
 		LogOpenBlock( RENDER_LOG_INDENT_MAIN_BLOCK, label, NULL );
@@ -296,8 +295,8 @@ void idRenderLog::OpenBlock( const char *label ) {
 idRenderLog::CloseBlock
 ========================
 */
-void idRenderLog::CloseBlock() {
-	PC_EndNamedEvent();
+void idRenderLog::CloseBlock(ID3D11DeviceContext2* context) {
+	PC_EndNamedEvent(context);
 
 	if ( logFile != NULL ) {
 		LogCloseBlock( RENDER_LOG_INDENT_MAIN_BLOCK );

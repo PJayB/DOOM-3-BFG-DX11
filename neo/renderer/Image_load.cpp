@@ -535,18 +535,54 @@ CopyDepthbuffer
 */
 void idImage::CopyDepthbuffer( int x, int y, int imageWidth, int imageHeight ) {
 
-    /*
+    if (opts.width != imageWidth || opts.height != imageHeight || opts.numLevels != 1)
+    {
+        // Recreate the image buffer
+        assert(opts.textureType == TT_2D);
+        assert(!IsCompressed());
 
-    @pjb: todo: 
+        opts.numLevels = 1;
+        opts.width = imageWidth;
+        opts.height = imageHeight;
+        opts.format = FMT_DEPTH;
+        filter = TF_LINEAR;
+        repeat = TR_CLAMP;
 
-	qglBindTexture( ( opts.textureType == TT_CUBIC ) ? GL_TEXTURE_CUBE_MAP_EXT : GL_TEXTURE_2D, texnum );
+        AllocImage();
+    }
 
-	opts.width = imageWidth;
-	opts.height = imageHeight;
-	qglCopyTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, x, y, imageWidth, imageHeight, 0 );
+    if (filter != TF_LINEAR || repeat != TR_CLAMP)
+    {
+        filter = TF_LINEAR;
+        repeat = TR_CLAMP;
+        RegenerateSamplerState();
+    }
 
-	backEnd.pc.c_copyFrameBuffer++;
-    */
+    ID3D11Resource* pBackBuffer = nullptr;
+
+    D3D11_BOX box;
+    box.back = 1;
+    box.bottom = y + imageHeight;
+    box.front = 0;
+    box.left = x;
+    box.right = x + imageWidth;
+    box.top = y;
+
+    D3DDrv_GetDepthBufferTexture(&pBackBuffer);
+    D3DDrv_GetImmediateContext()->CopyResource(pTexture, pBackBuffer);
+    //D3DDrv_GetImmediateContext()->CopySubresourceRegion1(
+    //    pTexture, // Dst
+    //    0, // DstSubResource
+    //    0, // DstX,
+    //    0, // DstY,
+    //    0, // DstZ,
+    //    pBackBuffer, // Src
+    //    0, // SrcSubResource
+    //    &box,
+    //    D3D11_COPY_DISCARD);
+    SAFE_RELEASE(pBackBuffer);
+
+    backEnd.pc.c_copyFrameBuffer++;
 }
 
 /*
@@ -808,7 +844,7 @@ DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt) const
 		internalFormat = DXGI_FORMAT_BC3_UNORM;
 		break;
 	case FMT_DEPTH:
-		internalFormat = DXGI_FORMAT_D32_FLOAT;
+        internalFormat = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 		break;
 	case FMT_X16:
 		internalFormat = DXGI_FORMAT_R16_UNORM;

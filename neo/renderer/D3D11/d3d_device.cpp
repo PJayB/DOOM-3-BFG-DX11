@@ -131,6 +131,7 @@ void GetSwapChainDescFromConfig( DXGI_SWAP_CHAIN_DESC1* scDesc, UINT maxMultisam
 {
     // Get best possible swapchain first
     QD3D::GetBestQualitySwapChainDesc( g_pDevice, maxMultisamples, scDesc );
+    scDesc->Format = DXGI_FORMAT_R8G8B8A8_UNORM; // @pjb: remove?
 }
 
 void SetupVideoConfig()

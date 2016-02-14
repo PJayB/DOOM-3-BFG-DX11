@@ -515,8 +515,8 @@ static void ConfigureDepthStencilState( D3D11_DEPTH_STENCIL_DESC* dsd, uint64 ma
     if ( stencilPackage != GLS_DEPTH_STENCIL_PACKAGE_NONE )
     {
         dsd->StencilEnable = TRUE;
-        dsd->StencilReadMask = 255; // @pjb: todo: Never anything else right now.
-        dsd->StencilWriteMask = 255; // @pjb: todo: Never anything else right now.
+        dsd->StencilReadMask = STENCIL_SHADOW_MASK_VALUE; // @pjb: todo: Never anything else right now.
+        dsd->StencilWriteMask = STENCIL_SHADOW_MASK_VALUE; // @pjb: todo: Never anything else right now.
 
         dsd->FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
         dsd->BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;

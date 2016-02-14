@@ -524,8 +524,6 @@ void idImage::CopyFramebuffer( int x, int y, int imageWidth, int imageHeight ) {
         D3D11_COPY_DISCARD );
     SAFE_RELEASE(pBackBuffer);
 
-    D3DSetDebugObjectName(pBackBuffer, "BackBuffer");
-
 	backEnd.pc.c_copyFrameBuffer++;
 }
 

@@ -1,5 +1,30 @@
-Doom 3 BFG Edition GPL Source Code
-==================================
+Doom 3 BFG Edition GPL Source Code (Direct3D 11)
+================================================
+
+This is a Direct3D 11 port of id Software's Doom 3 BFG Edition. This was a personal project and is in no way affiliated with or endorsed by my employer, Microsoft, or by id Software or Zenimax Media.
+
+Requirements
+------------
+
+* Windows 10 SDK
+* Visual Studio 2015
+* DirectX 11 capable hardware
+
+The Windows 10 SDK and Visual Studio 2015 dependencies aren't strong: they just happen to be what I have installed. If you wish to compile on a pre-Win10 box, make sure to change the SDK version in Project Properties from 10.10586 to something you have installed. If you want to compile on anything pre-VS2015, you can edit the vcxproj's Platform Tools Version from v140 to something you have installed.
+
+I have broken the dependency on the DirectX June 2010 SDK, so that is no longer required.
+
+Outstanding Work
+----------------
+
+* Post Processes aren't implemented yet
+* VS2015 kicks out a gajillion warnings (VS2015 compiler has stronger standards compliance)
+* x64 build is unfinished
+* I haven't tried a Retail configuration build at all :)
+
+
+Updated Original Readme for Doom 3 BFG Edition GPL Source Code
+==============================================================
 
 This file contains the following sections:
 
@@ -24,12 +49,8 @@ http://store.steampowered.com/app/208200/
 Compiling on win32:
 -------------------
 
-A project file for Microsoft Visual Studio 2010 is provided in neo\doom3.sln
+A project file for Microsoft Visual Studio 2015 is provided in neo\doom3.sln
 We expect the solution file is compatible with the Express releases
-
-You will need the Microsoft DirectX SDK installed as well.
-If it does not reside in "C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)"
-you will need to update the project files accordingly.
 
 
 Steam:

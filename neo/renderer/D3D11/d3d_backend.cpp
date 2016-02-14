@@ -55,6 +55,15 @@ void D3DDrv_GetBackBufferTexture(ID3D11Resource** ppResource)
     g_BufferState.backBufferView->GetResource(ppResource);
 }
 
+void D3DDrv_GetDepthBufferTexture(ID3D11Resource** ppResource)
+{
+    assert(idLib::IsMainThread());
+    assert(g_pImmediateContext);
+    assert(g_BufferState.depthBufferView);
+
+    g_BufferState.depthBufferView->GetResource(ppResource);
+}
+
 
 //----------------------------------------------------------------------------
 // Clear the back buffers

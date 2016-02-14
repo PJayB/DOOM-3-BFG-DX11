@@ -20,6 +20,7 @@ void D3DDrv_Shutdown( void );
 QD3D11Device* D3DDrv_GetDevice();
 ID3D11DeviceContext2* D3DDrv_GetImmediateContext();
 void D3DDrv_GetBackBufferTexture(ID3D11Resource** ppResource);
+void D3DDrv_GetDepthBufferTexture(ID3D11Resource** ppResource);
 
 HRESULT D3DDrv_EndFrame( int frequency );
 

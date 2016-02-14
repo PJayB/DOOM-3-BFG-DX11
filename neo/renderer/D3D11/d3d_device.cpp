@@ -7,6 +7,8 @@
 #include "d3d_device.h"
 #include "d3d_state.h"
 
+#define NSIGHT_HACK
+
 QD3D11Device* g_pDevice = nullptr;
 ID3D11DeviceContext2* g_pImmediateContext = nullptr;
 IDXGISwapChain1* g_pSwapChain = nullptr;

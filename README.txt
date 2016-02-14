@@ -10,7 +10,9 @@ Requirements
 * Visual Studio 2015
 * DirectX 11 capable hardware
 
-The Windows 10 SDK and Visual Studio 2015 dependencies aren't strong: they just happen to be what I have installed. If you wish to compile on a pre-Win10 box, make sure to change the SDK version in Project Properties from 10.10586 to something you have installed. If you want to compile on anything pre-VS2015, you can edit the vcxproj's Platform Tools Version from v140 to something you have installed.
+The Windows 10 SDK and Visual Studio 2015 dependencies aren't strong: they just happen to be what I have installed. If you wish to compile on a pre-Win10 box, make sure to change the SDK version in Project Properties from 10.10586 to something you have installed. You will also need to change the WINVER define to something less than 0x600.
+
+If you want to compile on anything pre-VS2015, you can edit the vcxproj's Platform Tools Version from v140 to something you have installed.
 
 I have broken the dependency on the DirectX June 2010 SDK, so that is no longer required.
 

@@ -98,8 +98,8 @@ namespace QD3D
 	HRESULT 
 	CreateDefaultDevice(
 		_In_ D3D_DRIVER_TYPE driver, 
-		_Out_ QD3D11Device** device,
-		_Out_ ID3D11DeviceContext2** context,
+		_Out_ ID3D11Device** device,
+		_Out_ ID3D11DeviceContext** context,
 		_Out_ D3D_FEATURE_LEVEL* featureLevel);
 
 	//----------------------------------------------------------------------------

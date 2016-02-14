@@ -25,11 +25,30 @@ QD3D11Device* InitDevice()
 #else
     g_BufferState.featureLevel = D3D_FEATURE_LEVEL_11_1; 
 #endif
+
+    ID3D11Device* device11 = nullptr;
+    ID3D11DeviceContext* context11 = nullptr;
+
 	HRESULT hr = QD3D::CreateDefaultDevice(
 		D3D_DRIVER_TYPE_HARDWARE, 
-		&g_pDevice, 
-		&g_pImmediateContext, 
+		&device11, 
+		&context11, 
 		&g_BufferState.featureLevel);
+
+#ifndef NSIGHT_HACK
+    if (SUCCEEDED(hr))
+    {
+        hr = device11->QueryInterface(__uuidof(QD3D11Device), (void **) &g_pDevice);
+        if ( SUCCEEDED( hr ) )
+        {
+            hr = context11->QueryInterface(__uuidof(ID3D11DeviceContext2), (void **) &g_pImmediateContext);
+        }
+    }
+#else
+    g_pDevice = (QD3D11Device*)device11;
+    g_pImmediateContext = (ID3D11DeviceContext2*)context11;
+#endif
+
     if (FAILED(hr) || !g_pDevice || !g_pImmediateContext)
 	{
         common->FatalError( "Failed to create Direct3D 11 device: 0x%08x.\n", hr );

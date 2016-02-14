@@ -45,8 +45,8 @@ namespace QD3D
 	HRESULT 
 	CreateDefaultDevice(
 		_In_ D3D_DRIVER_TYPE driver, 
-		_Out_ QD3D11Device** device,
-		_Out_ ID3D11DeviceContext2** context,
+		_Out_ ID3D11Device** device,
+		_Out_ ID3D11DeviceContext** context,
 		_Out_ D3D_FEATURE_LEVEL* featureLevel)
 	{
 		*device = NULL;
@@ -60,10 +60,7 @@ namespace QD3D
         }
 #endif
 
-        ID3D11Device* device11 = nullptr;
-        ID3D11DeviceContext* context11 = nullptr;
-
-		HRESULT hr = D3D11CreateDevice(
+		return D3D11CreateDevice(
 					NULL, // TODO: individual adapters
 					driver,
 					NULL,
@@ -71,19 +68,9 @@ namespace QD3D
 					NULL,
 					0,
 					D3D11_SDK_VERSION,
-					&device11,
+					device,
 					featureLevel,
-					&context11);
-        if ( SUCCEEDED( hr ) ) 
-        {
-            hr = device11->QueryInterface(__uuidof(QD3D11Device), (void **) device);
-            if ( SUCCEEDED( hr ) )
-            {
-                return context11->QueryInterface(__uuidof(ID3D11DeviceContext2), (void **) context);
-            }
-        }
-
-        return hr;
+					context);
 	}
 
 	//----------------------------------------------------------------------------

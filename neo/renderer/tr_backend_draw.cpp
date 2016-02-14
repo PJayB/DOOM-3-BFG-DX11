@@ -2129,6 +2129,8 @@ void RB_MotionBlur( ID3D11DeviceContext2* pContext ) {
 		return;
 	}
 
+    ID_RENDER_LOG_BLOCK(renderLog, pContext, "RB_MotionBlur");
+
     // clear the alpha buffer and draw only the hands + weapon into it so
 	// we can avoid blurring them
     D3DDrv_SetDepthStateFromMask( pContext, GLS_DEPTHMASK );

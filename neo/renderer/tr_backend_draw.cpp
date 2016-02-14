@@ -2089,14 +2089,6 @@ void RB_DrawViewInternal( ID3D11DeviceContext2* pContext, const viewDef_t * view
 	//-------------------------------------------------
 	RB_DrawInteractions( pContext );
 
-    //-------------------------------------------------
-    // capture depth for motion blur
-    //-------------------------------------------------
-    if (r_motionBlur.GetInteger() > 0) {
-        const idScreenRect& viewport = backEnd.viewDef->viewport;
-        globalImages->currentDepthImage->CopyDepthbuffer(viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight());
-    }
-
 	//-------------------------------------------------
 	// now draw any non-light dependent shading passes
 	//-------------------------------------------------
@@ -2104,10 +2096,60 @@ void RB_DrawViewInternal( ID3D11DeviceContext2* pContext, const viewDef_t * view
 	if ( !r_skipShaderPasses.GetBool() ) {
 		ID_RENDER_LOG_MAIN_BLOCK( renderLog, MRB_DRAW_SHADER_PASSES );
 		processed = RB_DrawShaderPasses( pContext, drawSurfs, numDrawSurfs );
-		
 	}
 
-	
+	//-------------------------------------------------
+	// fog and blend lights, drawn after emissive surfaces
+	// so they are properly dimmed down
+	//-------------------------------------------------
+	//RB_FogAllLights();
+
+	//-------------------------------------------------
+	// capture the depth for the motion blur before rendering any post process surfaces that may contribute to the depth
+	//-------------------------------------------------
+	if ( r_motionBlur.GetInteger() > 0 ) {
+		const idScreenRect & viewport = backEnd.viewDef->viewport;
+		globalImages->currentDepthImage->CopyDepthbuffer( viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight() );
+	}
+
+	//-------------------------------------------------
+	// now draw any screen warping post-process effects using _currentRender
+	//-------------------------------------------------
+	if ( processed < numDrawSurfs && !r_skipPostProcess.GetBool() ) {
+		int x = backEnd.viewDef->viewport.x1;
+		int y = backEnd.viewDef->viewport.y1;
+		int	w = backEnd.viewDef->viewport.x2 - backEnd.viewDef->viewport.x1 + 1;
+		int	h = backEnd.viewDef->viewport.y2 - backEnd.viewDef->viewport.y1 + 1;
+
+		RENDERLOG_PRINTF( "Resolve to %i x %i buffer\n", w, h );
+
+		// resolve the screen
+		globalImages->currentRenderImage->CopyFramebuffer( x, y, w, h );
+		backEnd.currentRenderCopied = true;
+
+		// RENDERPARM_SCREENCORRECTIONFACTOR amd RENDERPARM_WINDOWCOORD overlap
+		// diffuseScale and specularScale
+
+		// screen power of two correction factor (no longer relevant now)
+		float screenCorrectionParm[4];
+		screenCorrectionParm[0] = 1.0f;
+		screenCorrectionParm[1] = 1.0f;
+		screenCorrectionParm[2] = 0.0f;
+		screenCorrectionParm[3] = 1.0f;
+		renderProgManager.SetRenderParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
+
+		// window coord to 0.0 to 1.0 conversion
+		float windowCoordParm[4];
+		windowCoordParm[0] = 1.0f / w;
+		windowCoordParm[1] = 1.0f / h;
+		windowCoordParm[2] = 0.0f;
+		windowCoordParm[3] = 1.0f;
+		renderProgManager.SetRenderParm( RENDERPARM_WINDOWCOORD, windowCoordParm ); // rpWindowCoord
+
+		// render the remaining surfaces
+		ID_RENDER_LOG_MAIN_BLOCK( renderLog, MRB_DRAW_SHADER_PASSES_POST );
+		RB_DrawShaderPasses( pContext, drawSurfs + processed, numDrawSurfs - processed );
+	}
 }
 
 /*

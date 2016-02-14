@@ -56,7 +56,7 @@ void main( PS_IN fragment, out PS_OUT result ) {
 
 	// derive clip space from the depth buffer and screen position
 	float windowZ = tex1.Sample( samp1, fragment.texcoord0 ).x;
-	float3 ndc = float3( fragment.texcoord0 * 2.0 - 1.0, windowZ * 2.0 - 1.0 );
+	float3 ndc = float3( fragment.texcoord0 * 2.0 - 1.0, windowZ );
 	float clipW = -rpProjectionMatrixZ.w / ( -rpProjectionMatrixZ.z - ndc.z );
 
 	float4 clip = float4( ndc * clipW, clipW );

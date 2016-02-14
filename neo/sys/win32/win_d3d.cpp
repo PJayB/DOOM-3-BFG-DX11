@@ -34,7 +34,7 @@ static LONG WINAPI Direct3DWndProc (
 	case WM_SIZE:
 
         // @pjb: todo: recreate swapchain?
-        // @pjb: actually fuck that. disable window sizing.
+        // @pjb: actually, let's just keep it simple and disable window sizing.
 
         break;
 

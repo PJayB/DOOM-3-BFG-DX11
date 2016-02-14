@@ -2089,6 +2089,14 @@ void RB_DrawViewInternal( ID3D11DeviceContext2* pContext, const viewDef_t * view
 	//-------------------------------------------------
 	RB_DrawInteractions( pContext );
 
+    //-------------------------------------------------
+    // capture depth for motion blur
+    //-------------------------------------------------
+    if (r_motionBlur.GetInteger() > 0) {
+        const idScreenRect& viewport = backEnd.viewDef->viewport;
+        globalImages->currentDepthImage->CopyDepthbuffer(viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight());
+    }
+
 	//-------------------------------------------------
 	// now draw any non-light dependent shading passes
 	//-------------------------------------------------

@@ -2130,7 +2130,7 @@ void RB_MotionBlur( ID3D11DeviceContext2* pContext ) {
     pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_MOTION_BLUR ), nullptr, 0 );
     pContext->PSSetShader( renderProgManager.GetBuiltInPixelShader( BUILTIN_SHADER_COLOR ), nullptr, 0 );
 
-    float clearCol[] = { 1, 1, 1, 0 }; // rgb is masked off but set to 255 for debugging purposes
+    float clearCol[] = { 1, 1, 1, 1 }; // rgb is masked off but set to 255 for debugging purposes
 	renderProgManager.SetRenderParm( RENDERPARM_COLOR, clearCol );
 	RB_DrawElementsWithCounters( pContext, &backEnd.unitSquareSurface );
     // @pjb - end

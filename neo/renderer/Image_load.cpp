@@ -487,6 +487,7 @@ void idImage::CopyFramebuffer( int x, int y, int imageWidth, int imageHeight ) {
         opts.numLevels = 1;
         opts.width = imageWidth;
         opts.height = imageHeight;
+        opts.format = FMT_RGBA8;
         filter = TF_LINEAR;
         repeat = TR_CLAMP;
 

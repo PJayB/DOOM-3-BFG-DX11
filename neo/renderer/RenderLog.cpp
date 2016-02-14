@@ -95,11 +95,11 @@ PC_EndNamedEvent
 ========================
 */
 void PC_EndNamedEvent() {
-    PIXEndEvent();
-
 	if ( !r_pix.GetBool() ) {
 		return;
 	}
+
+    PIXEndEvent();
 }
 
 /*

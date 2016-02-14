@@ -2282,9 +2282,6 @@ RB_PostProcess
 */
 extern idCVar rs_enable;
 void RB_PostProcess( ID3D11DeviceContext2* pContext, const void * data ) {
-    /* @pjb: todo: post processing
-
-
 	// only do the post process step if resolution scaling is enabled. Prevents the unnecessary copying of the framebuffer and
 	// corresponding full screen quad pass.
 	if ( rs_enable.GetInteger() == 0 ) { 
@@ -2307,14 +2304,15 @@ void RB_PostProcess( ID3D11DeviceContext2* pContext, const void * data ) {
 	D3DDrv_SetViewport( pContext, 0, 0, screenWidth, screenHeight );
 	D3DDrv_SetScissor( pContext, 0, 0, screenWidth, screenHeight );
 
+    pContext->VSSetShader(renderProgManager.GetBuiltInVertexShader(BUILTIN_SHADER_POSTPROCESS), nullptr, 0);
+    pContext->PSSetShader(renderProgManager.GetBuiltInPixelShader(BUILTIN_SHADER_POSTPROCESS), nullptr, 0);
+
     RB_BindImages( pContext, &globalImages->currentRenderImage, 0, 1 );
 
 	// Draw
 	RB_DrawElementsWithCounters( pContext, &backEnd.unitSquareSurface );
 
 	
-
-     */
 }
 
 /*

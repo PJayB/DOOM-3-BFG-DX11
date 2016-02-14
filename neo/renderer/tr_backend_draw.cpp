@@ -520,8 +520,6 @@ static void RB_DrawStageCustomVFP(
     const newShaderStage_t *newStage, 
     uint64 stageGLState ) {
 
-    GPU_SCOPED_PROFILE();
-
     // @pjb: is this a safe constant?
     idImage* pImages[16];
 
@@ -591,8 +589,6 @@ static void RB_DrawStageBuiltInVFP(
     const shaderStage_t *pStage, 
     const uint64 stageGLState ) {
 
-    GPU_SCOPED_PROFILE();
-    
     // get the expressions for conditionals / color / texcoords
 	const float	*regs = surf->shaderRegisters;
 
@@ -659,8 +655,6 @@ static void RB_FillDepthBufferGeneric( ID3D11DeviceContext2* pContext, const dra
 
     idImage* pImages[16];
 
-    GPU_SCOPED_PROFILE();
-    
     for ( int i = 0; i < numDrawSurfs; i++ ) {
 		const drawSurf_t * drawSurf = drawSurfs[i];
 		const idMaterial * shader = drawSurf->material;
@@ -857,8 +851,6 @@ static void RB_FillDepthBufferFast( ID3D11DeviceContext2* pContext, drawSurf_t *
 	renderLog.OpenMainBlock( MRB_FILL_DEPTH_BUFFER );
 	renderLog.OpenBlock( "RB_FillDepthBufferFast" );
 
-    GPU_SCOPED_PROFILE();
-    
     // force MVP change on first surface
 	backEnd.currentSpace = NULL;
 
@@ -955,8 +947,6 @@ static void RB_StencilShadowPass( ID3D11DeviceContext2* pContext, const drawSurf
 		return;
 	}
 
-    GPU_SCOPED_PROFILE();
-    
     RENDERLOG_PRINTF( "---------- RB_StencilShadowPass ----------\n" );
 
     pContext->VSSetShader( renderProgManager.GetBuiltInVertexShader( BUILTIN_SHADER_SHADOW ), nullptr, 0 );
@@ -1192,8 +1182,6 @@ mask to be used by the following stencil shadow and draw interaction passes.
 static void RB_StencilSelectLight( ID3D11DeviceContext2* pContext, const viewLight_t * vLight ) {
 	renderLog.OpenBlock( "Stencil Select" );
 
-    GPU_SCOPED_PROFILE();
-    
     // enable the light scissor
 	if ( !backEnd.currentScissor.Equals( vLight->scissorRect ) && r_useScissor.GetBool() ) {
 		D3DDrv_SetScissor( pContext,
@@ -1327,8 +1315,6 @@ static void RB_DrawSingleInteraction(
 		return;
 	}
 
-    GPU_SCOPED_PROFILE();
-    
     // bump matrix
 	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_S, din->bumpMatrix[0].ToFloatPtr() );
 	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_T, din->bumpMatrix[1].ToFloatPtr() );
@@ -1391,8 +1377,6 @@ static void RB_RenderInteractions( ID3D11DeviceContext2* pContext, const drawSur
 		return;
 	}
 
-    GPU_SCOPED_PROFILE();
-    
     // change the scissor if needed, it will be constant across all the surfaces lit by the light
 	if ( !backEnd.currentScissor.Equals( vLight->scissorRect ) && r_useScissor.GetBool() ) {
 		D3DDrv_SetScissor(  pContext,
@@ -1679,8 +1663,6 @@ static void RB_DrawInteractions( ID3D11DeviceContext2* pContext ) {
 	renderLog.OpenMainBlock( MRB_DRAW_INTERACTIONS );
 	renderLog.OpenBlock( "RB_DrawInteractions" );
 
-    GPU_SCOPED_PROFILE();
-    
     //
 	// for each light, perform shadowing and adding
 	//
@@ -1852,8 +1834,6 @@ static int RB_DrawShaderPasses( ID3D11DeviceContext2* pContext, const drawSurf_t
 		return numDrawSurfs;
 	}
 
-    GPU_SCOPED_PROFILE();
-    
     renderLog.OpenBlock( "RB_DrawShaderPasses" );
 
 	backEnd.currentSpace = (const viewEntity_t *)1;	// using NULL makes /analyze think surf->space needs to be checked...
@@ -2018,8 +1998,6 @@ RB_DrawViewInternal
 ==================
 */
 void RB_DrawViewInternal( ID3D11DeviceContext2* pContext, const viewDef_t * viewDef ) {
-    GPU_SCOPED_PROFILE();
-    
     renderLog.OpenBlock( "RB_DrawViewInternal" );
 
 	//-------------------------------------------------
@@ -2143,8 +2121,6 @@ void RB_MotionBlur( ID3D11DeviceContext2* pContext ) {
 		return;
 	}
 
-    GPU_SCOPED_PROFILE();
-    
     // clear the alpha buffer and draw only the hands + weapon into it so
 	// we can avoid blurring them
     D3DDrv_SetDepthStateFromMask( pContext, GLS_DEPTHMASK );
@@ -2287,8 +2263,6 @@ void RB_CopyRender( ID3D11DeviceContext2* pContext, const void *data ) {
 		return;
 	}
 
-    GPU_SCOPED_PROFILE();
-    
     RENDERLOG_PRINTF( "***************** RB_CopyRender *****************\n" );
 
 	if ( cmd->image ) {
@@ -2308,7 +2282,6 @@ RB_PostProcess
 */
 extern idCVar rs_enable;
 void RB_PostProcess( ID3D11DeviceContext2* pContext, const void * data ) {
-    GPU_SCOPED_PROFILE();
     /* @pjb: todo: post processing
 
 
@@ -2353,8 +2326,6 @@ smp extensions, or asyncronously by another thread.
 ====================
 */
 void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
-
-    GPU_SCOPED_PROFILE();
 
     // r_debugRenderToTexture
 	int c_draw3d = 0;

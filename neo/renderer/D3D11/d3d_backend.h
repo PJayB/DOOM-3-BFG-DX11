@@ -10,15 +10,6 @@ enum
     CLEAR_STENCIL = 4
 };
 
-#ifdef ID_RETAIL
-#   define GPU_SCOPED_PROFILE()     
-#else
-#   include <pix.h>
-#   define GPU_SCOPED_PROFILE_NAME(a, b) a##b
-#   define GPU_SCOPED_PROFILE() QD3D::ScopedGpuPixMarker GPU_SCOPED_PROFILE_NAME(_pix_marker, __LINE__)(D3DDrv_GetImmediateContext(), __FUNCTIONW__);
-#endif
-
-
 //----------------------------------------------------------------------------
 // Driver entry points
 //----------------------------------------------------------------------------

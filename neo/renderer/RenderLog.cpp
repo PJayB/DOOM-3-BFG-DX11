@@ -28,6 +28,8 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 #include "tr_local.h"
 
+#include <pix.h>
+
 /*
 ================================================================================================
 Contains the RenderLog implementation.
@@ -61,6 +63,7 @@ const char * renderLogMainBlockLabels[] = {
 };
 
 extern uint64 Sys_Microseconds();
+
 /*
 ================================================================================================
 
@@ -69,26 +72,7 @@ PIX events on all platforms
 ================================================================================================
 */
 
-
-/*
-================================================
-pixEvent_t 
-================================================
-*/
-struct pixEvent_t {
-	char		name[256];
-	uint64		cpuTime;
-	uint64		gpuTime;
-};
-
 idCVar r_pix( "r_pix", "0", CVAR_INTEGER, "print GPU/CPU event timing" );
-
-static const int	MAX_PIX_EVENTS = 256;
-// defer allocation of this until needed, so we don't waste lots of memory
-pixEvent_t *		pixEvents;	// [MAX_PIX_EVENTS]
-int					numPixEvents;
-int					numPixLevels;
-static GLuint		timeQueryIds[MAX_PIX_EVENTS];
 
 /*
 ========================
@@ -97,37 +81,12 @@ PC_BeginNamedEvent
 FIXME: this is not thread safe on the PC
 ========================
 */
-void PC_BeginNamedEvent( const char *szName, ... ) {
-#if 0
+template<typename... TArgs> void PC_BeginNamedEvent( const char *szName, TArgs... args ) {
 	if ( !r_pix.GetBool() ) {
 		return;
 	}
-	if ( !pixEvents ) {
-		// lazy allocation to not waste memory
-		pixEvents = (pixEvent_t *)Mem_ClearedAlloc( sizeof( *pixEvents ) * MAX_PIX_EVENTS, TAG_CRAP );
-	}
-	if ( numPixEvents >= MAX_PIX_EVENTS ) {
-		idLib::FatalError( "PC_BeginNamedEvent: event overflow" );
-	}
-	if ( ++numPixLevels > 1 ) {
-		return;	// only get top level timing information
-	}
-	if ( !qglGetQueryObjectui64vEXT ) {
-		return;
-	}
 
-	GL_CheckErrors();
-	if ( timeQueryIds[0] == 0 ) {
-		dummy_qglGenQueriesARB( MAX_PIX_EVENTS, timeQueryIds );
-	}
-	dummy_qglFinish();
-	dummy_qglBeginQueryARB( GL_TIME_ELAPSED_EXT, timeQueryIds[numPixEvents] );
-	GL_CheckErrors();
-
-	pixEvent_t *ev = &pixEvents[numPixEvents++];
-	strncpy( ev->name, szName, sizeof( ev->name ) - 1 );
-	ev->cpuTime = Sys_Microseconds();
-#endif
+    PIXBeginEvent(D3DDrv_GetImmediateContext(), 0, szName, args...);
 }
 
 /*
@@ -136,28 +95,11 @@ PC_EndNamedEvent
 ========================
 */
 void PC_EndNamedEvent() {
-#if 0
 	if ( !r_pix.GetBool() ) {
 		return;
 	}
-	if ( numPixLevels <= 0 ) {
-		idLib::FatalError( "PC_EndNamedEvent: level underflow" );
-	}
-	if ( --numPixLevels > 0 ) {
-		// only do timing on top level events
-		return;
-	}
-	if ( !qglGetQueryObjectui64vEXT ) {
-		return;
-	}
 
-	pixEvent_t *ev = &pixEvents[numPixEvents-1];
-	ev->cpuTime = Sys_Microseconds() - ev->cpuTime;
-
-	GL_CheckErrors();
-	dummy_qglEndQueryARB( GL_TIME_ELAPSED_EXT );
-	GL_CheckErrors();
-#endif
+    PIXEndEvent();
 }
 
 /*

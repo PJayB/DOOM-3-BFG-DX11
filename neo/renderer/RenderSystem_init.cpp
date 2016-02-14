@@ -1218,19 +1218,19 @@ static srfTriangles_t * R_MakeFullScreenTris() {
 	
 	verts[0].xyz[0] = -1.0f;
 	verts[0].xyz[1] = 1.0f;
-	verts[0].SetTexCoord( 0.0f, 1.0f );
+	verts[0].SetTexCoord( 0.0f, 0.0f );
 
 	verts[1].xyz[0] = 1.0f;
 	verts[1].xyz[1] = 1.0f;
-	verts[1].SetTexCoord( 1.0f, 1.0f );
+	verts[1].SetTexCoord( 1.0f, 0.0f );
 
 	verts[2].xyz[0] = 1.0f;
 	verts[2].xyz[1] = -1.0f;
-	verts[2].SetTexCoord( 1.0f, 0.0f );
+	verts[2].SetTexCoord( 1.0f, 1.0f );
 
 	verts[3].xyz[0] = -1.0f;
 	verts[3].xyz[1] = -1.0f;
-	verts[3].SetTexCoord( 0.0f, 0.0f );
+	verts[3].SetTexCoord( 0.0f, 1.0f );
 
 	for ( int i = 0 ; i < 4 ; i++ ) {
 		verts[i].SetColor( 0xffffffff );

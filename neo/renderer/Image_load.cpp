@@ -833,17 +833,20 @@ Image, but doesn't put anything in them.
 This should not be done during normal game-play, if you can avoid it.
 ========================
 */
+int DXTBlockSizeAligned(int x)
+{
+    return (x + 3) & ~0x3;
+}
+
 void idImage::AllocImage() {
-	PurgeImage();
-    
-    int minSize = 1;
-    if ( IsCompressed() ) {
-        // Force RGBA if the image is too small
-        if ( opts.width < 4 || opts.height < 4 ) { 
-            opts.format = FMT_RGBA8;
-        } else {
-            minSize = 4;
-        }
+    PurgeImage();
+
+    int w = opts.width; // DXTBlockSizeAligned(opts.width);
+    int h = opts.height; // DXTBlockSizeAligned(opts.height);
+    if (IsCompressed())
+    {
+        w = DXTBlockSizeAligned(opts.width);
+        h = DXTBlockSizeAligned(opts.height);
     }
 
     internalFormat = GetDxgiFormat( opts.format );
@@ -860,19 +863,11 @@ void idImage::AllocImage() {
 	// allocate all the mip levels with NULL data
 	//----------------------------------------------------
 
-    if ( opts.width % minSize != 0 || opts.height % minSize != 0 ) {
-        common->Warning( "Image '%s' has bad size: %dx%d (needs to be a multiple of %dx%d)", 
-            GetName(), opts.width, opts.height, minSize, minSize );
-        return;
-    }
-
-    assert( opts.width >= minSize && opts.height >= minSize );
-
 	D3D11_TEXTURE2D_DESC desc;
     ZeroMemory( &desc, sizeof(desc) );
 
-    desc.Width = opts.width;
-    desc.Height = opts.height;
+    desc.Width = w;
+    desc.Height = h;
     desc.MipLevels = opts.numLevels;
     desc.Format = internalFormat;
     desc.CPUAccessFlags = 0;
@@ -954,17 +949,22 @@ void idImage::SubImageUpload( int mipLevel, int x, int y, int z, int width, int 
     //memcpy( map.pData, pic, StorageSize() );
     //pContext->Unmap( pTexture, index );
 
+    int surfPitch;
     if ( !pixelPitch ) {
         if ( IsCompressed() ) {
-            pixelPitch = ( ( width + 3 ) / 4 ) * int64( 16 ) * BitsForFormat( opts.format ) / 8;
+            width = DXTBlockSizeAligned(width);
+            height = DXTBlockSizeAligned(height);
+            pixelPitch = ( (width / 4) * int64( 16 ) * BitsForFormat( opts.format ) ) / 8;
+            surfPitch = pixelPitch * (height / 4);
         } else {
             pixelPitch = width * BitsForFormat( opts.format ) / 8;
+            surfPitch = pixelPitch * height;
         }
     }
 
     D3D11_BOX box = { x, y, 0, x + width, y + height, 1 };
 
-    pContext->UpdateSubresource( pTexture, index, &box, pic, pixelPitch, pixelPitch * height ); 
+    pContext->UpdateSubresource(pTexture, index, &box, pic, pixelPitch, surfPitch);
 }
 
 //

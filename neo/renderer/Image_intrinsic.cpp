@@ -165,7 +165,7 @@ static void R_FlatNormalImage( idImage *image ) {
 		data[0][i][2] = 255;
 		data[0][i][3] = 255;
 	}
-	image->GenerateImage( (byte *)data, 2, 2, FMT_RGBA8, TF_DEFAULT, TR_REPEAT, TD_BUMP );
+	image->GenerateImage( (byte *)data, 4, 4, FMT_NONE, TF_DEFAULT, TR_REPEAT, TD_BUMP );
 }
 
 /*

@@ -19,7 +19,6 @@ I have broken the dependency on the DirectX June 2010 SDK, so that is no longer 
 Outstanding Work
 ----------------
 
-* Post Processes aren't implemented yet
 * VS2015 kicks out a gajillion warnings (VS2015 compiler has stronger standards compliance)
 * x64 build is unfinished
 * I haven't tried a Retail configuration build at all :)

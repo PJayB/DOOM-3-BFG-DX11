@@ -19,9 +19,12 @@ I have broken the dependency on the DirectX June 2010 SDK, so that is no longer 
 Outstanding Work
 ----------------
 
+* Death effect doesn't look quite right
+* Gamma/brightness settings aren't implemented
 * VS2015 kicks out a gajillion warnings (VS2015 compiler has stronger standards compliance)
-* x64 build is unfinished
+* x64 build is unfinished -- don't use it
 * I haven't tried a Retail configuration build at all :)
+* Performance profiling
 
 
 Updated Original Readme for Doom 3 BFG Edition GPL Source Code

@@ -20,6 +20,7 @@ Outstanding Work
 ----------------
 
 * Death effect doesn't look quite right
+* game/caverns1 incredibly broken! (Likely a fog issue. Fix coming soon.)
 * Gamma/brightness settings aren't implemented
 * VS2015 kicks out a gajillion warnings (VS2015 compiler has stronger standards compliance)
 * x64 build is unfinished -- don't use it

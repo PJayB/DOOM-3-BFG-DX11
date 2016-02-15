@@ -101,6 +101,9 @@ void idRenderProgManager::Init() {
         { BUILTIN_SHADER_SHADOW, "shadow.vfp" },
         { BUILTIN_SHADER_SHADOW_SKINNED, "shadow_skinned.vfp" },
 
+        { BUILTIN_SHADER_BLENDLIGHT, "blendlight.vfp" },
+        { BUILTIN_SHADER_FOG, "fog.vfp" },
+        { BUILTIN_SHADER_FOG_SKINNED, "fog_skinned.vfp" },
 		{ BUILTIN_SHADER_SKYBOX, "skybox.vfp" },
 		{ BUILTIN_SHADER_WOBBLESKY, "wobblesky.vfp" },
 		{ BUILTIN_SHADER_POSTPROCESS, "postprocess.vfp" },
@@ -121,6 +124,8 @@ void idRenderProgManager::Init() {
 		{ BUILTIN_SHADER_BUMPY_ENVIRONMENT, "bumpyEnvironment.vfp" },
 		{ BUILTIN_SHADER_DEPTH, "depth.vfp" },
         { BUILTIN_SHADER_SHADOW, "shadow.vfp" },
+        { BUILTIN_SHADER_BLENDLIGHT, "blendlight.vfp" },
+        { BUILTIN_SHADER_FOG, "fog.vfp" },
 		{ BUILTIN_SHADER_SKYBOX, "skybox.vfp" },
 		{ BUILTIN_SHADER_WOBBLESKY, "wobblesky.vfp" },
 		{ BUILTIN_SHADER_POSTPROCESS, "postprocess.vfp" },

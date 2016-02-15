@@ -311,7 +311,7 @@ void idRenderProgManager::LoadVertexShader( int index ) {
 
     vertexShader_t* vshader = &vertexShaders[index];
 
-	if ( vshader->pShader != NULL || vshader->name.Size() == 0 ) {
+	if ( vshader->pShader != NULL || vshader->name.Length() == 0 ) {
 		return; // Already loaded or not enabled
 	}
 	
@@ -347,7 +347,7 @@ idRenderProgManager::LoadFragmentShader
 void idRenderProgManager::LoadFragmentShader( int index ) {
     fragmentShader_t* pshader = &fragmentShaders[index];
 
-	if ( fragmentShaders[index].pShader != NULL || pshader->name.Size() == 0 ) {
+	if ( fragmentShaders[index].pShader != NULL || pshader->name.Length() == 0 ) {
 		return; // Already loaded or not enabled
 	}
 	

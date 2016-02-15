@@ -20,7 +20,6 @@ Outstanding Work
 ----------------
 
 * Death effect doesn't look quite right
-* "Haunted" post-process effect is upside down -- I thought I'd caught all the flipped UVs but apparently not!
 * Gamma/brightness settings aren't implemented
 * VS2015 kicks out a gajillion warnings (VS2015 compiler has stronger standards compliance)
 * x64 build is unfinished -- don't use it

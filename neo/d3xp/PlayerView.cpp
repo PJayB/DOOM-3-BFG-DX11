@@ -1410,7 +1410,8 @@ void FullscreenFX_InfluenceVision::HighQuality() {
 
 	if ( player->GetInfluenceMaterial() ) {
 		renderSystem->SetColor4( 1.0f, 1.0f, 1.0f, pct );
-		renderSystem->DrawStretchPic( 0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT, 0.0f, 0.0f, 1.0f, 1.0f, player->GetInfluenceMaterial() );
+        // @pjb: todo: find out why this must be inverted. Likely the material def flips it somewhere, but how and where I can't determine.
+		renderSystem->DrawStretchPic( 0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT, 0.0f, 1.0f, 1.0f, 0.0f, player->GetInfluenceMaterial() );
 	} else if ( player->GetInfluenceEntity() == NULL ) {
 		return;
 	} else {

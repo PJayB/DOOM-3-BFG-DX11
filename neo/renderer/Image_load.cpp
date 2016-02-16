@@ -44,7 +44,7 @@ int BitsForFormat( textureFormat_t format ) {
 		case FMT_RGB565:	return 16;
         case FMT_BGR565:    return 16;
 		case FMT_L8A8:		return 16;
-		case FMT_ALPHA:		return 8;
+		case FMT_ALPHA:		return 32; // @pjb: see note below
 		case FMT_LUM8:		return 8;
 		case FMT_INT8:		return 8;
 		case FMT_DXT1:		return 4;
@@ -826,7 +826,9 @@ DXGI_FORMAT idImage::GetDxgiFormat( textureFormat_t fmt) const
         internalFormat = DXGI_FORMAT_B5G6R5_UNORM;
 		break;
 	case FMT_ALPHA:
-		internalFormat = DXGI_FORMAT_R8_UNORM;
+        // @pjb: GLSL and HLSL react differently to alpha textures
+        // HLSL returns A in the red channel, but GLSL returns it in the alpha
+		internalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 		break;
 	case FMT_L8A8:
         internalFormat = DXGI_FORMAT_R8G8_UNORM;

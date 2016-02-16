@@ -156,9 +156,12 @@ void idBinaryImage::Load2DFromMemory( int width, int height, const byte * pic_co
 			}
 		} else if ( textureFormat == FMT_ALPHA ) {
 			// ALPHA reads the alpha channel
-			img.Alloc( scaledWidth * scaledHeight );
-			for ( int i = 0; i < img.dataSize; i++ ) {
-				img.data[ i ] = pic[ i * 4 + 3 ];
+			img.Alloc( scaledWidth * scaledHeight * 4 );
+			for ( int i = 0; i < img.dataSize; i += 4 ) {
+				img.data[ i + 0 ] = 255;
+				img.data[ i + 1 ] = 255;
+				img.data[ i + 2 ] = 255;
+				img.data[ i + 3 ] = pic[ i + 3 ];
 			}
 		} else if ( textureFormat == FMT_L8A8 ) {
 			// L8A8 reads the alpha and red channels

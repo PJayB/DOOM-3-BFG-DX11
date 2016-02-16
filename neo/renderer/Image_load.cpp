@@ -71,7 +71,7 @@ ID_INLINE void idImage::DeriveOpts() {
 		switch ( usage ) {
 			case TD_COVERAGE:
 				opts.format = FMT_DXT1;
-				opts.colorFormat = CFM_DEFAULT;
+				opts.colorFormat = CFM_GREEN_ALPHA;
 				break;
 			case TD_DEPTH:
 				opts.format = FMT_DEPTH;
@@ -98,7 +98,7 @@ ID_INLINE void idImage::DeriveOpts() {
 				break;
 			case TD_FONT:
 				opts.format = FMT_DXT1;
-				opts.colorFormat = CFM_DEFAULT;
+				opts.colorFormat = CFM_GREEN_ALPHA;
 				opts.numLevels = 4; // We only support 4 levels because we align to 16 in the exporter
 				opts.gammaMips = true;
 				break;
@@ -110,7 +110,7 @@ ID_INLINE void idImage::DeriveOpts() {
 				opts.format = FMT_INT8;
 				break;
 			case TD_LOOKUP_TABLE_ALPHA:
-				opts.format = FMT_RGBA8;
+				opts.format = FMT_ALPHA;
 				break;
 			case TD_LOOKUP_TABLE_RGB1:
 			case TD_LOOKUP_TABLE_RGBA:

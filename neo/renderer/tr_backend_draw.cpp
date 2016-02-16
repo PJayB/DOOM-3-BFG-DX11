@@ -42,6 +42,10 @@ idCVar r_useLightStencilSelect( "r_useLightStencilSelect", "0", CVAR_RENDERER | 
 
 backEndState_t	backEnd;
 
+
+inline float SaturateF(float x) { if (x < 0) return 0; if (x > 1) return 1; return x; }
+
+
 /*
 ================
 RB_ResetColor
@@ -2085,10 +2089,10 @@ static void RB_BlendLight( ID3D11DeviceContext2* pContext, const drawSurf_t *dra
 
 		// get the modulate values from the light, including alpha, unlike normal lights
 		float lightColor[4];
-		lightColor[0] = regs[ stage->color.registers[0] ];
-		lightColor[1] = regs[ stage->color.registers[1] ];
-		lightColor[2] = regs[ stage->color.registers[2] ];
-		lightColor[3] = regs[ stage->color.registers[3] ];
+		lightColor[0] = SaturateF(regs[ stage->color.registers[0] ]);
+		lightColor[1] = SaturateF(regs[ stage->color.registers[1] ]);
+		lightColor[2] = SaturateF(regs[ stage->color.registers[2] ]);
+		lightColor[3] = SaturateF(regs[ stage->color.registers[3] ]);
 	    renderProgManager.SetRenderParm( RENDERPARM_COLOR, lightColor );
 
 		RB_T_BlendLight( pContext, drawSurfs, vLight );
@@ -2184,8 +2188,14 @@ static void RB_FogPass( ID3D11DeviceContext2* pContext, const drawSurf_t * drawS
 	lightColor[1] = regs[ stage->color.registers[1] ];
 	lightColor[2] = regs[ stage->color.registers[2] ];
 	lightColor[3] = regs[ stage->color.registers[3] ];
-
-    renderProgManager.SetRenderParm(RENDERPARM_COLOR, lightColor);
+        
+    // @pjb: for some reason the alpha of the light color is 8000?!
+    float clampedLightColor[4];
+	clampedLightColor[0] = SaturateF(lightColor[0]);
+	clampedLightColor[1] = SaturateF(lightColor[1]);
+	clampedLightColor[2] = SaturateF(lightColor[2]);
+	clampedLightColor[3] = SaturateF(lightColor[3]);
+    renderProgManager.SetRenderParm(RENDERPARM_COLOR, clampedLightColor);
 
 	// calculate the falloff planes
 	float a;

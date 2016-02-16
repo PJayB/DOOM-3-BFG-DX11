@@ -56,9 +56,13 @@ void idBinaryImage::Load2DFromMemory( int width, int height, const byte * pic_co
 	fileData.numLevels = numLevels;
 
 	byte * pic = (byte *)Mem_Alloc( width * height * 4, TAG_TEMP );
+#if 0
     for (int y = 0; y < height; ++y) {
 	    memcpy( pic + y * width * 4, pic_const + (height - y - 1) * width * 4, width * 4 );
     }
+#else
+    memcpy(pic, pic_const, width * height * 4);
+#endif
 
 	if ( colorFormat == CFM_YCOCG_DXT5 ) {
 		// convert the image data to YCoCg and use the YCoCgDXT5 compressor

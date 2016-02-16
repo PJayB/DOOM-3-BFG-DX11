@@ -2599,19 +2599,16 @@ void idFileSystemLocal::Init() {
 	common->StartupVariable( "fs_game_base" );
 	common->StartupVariable( "fs_copyfiles" );
 
-#ifndef ID_RETAIL
-    if (fs_devpath.GetString()[0] == '\0') {
-        fs_devpath.SetString(Sys_DefaultBasePath());
-    }
-    // If the environment variable is set, take our base path from that.
-    const char* doom3InstallDir = getenv("DOOM3INSTALLDIR");
-    if (doom3InstallDir != nullptr && fs_basepath.GetString()[0] == '\0') {
-        fs_basepath.SetString(doom3InstallDir);
-    } else
-#endif
 	if ( fs_basepath.GetString()[0] == '\0' ) {
 		fs_basepath.SetString( Sys_DefaultBasePath() );
 	}
+#ifndef ID_RETAIL
+    // If the environment variable is set, take our base path from that.
+    const char* doom3InstallDir = getenv("DOOM3INSTALLDIR");
+    if (doom3InstallDir != nullptr && fs_devpath.GetString()[0] == '\0') {
+        fs_devpath.SetString(doom3InstallDir);
+    }
+#endif
 	if ( fs_savepath.GetString()[0] == '\0' ) {
 		fs_savepath.SetString( Sys_DefaultSavePath() );
 	}
